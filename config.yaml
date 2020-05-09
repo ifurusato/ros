@@ -1,0 +1,55 @@
+# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
+# the Robot Operating System project and is released under the "Apache Licence, 
+# Version 2.0". Please see the LICENSE file included as part of this package.
+#
+# YAML configuration for Robot Operating System (ROS) ..........................
+
+flask:
+    enabled: true                                # start flask web server?
+
+pi:
+    disable_leds: false                          # disable and re-enable Pi LEDs during operation?
+    led_0_path:   '/sys/class/leds/led0/brightness'
+    led_1_path:   '/sys/class/leds/led1/brightness'
+    sudo_name:    'sudo'
+
+ros:
+    wait_for_button_press: false                 # robot waits in standby mode until red button is pressed
+    enable_self_shutdown: false                  # enables the robot to shut itself down (not good during demos)
+    main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
+    battery:
+        enable_messaging:  False                 # if true we enable low battery messages to be sent
+    motors:
+        # GPIO pins configured for A1, B1, A2 and B2
+        rotary_encoder_a1_port: 22
+        rotary_encoder_b1_port: 17
+        rotary_encoder_a2_stbd: 27
+        rotary_encoder_b2_stbd: 18
+        reverse_motor_orientation:   False       # in case you wire something up backwards
+        reverse_encoder_orientation: True        # ditto
+        sample_rate: 10                          # how many pulses per encoder measurement?
+        velocity_fudge_factor: 14.0              # convert raw velocity to approximate a percentage
+        max_power_limit: 1.0                     # limit set on power sent to motors
+        accel_loop_delay_sec: 0.10
+        pid:
+            enable_slew:    True
+            slew_limit:     15.0
+            enable_p:       True
+            enable_i:       False
+            enable_d:       True
+            kp:             0.0016
+            ki:             0.0010
+            kd:             0.00010
+            sample_time_ms: 20
+    slewlimiter:
+        rate_limit: 0.100  # value change permitted per millisecond
+
+    filewriter:
+        extension: '.dat'                        # file extension (must include the dot)
+        directory_name: 'data'                   # output directory name
+        default_filename_prefix: 'motors'        # output directory name
+        gnuplot_template_file: 'settings_pid_template.gp'  # template for gnuplot settings
+        gnuplot_output_file: 'settings_pid.gp'   # output file for gnuplot settings
+    features:
+        placeholder: ''
+

@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css?family=Dosis:500,700&display=swap');
+html { 
+  background-color: #222222;
+}
+body { font-family: 'Dosis', sans-serif; }
+h1 { 
+  font-size: 320%;
+/*color: #fcfcfc;*/
+  margin: 4px 8px; padding: 0;
+  font-weight: 700; 
+}
+#wrapper {
+  margin: 5em auto 3em auto; 
+  text-align: center;
+  padding: 1em 1.5em; max-width: 500px;
+  background-color: white; 
+  border-radius: 16px;
+}
+#wrapped {
+  display: inline-block;
+}
+.ui-draggable, .ui-droppable {
+  background-position: top;
+}
+.ui-state-focus {
+  background: pink !important;
+}
+.ui-state-active {
+  color: white !important;
+  background: black !important;
+}
+#page-table {}
+#speed-table, #navigation-table {
+  min-height: 310px;
+  padding: 0.5em;
+  border-spacing: 0.25em;
+  border-collapse: separate;
+  border: thin solid #aaaaaa;
+  border-radius: 0.5em;
+}
+#port-handle, #starboard-handle {
+  display: block;
+  color: black;
+  background-color: #e7e7ff;
+  font-size: small;
+  height: 1.6em;
+  width: 3em;
+  text-align: center;
+  line-height: 1.6em;
+  margin-left: -0.8em;
+}
+.port-handle-bound {
+  display: block;
+  width: 8em !important;
+  margin-left: -0.8em !important;
+}
+.starboard-handle-bound {
+  display: none !important;
+  width: 1em !important;
+  margin-left: -1.6em !important;
+}
+button.nbtn {
+  display: table-cell;
+  width: 9em;
+  height: 5em;
+  vertical-align: middle;
+  text-align: center;
+
+  font-size: x-small;
+  background-color: #e7e7ff;
+  border-radius: 10px;
+  border: thin double #babaf9;
+  color: #101037;
+  -webkit-transition: all 0.5s;
+  -moz-transition: all 0.5s;
+  -o-transition: all 0.5s;
+  transition: all 0.5s;
+  cursor: pointer;
+}
+button.nbtn:hover {
+  background-color: #a2a2f2;
+}
+button.nbtn:active {
+  background-color: #7878ff;
+}
+button.zbtn {
+  display: table-cell;
+  width: 5em;
+  height: 2.5em;
+  vertical-align: middle;
+  text-align: center;
+  margin-left: 2em;
+  font-size: x-small;
+  background-color: #e7e7ff;
+  border-radius: 5px;
+  border: thin double #babaf9;
+  color: #101037;
+  -webkit-transition: all 0.5s;
+  -moz-transition: all 0.5s;
+  -o-transition: all 0.5s;
+  transition: all 0.5s;
+  cursor: pointer;
+}
+button#halt {
+  color: white;
+  background-color: orange;
+  border-color: darkorange;
+  width: 18em;
+}
+button#stop {
+  color: white;
+  background-color: red;
+  border-color: darkred;
+  width: 18em;
+}
