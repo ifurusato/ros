@@ -25,6 +25,8 @@ and the NZPRG wiki at:
 
 ## Status
 
+This project should currently be considered a "**Technology Preview**".
+
 Currently the files have been copied into the repository are from the initial local 
 project.  These files function as advertised but the overall state of the ROS is not 
 yet complete - there are still some pieces missing that are not quite "ready for prime 
