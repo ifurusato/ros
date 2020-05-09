@@ -43,7 +43,9 @@ This project comes with no promise of support or liability. Use at your own risk
 
 ## Further Information
 
-This project is part of the New Zealand Personal Robotics (NZPRG) "Robot Operating System", not to be confused with other "ROS" projects. For more information check out the NZPRG Blog and NZPRG Wiki.
+This project is part of the _New Zealand Personal Robotics (NZPRG)_ "Robot Operating
+System", not to be confused with other "ROS" projects. For more information check out the
+[NZPRG Blog](https://robots.org.nz/) and [NZPRG Wiki](https://service.robots.org.nz/wiki/).
 
 Please note that the documentation in the code will likely be more current than this README file, so please consult it for the "canonical" information.
 
