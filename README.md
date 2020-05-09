@@ -22,8 +22,9 @@ and the NZPRG wiki at:
 ## Status
 
 Currently the files have been copied into the repository from its initial local state. 
-The individual files work but the overeall functionality of the ROS that currently
-works locally still has missing pieces.
+The individual files that have been posted to the repository function as advertised 
+but the overall state of the ROS is not yet functional - there are still some pieces
+missing that are not quite "ready for prime time."
 
 The project is being exposed publicly so that those interested can follow its progress.
 When things stabilise we'll update this status section.
