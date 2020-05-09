@@ -6,7 +6,7 @@ Main communication between sensors and motor controller is performed over I²C,
 using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as 
 a variety of Pimoroni sensors from the Breakout Garden series. 
 
-[The KRO1 Robot](https://service.robots.org.nz/wiki/attach/KR01/KR01-0533-800x360.jpg)
+![The KRO1 Robot](https://service.robots.org.nz/wiki/attach/KR01/KR01-0533-800x360.jpg)
 
 The KR01 robot uses the PiBorg ThunderBorg motor controller and UltraBorg 
 ultrasonic sensor and servo controller board. 
