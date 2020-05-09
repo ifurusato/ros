@@ -1,17 +1,12 @@
 # A Python-based Robot Operating System (ROS)
 
-This provides a _Robot Operating System_ (ROS) for a Raspberry Pi based robot
-written in Python 3, whose prototype hardware implementation is the KR01 robot.
-Main communication between sensors and motor controller is performed over I²C, 
-using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as 
-a variety of Pimoroni sensors from the Breakout Garden series. 
+This provides a _Robot Operating System_ (ROS) for a Raspberry Pi based robot written in Python 3, whose prototype hardware implementation is the KR01 robot.  Main communication between sensors and motor controller is performed over I²C, using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as a variety of Pimoroni sensors from the Breakout Garden series. 
 
 
 ![The KRO1 Robot](https://service.robots.org.nz/wiki/attach/KR01/KR01-0533-1280x584.jpg)
 
 
-The KR01 robot uses the PiBorg ThunderBorg motor controller and UltraBorg 
-ultrasonic sensor and servo controller board. 
+The KR01 robot uses the PiBorg ThunderBorg motor controller and UltraBorg ultrasonic sensor and servo controller board. 
 
 More information can be found on the New Zealand Personal Robotic Group (NZPRG) Blog at:
 
@@ -27,19 +22,14 @@ and the NZPRG wiki at:
 
 This project should currently be considered a "**Technology Preview**".
 
-The files that have been copied into the repository are from the initial local project.  
-These function largely as advertised but the overall state of the ROS is not yet complete 
-&emdash; there are still some pieces missing that are not quite "ready for prime time."
+The files that have been copied into the repository are from the initial local project. These function largely as advertised but the overall state of the ROS is not yet complete — there are still some pieces missing that are not quite "ready for prime time."
 
-The project is being exposed publicly so that those interested can follow its progress.
-At such a time when the ROS is generally useable this status section will be updated
-accordingly.
+The project is being exposed publicly so that those interested can follow its progress. At such a time when the ROS is generally useable this status section will be updated accordingly.
 
 
 ## Installation
 
-The ROS requires installation of a number of support libraries. In order to begin you'll
-need Python3 and pip3, as well as the pigpio library.
+The ROS requires installation of a number of support libraries. In order to begin you'll need Python3 and pip3, as well as the pigpio library.
 
 
 ## Support & Liability
@@ -49,9 +39,7 @@ This project comes with no promise of support or liability. Use at your own risk
 
 ## Further Information
 
-This project is part of the _New Zealand Personal Robotics (NZPRG)_ "Robot Operating
-System", not to be confused with other "ROS" projects. For more information check out the
-[NZPRG Blog](https://robots.org.nz/) and [NZPRG Wiki](https://service.robots.org.nz/wiki/).
+This project is part of the _New Zealand Personal Robotics (NZPRG)_ "Robot Operating System", not to be confused with other "ROS" projects. For more information check out the [NZPRG Blog](https://robots.org.nz/) and [NZPRG Wiki](https://service.robots.org.nz/wiki/).
 
 Please note that the documentation in the code will likely be more current than this README file, so please consult it for the "canonical" information.
 
