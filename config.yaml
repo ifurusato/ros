@@ -19,6 +19,27 @@ ros:
     main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
     battery:
         enable_messaging:  False                 # if true we enable low battery messages to be sent
+    scanner:
+        min_angle: -48.0                         # minimum scan angle (clearance of bumper)
+        max_angle:  48.0                         # maximum scan angle (clearance of bumper)
+        play_sound: False                        # if true, play 'ping' sound during scanning
+#       degree_step: 5.0                         # resolution of scan
+#       tof_range: 'medium'                      # ToF range: performance, long, medium or short
+        degree_step: 2.5                         # resolution of scan
+        tof_range: 'performance'                 # ToF range: performance, long, medium or short
+    ultrasonic_scanner:
+        min_angle: -90.0                         # minimum scan angle
+        max_angle:  90.0                         # maximum scan angle
+        degree_step: 5.0                         # resolution of scan
+    servo1:
+        center_offset: -10.0                     # offset necessary to center the servo at 0.0
+    servo2:
+        center_offset: -5.0                       # offset necessary to center the servo at 0.0
+    servo3:
+        center_offset: 0.0                       # offset necessary to center the servo at 0.0
+    servo4:
+        center_offset: 0.0                       # offset necessary to center the servo at 0.0
+
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22
@@ -51,5 +72,6 @@ ros:
         gnuplot_template_file: 'settings_pid_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_pid.gp'   # output file for gnuplot settings
     features:
+        ht0740: False
         placeholder: ''
 

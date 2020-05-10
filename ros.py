@@ -147,8 +147,12 @@ class ROS(AbstractTask):
             Set the value of the named property of the application
             configuration, provided its section, property name and value.
         '''
-        self._log.debug('set config property key: \'{}\' to value: {}.'.format(property_name, property_value))
-        self._config[section].update(property_name = property_value)
+        self._log.info(Fore.GREEN + 'set config on section \'{}\' for property key: \'{}\' to value: {}.'.format(section, property_name, property_value))
+        if section == 'ros':
+            self._config[section].update(property_name = property_value)
+        else:
+            _ros = self._config['ros']
+            _ros[section].update(property_name = property_value)
 
 
     # ..........................................................................
@@ -220,7 +224,7 @@ class ROS(AbstractTask):
         self._log.critical('ultraborg available? {}'.format(ultraborg_available))
         if vl53l1x_available and ultraborg_available:
             self._log.critical('starting scanner tool...')
-            self._scanner = Scanner(self._player, Level.INFO)
+            self._scanner = Scanner(self._config, self._player, Level.INFO)
             self._scanner.enable()
         else:
             self._log.critical('scanner tool does not have necessary dependencies.')
@@ -402,7 +406,6 @@ def print_help():
 # main .........................................................................
 
 _ros = ROS()
-
 
 def main(argv):
 

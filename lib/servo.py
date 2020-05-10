@@ -18,10 +18,23 @@ from lib.logger import Level, Logger
 
 class Servo():
     '''
-        This currently is hardcoded to use Servo 1.
+        Provided with configuration this permits setting of the center position offset.
+
+        The UltraBorg supports four servos, numbered 1-4.
     '''
-    def __init__(self, level):
-        self._log = Logger("servo", level)
+    def __init__(self, config, number, level):
+        self._number = number
+        self._log = Logger("servo-{:d}".format(number), level)
+        self._config = config
+        if self._config:
+            self._log.info('configuration provided.')
+            _config = self._config['ros'].get('servo{:d}'.format(number))
+            self._center_offset = _config.get('center_offset')
+        else:
+            self._log.warning('no configuration provided.')
+            self._center_offset = 0.0
+        self._log.info('center offset: {:>3.1f}'.format(self._center_offset))
+
         self._UB = UltraBorg()         # create a new UltraBorg object
         self._UB.Init()                # initialise the board (checks it is connected)
         # settings .......................................................................
@@ -31,10 +44,31 @@ class Servo():
         self._step_delay = 0.05        # Delay between steps
         self._rate_start = 0.05        # Step distance for all servos during initial move
         self._step_distance = 1.0      # Step distance for servo #1
-        self._use_servo_1 = True
         self._enabled = True
         self._closed = False
         self._log.info('ready.')
+
+
+    # ..........................................................................
+    def get_distance(self):
+        '''
+            Gets the filtered distance for ultrasonic module #1 in millimeters.
+
+            Returns 0 for no object detected or no ultrasonic module attached.
+
+            If you need a faster response try GetRawDistance2 instead (no filtering) e.g.:
+
+                0     -> No object in range
+                25    -> Object 25 mm away
+                1000  -> Object 1000 mm (1 m) away
+                3500  -> Object 3500 mm (3.5 m) away
+
+            This admittedly is not a servo function but since we have an UltraBorg
+            supporting this servo this becomes a convenience method.
+        '''
+#       _distance = self._UB.GetRawDistance1()
+        _distance = self._UB.GetWithRetry(self._UB.GetDistance1, 5)
+        return _distance
 
 
     # ..........................................................................
@@ -74,24 +108,58 @@ class Servo():
 
 
     # ..........................................................................
+    def get_ultraborg(self):
+        '''
+            Return the UltraBorg supporting this Servo.
+        '''
+        return self._UB
+
+
+    # ..........................................................................
     def set_position(self, position):
         '''
             Set the position of the servo to a value between -90.0 and 90.0 degrees.
             Values outside this range set to their respective min/max.
+
+            This adjusts the argument by the value of the center offset.
         '''
+        position += self._center_offset
         if position < self._servo_min:
-            self._log.warn('cannot set; position less than minimum: {}°'.format(position))
+            self._log.warning('cannot set; position less than minimum: {:+5.2f}°'.format(position))
             position = self._servo_min
         if position > self._servo_max:
-            self._log.warn('cannot set; position less than minimum: {}°'.format(position))
+            self._log.warning('cannot set; position less than minimum: {:+5.2f}°'.format(position))
             position = self._servo_max
-        self._log.debug('servo position: {}°'.format(position))
+        self._log.debug('set servo position to: {:+5.2f}°'.format(position))
         # values for servo range from -1.0 to 1.0
         _value = position / 90.0
-        if self._use_servo_1:
+        if self._number == 1:
             self._UB.SetServoPosition1(_value)
-        else:
+        elif self._number == 2:
             self._UB.SetServoPosition2(_value)
+        elif self._number == 3:
+            self._UB.SetServoPosition3(_value)
+        elif self._number == 4:
+            self._UB.SetServoPosition4(_value)
+
+
+    # ..........................................................................
+    def get_position(self, defaultValue):
+        '''
+            Get the position of the servo. If unavailable return the default. 
+        '''
+        if self._number == 1:
+            _position = self._UB.GetServoPosition1()
+        elif self._number == 2:
+            _position = self._UB.GetServoPosition2()
+        elif self._number == 3:
+            _position = self._UB.GetServoPosition3()
+        elif self._number == 4:
+            _position = self._UB.GetServoPosition4()
+        if _position is None:
+            return defaultValue
+        else:
+            return ( _position * 90.0 ) + self._center_offset
 
 
     # ..........................................................................
@@ -102,10 +170,14 @@ class Servo():
 
     # ..........................................................................
     def reset(self):
-        if self._use_servo_1:
+        if self._number == 1:
             self._UB.SetServoPosition1(0.0)
-        else:
+        elif self._number == 2:
             self._UB.SetServoPosition2(0.0)
+        elif self._number == 3:
+            self._UB.SetServoPosition3(0.0)
+        elif self._number == 4:
+            self._UB.SetServoPosition4(0.0)
         self._log.info('reset position.')
 
 

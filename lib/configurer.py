@@ -61,6 +61,7 @@ class Configurer():
             A convenience method that sets a feature's availability
             to the boolean value.
         '''
+        self._log.info(Fore.GREEN + Style.BRIGHT + '-- set feature available. name: \'{}\' value: \'{}\'.'.format(name, value))
         self._ros.set_property('features', name, value)
 
 

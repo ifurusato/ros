@@ -27,6 +27,22 @@ class Range(Enum):
     LONG        = 3 # Long Range
     PERFORMANCE = 4 # custom
 
+    @staticmethod
+    def from_str(label):
+        if label.upper() == 'UNCHANGED':
+            return Range.UNCHANGED
+        elif label.upper() == 'SHORT':
+            return Range.SHORT
+        elif label.upper() == 'MEDIUM':
+            return Range.MEDIUM
+        elif label.upper() == 'LONG':
+            return Range.LONG
+        elif label.upper() == 'PERFORMANCE':
+            return Range.PERFORMANCE
+        else:
+            raise NotImplementedError
+
+
 class TimeOfFlight():
     '''
         This is based on Pimoroni's VL53L1X Time of Flight (ToF) Breakaway Garden board,
@@ -48,6 +64,7 @@ class TimeOfFlight():
         # lower timing budgets allow for faster updates, but sacrifice accuracy
         if self._range is Range.PERFORMANCE:
             self._tof.set_timing(UPDATE_TIME_MICROS, INTER_MEASUREMENT_PERIOD_MILLIS)
+
         self._log.info('ready.')
 
 
