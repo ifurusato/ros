@@ -81,7 +81,7 @@ class RgbMatrix(Feature):
                 self._thread_PORT.start()
                 self._thread_STBD = threading.Thread(target=self._get_target(), args=[self, self._rgbmatrix5x5_STBD])
                 self._thread_STBD.start()
-                self._log.info('enabled.')
+                self._log.debug('enabled.')
             else:
                 self._log.warning('cannot enable: process already running.')
         else:
@@ -103,7 +103,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def disable(self):
         global enabled
-        self._log.info('disabling...')
+        self._log.debug('disabling...')
         enabled = False
         self._clear(self._rgbmatrix5x5_PORT)
         self._clear(self._rgbmatrix5x5_STBD)
@@ -115,7 +115,7 @@ class RgbMatrix(Feature):
             self._thread_STBD.join(timeout=1.0)
             self._log.debug('starboard rgbmatrix thread joined.')
             self._thread_STBD = None
-        self._log.info('disabled.')
+        self._log.debug('disabled.')
 
 
     # ..........................................................................

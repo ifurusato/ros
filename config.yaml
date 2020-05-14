@@ -19,26 +19,51 @@ ros:
     main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
     battery:
         enable_messaging:  False                 # if true we enable low battery messages to be sent
-    scanner:
-        min_angle: -48.0                         # minimum scan angle (clearance of bumper)
-        max_angle:  48.0                         # maximum scan angle (clearance of bumper)
+    lidar:
+        min_angle: -45.0                         # minimum scan angle (clearance of bumper)
+        max_angle:  45.0                         # maximum scan angle (clearance of bumper)
         play_sound: False                        # if true, play 'ping' sound during scanning
 #       degree_step: 5.0                         # resolution of scan
 #       tof_range: 'medium'                      # ToF range: performance, long, medium or short
-        degree_step: 2.5                         # resolution of scan
+        degree_step: 5.0                         # resolution of scan
+        step_delay_sec: 0.02                     # how long to linger at each degree step to permit a reading
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
+    wall_follower:
+        port_angle: -90.0                        # port-facing scan angle
+        starboard_angle: 90.0                    # starboard-facing scan angle
+        tof_range: 'performance'                 # ToF range: performance, long, medium or short
+        servo_number: 2                          # use this servo
     ultrasonic_scanner:
         min_angle: -90.0                         # minimum scan angle
         max_angle:  90.0                         # maximum scan angle
         degree_step: 5.0                         # resolution of scan
+        use_raw_distance: True                   # use raw distance, faster than when filtered
+        read_delay_sec: 0.25                     # how long to wait at position for reading
+        servo_number: 2                          # use this servo
+    cat_scan:
+        active_angle:  -90.0                     # servo position with arm raised
+        inactive_angle: 90.0                     # servo position with arm lowered
+        pir_pin:      15                         # pin connected to PIR sensor
+        servo_number: 3                          # use this servo
     servo1:
-        center_offset: -10.0                     # offset necessary to center the servo at 0.0
+        center_offset: 0.0                       # used by lidar: offset necessary to center the servo at 0.0
     servo2:
-        center_offset: -5.0                       # offset necessary to center the servo at 0.0
+        center_offset: 2.0                       # used by uscanner and wall follower: offset necessary to center the servo at 0.0
     servo3:
         center_offset: 0.0                       # offset necessary to center the servo at 0.0
     servo4:
         center_offset: 0.0                       # offset necessary to center the servo at 0.0
+    bumper:
+        port_pin:      21                        # pin connected to port bumper
+        center_pin:    19                        # pin connected to center bumper
+        starboard_pin: 13                        # pin connected to starboard bumper
+        upper_pin:      7                        # pin connected to upper bumper
+    infrared:
+        port_pin:           6                    # pin connected to port infrared
+        center_pin:        13                    # pin connected to center infrared
+        starboard_pin:     16                    # pin connected to starboard infrared
+        port_side_pin:      5                    # pin connected to port side infrared
+        starbard_side_pin: 11                    # pin connected to starboard side infrared
 
     motors:
         # GPIO pins configured for A1, B1, A2 and B2

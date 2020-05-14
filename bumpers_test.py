@@ -17,6 +17,7 @@ from lib.devnull import DevNull
 from lib.event import Event
 from lib.logger import Level
 from lib.bumpers import Bumpers
+from lib.config_loader import ConfigLoader
 
 
 # exception handler ........................................................
@@ -94,7 +95,13 @@ def main():
     print('bumpers_test      :' + Fore.BLUE + Style.BRIGHT + ' INFO  : to pass test, trigger all bumper sensors...' + Style.RESET_ALL)
 
     _queue = MockMessageQueue(Level.INFO)
-    _bumpers = Bumpers(_queue, None, Level.INFO)
+
+    # read YAML configuration
+    _loader = ConfigLoader(Level.INFO)
+    filename = 'config.yaml'
+    _config = _loader.configure(filename)
+
+    _bumpers = Bumpers(_config, _queue, None, Level.INFO)
 
     _bumpers.enable()
 

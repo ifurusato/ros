@@ -84,6 +84,7 @@ class Event(Enum):
     TURN_AHEAD_STBD        = ( 83, "turn ahead starboard",    100,   False)
     # high level behaviours ............
     ROAM                   = ( 89, "roam",                    100,   False)
+    CAT_SCAN               = ( 90, "catscan",                 100,   False)
 
     # ..................................
     def __new__(cls, *args, **kwds):

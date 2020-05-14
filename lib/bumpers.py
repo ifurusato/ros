@@ -18,7 +18,7 @@ from .bumper import Bumper
 # ..............................................................................
 class Bumpers():
 
-    def __init__(self, queue, upper_activated_callback, level):
+    def __init__(self, config, queue, upper_activated_callback, level):
         '''
         This uses the hardcoded pin numbers found in the class, supporting four
         bumpers: port, center, starboard, and upper (emergency stop) wire feelers.
@@ -32,23 +32,28 @@ class Bumpers():
         super().__init__()
         self._log = Logger('bumpers', level)
         self._log.debug('initialising bumpers...')
+        self._config = config
+        if self._config:
+            _config = self._config['ros'].get('bumper')
+            self._port_pin  = _config.get('port_pin')
+            self._cntr_pin  = _config.get('center_pin')
+            self._stbd_pin  = _config.get('starboard_pin')
+            self._upper_pin = _config.get('upper_pin')
+            self._log.info('bumper pins: port={:d}; center={:d}; starboard={:d}; upper={:d}'.format(\
+                    self._port_pin, self._cntr_pin, self._stbd_pin, self._upper_pin)) 
+        else: raise ValueError("no configuration provided.")
+
         self._queue = queue
 
-        PORT_PIN   = 13
-        CENTER_PIN = 19
-#       STBD_PIN   = 26
-        STBD_PIN   =  7
-        UPPER_PIN  = 15
-
         # these auto-start their threads
-        self._bumper_port   = Bumper(PORT_PIN,     'port', level, self.activated_port, self.deactivated_port )
-        self._bumper_center = Bumper(CENTER_PIN,   'cntr', level, self.activated_center, self.deactivated_center )
-        self._bumper_stbd   = Bumper(STBD_PIN,     'stbd', level, self.activated_stbd, self.deactivated_stbd )
+        self._bumper_port   = Bumper(self._port_pin, 'port', level, self.activated_port, self.deactivated_port )
+        self._bumper_center = Bumper(self._cntr_pin, 'cntr', level, self.activated_center, self.deactivated_center )
+        self._bumper_stbd   = Bumper(self._stbd_pin, 'stbd', level, self.activated_stbd, self.deactivated_stbd )
 
         if upper_activated_callback is not None:
-            self._bumper_upper = Bumper(UPPER_PIN, 'uppr', level, upper_activated_callback, self.deactivated_upper )
+            self._bumper_upper = Bumper(self._upper_pin, 'uppr', level, upper_activated_callback, self.deactivated_upper )
         else:
-            self._bumper_upper = Bumper(UPPER_PIN, 'uppr', level, self.activated_upper, self.deactivated_upper )
+            self._bumper_upper = Bumper(self._upper_pin, 'uppr', level, self.activated_upper, self.deactivated_upper )
         self._bumper_upper.set_wait_for_inactive(False) # no delay on deactivation
         self._enabled = False
         self._log.info('ready.')

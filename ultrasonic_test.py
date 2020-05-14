@@ -24,7 +24,7 @@ from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.devnull import DevNull
 from lib.player import Player
-from lib.scanner import Scanner
+from lib.ultrasonic import UltrasonicScanner
 
 _scanner = None
 
@@ -43,10 +43,10 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    print('scanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : starting test...' + Style.RESET_ALL)
-    print('scanner_test      :' + Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.' + Style.RESET_ALL)
+    print('uscanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : starting test...' + Style.RESET_ALL)
+    print('uscanner_test      :' + Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.' + Style.RESET_ALL)
 
-    _log = Logger("scanner", Level.INFO)
+    _log = Logger("uscanner", Level.INFO)
     try:
         _scanner = I2CScanner(Level.WARN)
         _addresses = _scanner.getAddresses()
@@ -54,19 +54,16 @@ def main():
         _addrDict = dict(list(map(lambda x, y:(x,y), _addresses, hexAddresses)))
         for i in range(len(_addresses)):
             _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
-
-        vl53l1x_available = ( 0x29 in _addresses )
         ultraborg_available = ( 0x36 in _addresses )
     
-        if vl53l1x_available and ultraborg_available:
-            _log.info('starting scan...')
-            _player = Player(Level.INFO)
+        if ultraborg_available:
+            _log.info('starting ultrasonic scan...')
 
             _loader = ConfigLoader(Level.INFO)
             filename = 'config.yaml'
             _config = _loader.configure(filename)
 
-            _scanner = Scanner(_config, _player, Level.INFO)
+            _scanner = UltrasonicScanner(_config, Level.INFO)
             _scanner.enable()
             values = _scanner.scan()
             time.sleep(1.0)
@@ -74,7 +71,7 @@ def main():
         else:
             _log.error('required hardware dependencies not available.')
 
-        print('scanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.' + Style.RESET_ALL)
+        print('uscanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.' + Style.RESET_ALL)
 
     except Exception:
         _log.info(traceback.format_exc())

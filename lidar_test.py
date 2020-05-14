@@ -24,15 +24,15 @@ from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.devnull import DevNull
 from lib.player import Player
-from lib.uscanner import UltrasonicScanner
+from lib.lidar import Lidar
 
-_scanner = None
+_lidar = None
 
 # exception handler ............................................................
 def signal_handler(signal, frame):
     print(Fore.RED + 'Ctrl-C caught: exiting...' + Style.RESET_ALL)
-    if _scanner:
-        _scanner.close()
+    if _lidar:
+        _lidar.close()
     sys.stderr = DevNull()
     print(Fore.MAGENTA + 'exit.' + Style.RESET_ALL)
     sys.exit(0)
@@ -43,35 +43,40 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    print('uscanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : starting test...' + Style.RESET_ALL)
-    print('uscanner_test      :' + Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.' + Style.RESET_ALL)
+    _log = Logger("scanner", Level.INFO)
+    _log.info(Fore.CYAN + Style.BRIGHT + ' INFO  : starting test...')
+    _log.info(Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.')
 
-    _log = Logger("uscanner", Level.INFO)
     try:
-        _scanner = I2CScanner(Level.WARN)
-        _addresses = _scanner.getAddresses()
-        hexAddresses = _scanner.getHexAddresses()
+        _i2c_scanner = I2CScanner(Level.WARN)
+        _addresses = _i2c_scanner.getAddresses()
+        hexAddresses = _i2c_scanner.getHexAddresses()
         _addrDict = dict(list(map(lambda x, y:(x,y), _addresses, hexAddresses)))
         for i in range(len(_addresses)):
-            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
+            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]))
+
+        vl53l1x_available = ( 0x29 in _addresses )
         ultraborg_available = ( 0x36 in _addresses )
+
+        if not vl53l1x_available:
+            raise OSError('VL53L1X hardware dependency not available.')
+        elif not ultraborg_available:
+            raise OSError('UltraBorg hardware dependency not available.')
     
-        if ultraborg_available:
-            _log.info('starting ultrasonic scan...')
+        _log.info('starting scan...')
+        _player = Player(Level.INFO)
 
-            _loader = ConfigLoader(Level.INFO)
-            filename = 'config.yaml'
-            _config = _loader.configure(filename)
+        _loader = ConfigLoader(Level.INFO)
+        filename = 'config.yaml'
+        _config = _loader.configure(filename)
 
-            _scanner = UltrasonicScanner(_config, Level.INFO)
-            _scanner.enable()
-            values = _scanner.scan()
-            time.sleep(1.0)
-            _scanner.close()
-        else:
-            _log.error('required hardware dependencies not available.')
+        _lidar = Lidar(_config, _player, Level.INFO)
+        _lidar.enable()
+        values = _lidar.scan()
+        time.sleep(1.0)
+        _lidar.close()
+        _log.info(Fore.CYAN + Style.BRIGHT + 'test complete.')
 
-        print('uscanner_test      :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.' + Style.RESET_ALL)
 
     except Exception:
         _log.info(traceback.format_exc())
