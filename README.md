@@ -18,6 +18,21 @@ and the NZPRG wiki at:
 * [KR01 Robot](https://service.robots.org.nz/wiki/Wiki.jsp?page=KR01)
 
 
+## Features
+
+* written in Python 3
+* Behaviour-Based System (BBS)
+* subsumption architecture (uses message queue, arbitrator and controller for task prioritisation)
+* auto-configures by scanning I²C bus for available devices on startup
+* configuration via YAML file
+* motor control via PID controller with odometry support using encoders
+* complex composite sensors include mini-LIDAR, scanning ultrasonic distance sensor and PIR-based cat scanner
+* supports analog and digital IR bumper sensors
+* output via 11x7 white matrix LED and 5x5 RGB matrix LED displays
+* supports Pimoroni Breakout Garden, Adafruit and other I²C sensors, and can be extended for others
+* supports PiBorg ThunderBorg motor controller, UltraBorg servo and ultrasonic controller board
+
+
 ## Status
 
 This project should currently be considered a "**Technology Preview**".
