@@ -20,24 +20,24 @@ and the NZPRG wiki at:
 
 ## Features
 
-* written in Python 3
-* Behaviour-Based System (BBS)
-* subsumption architecture (uses message queue, arbitrator and controller for task prioritisation)
-* auto-configures by scanning I²C bus for available devices on startup
-* configuration via YAML file
-* motor control via PID controller with odometry support using encoders
+* [Behaviour-Based System (BBS)](https://en.wikipedia.org/wiki/Behavior-based_robotics)
+* [Subsumption Architecture](https://en.wikipedia.org/wiki/Subsumption_architecture) (uses finite state machines, message queue, arbitrator and controller for task prioritisation)
+* Auto-configures by scanning I²C bus for available devices on startup
+* Configuration via YAML file
+* Motor control via [PID controller](https://en.wikipedia.org/wiki/PID_controller) with odometry support using encoders
 * complex composite sensors include mini-LIDAR, scanning ultrasonic distance sensor and PIR-based cat scanner
 * supports analog and digital IR bumper sensors
 * output via 11x7 white matrix LED and 5x5 RGB matrix LED displays
 * supports Pimoroni Breakout Garden, Adafruit and other I²C sensors, and can be extended for others
 * supports PiBorg ThunderBorg motor controller, UltraBorg servo and ultrasonic controller board
+* written in Python 3
 
 
 ## Status
 
 This project should currently be considered a "**Technology Preview**".
 
-The files that have been copied into the repository are from the initial local project. These function largely as advertised but the overall state of the ROS is not yet complete — there are still some pieces missing that are not quite "ready for prime time."
+The files that have been copied into the repository are from the initial local project. These function largely as advertised but the overall state of the ROS is not yet complete — there are still some pieces missing that are not quite "ready for prime time." Demonstrations and included tests either pass entirely or are close to passing.
 
 The project is being exposed publicly so that those interested can follow its progress. At such a time when the ROS is generally useable this status section will be updated accordingly.
 
