@@ -38,6 +38,8 @@ class Pin():
 # ..............................................................................
 def main():
     try:
+
+        TITLE = 'Raspberry Pi 3 B+ Pinout'
         DELAY_TIME_SEC = 0.5
         GND = Fore.BLACK + Style.DIM    + 'GND   '
         CYAN_NORMAL = Fore.CYAN + Style.NORMAL
@@ -45,11 +47,10 @@ def main():
         NNNN = '\n' * ROWS # as tall as your screen
         INDENT = '    '
 
-
-        _counter = itertools.count()
         GPIO.setmode(GPIO.BOARD)
 
         # column 1 ..............
+        _pin07 = Pin(7, 'GPIO4')
         _pin11 = Pin(11,'GPIO17')
         _pin13 = Pin(13,'GPIO27')
         _pin15 = Pin(15,'GPIO22')
@@ -66,7 +67,7 @@ def main():
         # GND 39
 
         # column 2 ..............
-        _pin08 = Pin(8,'GPIO14')
+        _pin08 = Pin(8, 'GPIO14')
         _pin10 = Pin(10,'GPIO15')
         _pin12 = Pin(12,'GPIO18')
         # GND 14
@@ -78,19 +79,23 @@ def main():
         _pin26 = Pin(26,'GPIO7')
         # SC1 28
         # GND 30
-        _pin32 = Pin(32,'GPIO11')
+        _pin32 = Pin(32,'GPIO12')
         # GND 34
         _pin36 = Pin(36,'GPIO16')
         _pin38 = Pin(38,'GPIO20')
         _pin40 = Pin(40,'GPIO21')
 
 
+        _counter = itertools.count()
+
         while True:
             print(NNNN)
-            print(INDENT + Fore.RED + Style.NORMAL   + '3.3V  ' + CYAN_NORMAL + '\t(01) | (02)\t' + Fore.RED + Style.BRIGHT   + '5V' + Style.RESET_ALL)
-            print(INDENT + Fore.BLUE + Style.BRIGHT  + 'SDA   ' + CYAN_NORMAL + '\t(03) | (04)\t' + Fore.RED + Style.BRIGHT   + '5V' + Style.RESET_ALL)
+            print(INDENT + Fore.WHITE + Style.BRIGHT + '\t  ' + TITLE + Style.RESET_ALL)
+            print('')
+            print(INDENT + Fore.RED + Style.NORMAL   + '3.3V  ' + CYAN_NORMAL + '\t(01) | (02)\t' + Fore.MAGENTA + Style.NORMAL   + '5V' + Style.RESET_ALL)
+            print(INDENT + Fore.BLUE + Style.BRIGHT  + 'SDA   ' + CYAN_NORMAL + '\t(03) | (04)\t' + Fore.MAGENTA + Style.NORMAL   + '5V' + Style.RESET_ALL)
             print(INDENT + Fore.BLUE + Style.BRIGHT  + 'SCL   ' + CYAN_NORMAL + '\t(05) | (06)\t' + GND + Style.RESET_ALL)
-            print(INDENT + Fore.WHITE + Style.NORMAL + 'GCLK0 ' + CYAN_NORMAL + '\t(07) | (08)\t' + _pin08.get() + Style.RESET_ALL)
+            print(INDENT + _pin07.get()                         + CYAN_NORMAL + '\t(07) | (08)\t' + _pin08.get() + Style.RESET_ALL)
             print(INDENT + GND                                  + CYAN_NORMAL + '\t(09) | (10)\t' + _pin10.get() + Style.RESET_ALL)
             print(INDENT + _pin11.get()                         + CYAN_NORMAL + '\t(11) | (12)\t' + _pin12.get() + Style.RESET_ALL)
             print(INDENT + _pin13.get()                         + CYAN_NORMAL + '\t(13) | (14)\t' + GND + Style.RESET_ALL)

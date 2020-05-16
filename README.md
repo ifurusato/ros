@@ -1,6 +1,8 @@
 # A Python-based Robot Operating System (ROS)
 
-This provides a _Robot Operating System_ (ROS) for a Raspberry Pi based robot written in Python 3, whose prototype hardware implementation is the KR01 robot.  Main communication between sensors and motor controller is performed over I²C, using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as a variety of Pimoroni sensors from the Breakout Garden series. 
+This provides a _Robot Operating System_ (ROS) for a Raspberry Pi based robot written in Python 3, whose prototype hardware implementation is the **KR01** robot.  
+Main communication between sensors and motor controller is performed over I²C, using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as a 
+variety of Pimoroni sensors from the Breakout Garden series. 
 
 
 ![The KRO1 Robot](https://service.robots.org.nz/wiki/attach/KR01/KR01-0533-1280x584.jpg)
@@ -61,7 +63,7 @@ Please note that the documentation in the code will likely be more current than 
 
 ## Copyright & License
 
-This software is Copyright 2020 by Murray Altheim, All Rights Reserved.
+All contents (including software, documentation and images) Copyright 2020 by Murray Altheim, All Rights Reserved.
 
-Distributed under the MIT License, see LICENSE file included with project.
+Software and documentation are distributed under the MIT License, see LICENSE file included with project.
 

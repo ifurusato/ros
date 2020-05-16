@@ -502,6 +502,32 @@ class Motors():
 
 
     # ..........................................................................
+    def ahead_for_steps(self, port_speed, stbd_speed, port_steps, stbd_steps):
+        '''
+            An experimental method that slews both motors to move ahead at speed (0 <= speed <= 100)
+            for a specified number of steps, stopping at the end. As this provides no slewing at the
+            end to avoid stress on the motors' gears do not use with a high speed.
+        '''
+        if self._enabled:
+            self._log.info('motors ahead at speed {:5.2f}/{:5.2f} for steps {:d}/{:d}...'.format( port_speed, stbd_speed, port_steps, stbd_steps ))
+            _tp = Thread(target=self._port_motor.ahead_for_steps, args=(port_speed, port_steps))
+            _ts = Thread(target=self._stbd_motor.ahead_for_steps, args=(stbd_speed, stbd_steps))
+            _tp.start()
+            _ts.start()
+            _tp.join()
+            _ts.join()
+#           self.stop()
+            self.print_current_power_levels()
+#           while _tp.is_alive() and _ts.is_alive():
+#               time.sleep(0.001)
+            self._log.info('motors ahead for steps complete.')
+            return True
+        else:
+            self._log.info('cannot move ahead: motors disabled.')
+            return False
+
+
+    # ..........................................................................
     def change_speed(self, speed):
         '''
             Slews both motors to the provided speed at a higher slew rate than 'ahead()'.

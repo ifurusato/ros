@@ -59,7 +59,7 @@ class Motor():
             self._orientation = orientation
         # NOW we can create the logger
         self._log = Logger('motor:{}'.format(orientation.label), level)
-        self._log.debug('initialising {} motor...'.format(orientation))
+        self._log.info('initialising {} motor...'.format(orientation))
         self._log.debug('_reverse_motor_orientation: {}'.format(self._reverse_motor_orientation))
         self._reverse_encoder_orientation =  cfg.get('reverse_encoder_orientation')
         self._log.debug('_reverse_encoder_orientation: {}'.format(self._reverse_encoder_orientation))
@@ -165,7 +165,7 @@ class Motor():
         else:
             self._steps = self._steps + pulse
 #       print('{}: {:+d} steps'.format(self._orientation.name, self._steps))
-#       self._log.debug('{}: {:+d} steps'.format(self._orientation.label, self._steps))
+        self._log.debug(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
 #       print('decoder:{}      :'.format(self._orientation.label) + Fore.BLACK + Style.DIM + ' DEBUG : {}: {:+d} steps'.format(self._orientation.label, self._steps) + Style.RESET_ALL)
         if self._steps % self._sample_rate == 0:
             if self._steps_begin != 0:
@@ -446,12 +446,17 @@ class Motor():
         '''
         _BRAKING = False
         _current_steps = self._steps # current steps
-        _braking_range = 500
+        _braking_range = 500 if steps > 1000 else 100
         _speed = speed / 100.0
         _power = float(_speed * self._max_power_ratio)
-        self._log.info('ahead at speed {:>5.2f} using power {:>5.2f} for steps: {:d}.'.format(_speed, _power, steps))
+        if _BRAKING:
+            self._log.info(Fore.YELLOW + 'ahead at speed {:>5.2f} using power {:>5.2f} for steps: {:d} with braking range of {:d}.'.format(_speed, _power, steps, _braking_range))
+        else:
+            self._log.info(Fore.YELLOW + 'ahead at speed {:>5.2f} using power {:>5.2f} for steps: {:d} with no braking range.'.format(_speed, _power, steps))
         self.set_motor_power(_power)
+
         if speed >= 0:
+
             if _BRAKING:
                 _step_limit = _current_steps + steps - _braking_range
                 while self._steps < _step_limit:
@@ -480,6 +485,8 @@ class Motor():
                     if self._interrupt:
                         break
                     time.sleep(0.01)
+
+
         else:
             _step_limit = _current_steps - steps + _braking_range
             while self._steps > _step_limit:
@@ -498,6 +505,7 @@ class Motor():
                     break
                 time.sleep(0.01)
 
+        self.stop()
         self._interrupt = False
 
 

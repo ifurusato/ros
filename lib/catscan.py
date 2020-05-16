@@ -133,7 +133,8 @@ class CatScan():
         if active:
             if _current_angle != -999.0 and _current_angle is not self._active_angle:
                 with _mutex:
-                    for degrees in numpy.arange(self._inactive_angle, self._active_angle + 0.01, -1.0 * self._arm_movement_degree_step):
+#                   for degrees in numpy.arange(self._inactive_angle, self._active_angle + 0.01, -1.0 * self._arm_movement_degree_step):
+                    for degrees in numpy.arange(_current_angle, self._active_angle + 0.01, -1.0 * self._arm_movement_degree_step):
                         self._log.debug('position set to: {:>4.1f}°'.format(degrees))
                         self._servo.set_position(degrees)
                         time.sleep(self._arm_up_delay)

@@ -20,13 +20,15 @@ ros:
     battery:
         enable_messaging:  False                 # if true we enable low battery messages to be sent
     lidar:
-        min_angle: -45.0                         # minimum scan angle (clearance of bumper)
-        max_angle:  45.0                         # maximum scan angle (clearance of bumper)
+#       min_angle: -45.0                         # minimum scan angle (clearance of bumper)
+#       max_angle:  45.0                         # maximum scan angle (clearance of bumper)
+        min_angle: -30.0                         # minimum scan angle (clearance of bumper)
+        max_angle:  30.0                         # maximum scan angle (clearance of bumper)
         play_sound: False                        # if true, play 'ping' sound during scanning
 #       degree_step: 5.0                         # resolution of scan
 #       tof_range: 'medium'                      # ToF range: performance, long, medium or short
-        degree_step: 5.0                         # resolution of scan
-        step_delay_sec: 0.02                     # how long to linger at each degree step to permit a reading
+        degree_step: 2.0                         # resolution of scan
+        step_delay_sec: 0.10                     # how long to linger at each degree step to permit a reading
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
     wall_follower:
         port_angle: -90.0                        # port-facing scan angle
