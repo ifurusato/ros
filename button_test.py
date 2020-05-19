@@ -13,6 +13,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.button import Button
+from lib.config_loader import ConfigLoader
 from lib.queue import MessageQueue
 from lib.logger import Level
 
@@ -24,10 +25,13 @@ def main():
 
     print('button_test       :' + Fore.BLUE + Style.BRIGHT + ' INFO  : to pass test, press button for both ON and OFF states...' + Style.RESET_ALL)
 
+    # read YAML configuration
+    _loader = ConfigLoader(Level.INFO)
+    filename = 'config.yaml'
+    _config = _loader.configure(filename)
+    
     _queue = MessageQueue(Level.INFO)
-    PIN = 16
-    TOGGLE = True
-    _button = Button(_queue, PIN, TOGGLE, threading.Lock())
+    _button = Button(_config, _queue, threading.Lock())
     _button.start()
 
     while not _button.get():

@@ -221,17 +221,15 @@ class Configurer():
         self._log.warning('configure default features...')
         from lib.button import Button
         self._log.info('configuring button...')
-        BUTTON_PIN = 16
-        self._ros._button = Button(self._ros.get_message_queue(), BUTTON_PIN, True, self._ros._mutex)
+        self._ros._button = Button(self._ros._config, self._ros.get_message_queue(), self._ros._mutex)
 
         from lib.bumpers import Bumpers
         self._log.info('configuring bumpers...')
-        self._ros._bumpers = Bumpers(self._ros.get_message_queue(), None, Level.INFO)
+        self._ros._bumpers = Bumpers(self._ros._config, self._ros.get_message_queue(), None, Level.INFO)
 
         from lib.infrareds import Infrareds
         self._log.info('configuring infrared trio...')
-        _use_long_range_infrared = True
-        self._ros._infrareds = Infrareds(self._ros.get_message_queue(), _use_long_range_infrared, Level.INFO)
+        self._ros._infrareds = Infrareds(self._ros._config, self._ros.get_message_queue(), Level.INFO)
 
         from lib.player import Sound, Player
         self._log.info('configuring player...')

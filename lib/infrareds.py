@@ -36,44 +36,56 @@ class NullInfrared():
 class Infrareds():
 
 
-    def __init__(self, queue, use_long_range, level):
+    def __init__(self, config, queue, level):
         '''
         A convenience class that collectively creates, enables and disables the set of infrared sensors. 
-        This includes a port and starboard short range digital (boolean) sensor, either a center short
-        range digital sensor or a long range analog sensor, and port and starboard digital side sensors.
+        This includes:
 
-        This uses the hardcoded pin numbers found in the class.
+          * a port and starboard short range digital (boolean) sensor
+          * either a center short range digital sensor or a long range analog sensor, and 
+          * port and starboard digital side sensors
+
+        The pin numbers for each are provided in the configuration.
 
         Parameters:
 
+           config:          the YAML-based application configuration
            queue:           the message queue to receive messages from this task
-           use_long_range:  if True uses a LongRangeInfrared for the center sensor
            level:           the logging level
         '''
         super().__init__()
         self._log = Logger('infrareds', level)
+        if config is None:
+            raise ValueError('no configuration provided.')
         self._queue = queue
+        _config = config['ros'].get('infrared')
+        _port_pin       = _config.get('port_pin')
+        _cntr_pin       = _config.get('center_pin')
+        _stbd_pin       = _config.get('stbd_pin')
+        _port_side_pin  = _config.get('port_side_pin')
+        _stbd_side_pin  = _config.get('stbd_side_pin')
+        self._use_lr_ir = _config.get('use_long_range') # if True uses LongRangeInfrared for center sensor
 
-        PORT_PIN      = 12
-        CENTER_PIN    = 6
-        STBD_PIN      = 5
-        PORT_SIDE_PIN = 20
-        STBD_SIDE_PIN = 21
-
-        self._use_long_range = use_long_range
         # these auto-start their threads
-        self._infrared_port       = Infrared(self._queue, PORT_PIN, Orientation.PORT, Event.INFRARED_PORT, level)
-        if use_long_range:
+        self._infrared_port       = Infrared(self._queue, _port_pin, Orientation.PORT, Event.INFRARED_PORT, level)
+        if self._use_lr_ir:
             self._infrared_center = LongRangeInfrared(self._queue, 0, level)
         else:
-            self._infrared_center = Infrared(self._queue, CENTER_PIN, Orientation.CENTER, Event.INFRARED_CENTER, level)
-        self._infrared_stbd       = Infrared(self._queue, STBD_PIN, Orientation.STBD, Event.INFRARED_STBD, level)
+            self._infrared_center = Infrared(self._queue, _cntr_pin, Orientation.CENTER, Event.INFRARED_CENTER, level)
+        self._infrared_stbd       = Infrared(self._queue, _stbd_pin, Orientation.STBD, Event.INFRARED_STBD, level)
 
-        self._infrared_port_side  = Infrared(self._queue, PORT_SIDE_PIN, Orientation.PORT_SIDE, Event.INFRARED_PORT_SIDE, level)
-        self._infrared_stbd_side  = Infrared(self._queue, STBD_SIDE_PIN, Orientation.STBD_SIDE, Event.INFRARED_STBD_SIDE, level)
+        self._infrared_port_side  = Infrared(self._queue, _port_side_pin, Orientation.PORT_SIDE, Event.INFRARED_PORT_SIDE, level)
+        self._infrared_stbd_side  = Infrared(self._queue, _stbd_side_pin, Orientation.STBD_SIDE, Event.INFRARED_STBD_SIDE, level)
+
+        if self._use_lr_ir:
+            self._log.info('infrared pins: port={:d}; center=[LR_IR]; starboard={:d}; port side={:d}; starboard side={:d}'.format(\
+                    _port_pin, _stbd_pin, _port_side_pin, _stbd_side_pin)) 
+        else:
+            self._log.info('infrared pins: port={:d}; center={:d}; starboard={:d}; port side={:d}; starboard side={:d}'.format(\
+                    _port_pin, _cntr_pin, _stbd_pin, _port_side_pin, _stbd_side_pin)) 
 
         self._enabled = False # default
-        if use_long_range:
+        if self._use_lr_ir:
             self._log.info('initialised infrared sensors with long-range sensor at center.')
         else:
             self._log.info('initialised infrared sensors.')
@@ -107,7 +119,7 @@ class Infrareds():
             Enable or disable the long range scan. Disabling it is necessary
             in order to continue past the long range threshold.
         '''
-        if self._use_long_range:
+        if self._use_lr_ir:
             self._log.info('setting long-range infrared scanning to {}.'.format(enabled))
             self._infrared_center.set_long_range_scan(enabled)
 
@@ -119,7 +131,7 @@ class Infrareds():
             This counter is cleared continuously.
             Returns zero if we're not using the long range sensor.
         '''
-        if self._use_long_range:
+        if self._use_lr_ir:
             return self._infrared_center.get_short_range_hits()
         else:
             return 0
@@ -132,7 +144,7 @@ class Infrareds():
             This counter is cleared continuously.
             Returns zero if we're not using the long range sensor.
         '''
-        if self._use_long_range:
+        if self._use_lr_ir:
             return self._infrared_center.get_long_range_hits()
         else:
             return 0

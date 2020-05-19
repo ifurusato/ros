@@ -32,7 +32,7 @@ from lib.config_loader import ConfigLoader
 from lib.configurer import Configurer
 
 # TODO move to feature importer
-from lib.scanner import Scanner
+from lib.lidar import Lidar
 
 from lib.arbitrator import Arbitrator
 from lib.controller import Controller
@@ -224,8 +224,8 @@ class ROS(AbstractTask):
         self._log.critical('ultraborg available? {}'.format(ultraborg_available))
         if vl53l1x_available and ultraborg_available:
             self._log.critical('starting scanner tool...')
-            self._scanner = Scanner(self._config, self._player, Level.INFO)
-            self._scanner.enable()
+            self._lidar = Lidar(self._config, self._player, Level.INFO)
+            self._lidar.enable()
         else:
             self._log.critical('scanner tool does not have necessary dependencies.')
         
@@ -233,7 +233,7 @@ class ROS(AbstractTask):
 
         # configure the Controller and Arbitrator
         self._log.info('configuring controller...')
-        self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._scanner, self._callback_shutdown)
+        self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._lidar, self._callback_shutdown)
 
         self._log.info('configuring arbitrator...')
         self._arbitrator = Arbitrator(_level, self._queue, self._controller, self._mutex)

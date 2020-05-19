@@ -186,10 +186,9 @@ class Motors():
 #   FULL_SPEED          = 80.0
 #   EMERGENCY_SPEED     = 100.0
 #   MAXIMUM             = 100.000001
-        self._log.warning('SPEED {:5.2f} compared to port: {:>5.2f}; starboard: {:>5.2f}'.format(speed.value, self._port_motor.get_current_power_level(Orientation.PORT), \
-                self._stbd_motor.get_current_power_level(Orientation.STBD)) )
-
-        return ( self._port_motor.get_current_power_level(Orientation.PORT) > speed.value ) or ( self._stbd_motor.get_current_power_level(Orientation.STBD) > speed.value )
+        self._log.warning('SPEED {:5.2f} compared to port: {:>5.2f}; starboard: {:>5.2f}'.format(speed.value, self._port_motor.get_current_power_level(), \
+                self._stbd_motor.get_current_power_level()) )
+        return ( self._port_motor.get_current_power_level() > speed.value ) or ( self._stbd_motor.get_current_power_level() > speed.value )
 
 
     # ..........................................................................
@@ -206,9 +205,9 @@ class Motors():
             Returns the last set power of the specified motor.
         '''
         if orientation is Orientation.PORT:
-            return self._port_motor.get_current_power_level(orientation)
+            return self._port_motor.get_current_power_level()
         else:
-            return self._stbd_motor.get_current_power_level(orientation)
+            return self._stbd_motor.get_current_power_level()
 
 
     # ..........................................................................
@@ -334,8 +333,8 @@ class Motors():
         '''
             Returns the last set power values.
         '''
-        _port_power = self._port_motor.get_current_power_level(Orientation.PORT)
-        _stbd_power = self._stbd_motor.get_current_power_level(Orientation.STBD)
+        _port_power = self._port_motor.get_current_power_level()
+        _stbd_power = self._stbd_motor.get_current_power_level()
         return [ _port_power, _stbd_power ]
 
 

@@ -40,7 +40,7 @@ ros:
         max_angle:  90.0                         # maximum scan angle
         degree_step: 5.0                         # resolution of scan
         use_raw_distance: True                   # use raw distance, faster than when filtered
-        read_delay_sec: 0.25                     # how long to wait at position for reading
+        read_delay_sec: 0.3                      # how long to wait at position for reading
         servo_number: 2                          # use this servo
     cat_scan:
         active_angle:  -90.0                     # servo position with arm raised
@@ -55,6 +55,9 @@ ros:
         center_offset: 0.0                       # offset necessary to center the servo at 0.0
     servo4:
         center_offset: 0.0                       # offset necessary to center the servo at 0.0
+    button:
+        pin:           24                        # pin connected to hardware button
+        toggle:      True                        # toggle or momentary button
     bumper:
         port_pin:      21                        # pin connected to port bumper
         center_pin:    19                        # pin connected to center bumper
@@ -62,11 +65,11 @@ ros:
         upper_pin:      7                        # pin connected to upper bumper
     infrared:
         port_pin:           6                    # pin connected to port infrared
-        center_pin:        13                    # pin connected to center infrared
-        starboard_pin:     16                    # pin connected to starboard infrared
+        center_pin:         0                    # pin connected to center infrared (use zero if using LR IR)
+        stbd_pin:          16                    # pin connected to starboard infrared
         port_side_pin:      5                    # pin connected to port side infrared
-        starbard_side_pin: 11                    # pin connected to starboard side infrared
-
+        stbd_side_pin:     12                    # pin connected to starboard side infrared
+        use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22

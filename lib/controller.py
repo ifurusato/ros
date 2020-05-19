@@ -20,7 +20,7 @@ from lib.status import Status
 from lib.enums import Speed, Color, Orientation
 from lib.motors import Motors
 from lib.logger import Logger, Level
-from lib.scanner import Scanner
+from lib.lidar import Lidar
 from lib.rgbmatrix import RgbMatrix, DisplayType
 
 step_value = 5.0
@@ -29,7 +29,7 @@ class Controller():
     '''
         Responds to Events.
     '''
-    def __init__(self, level, config, switch, infrared_trio, motors, rgbmatrix, scanner, callback_shutdown):
+    def __init__(self, level, config, switch, infrared_trio, motors, rgbmatrix, lidar, callback_shutdown):
         super().__init__()
         self._log = Logger('controller', level)
         self._config = config
@@ -39,7 +39,7 @@ class Controller():
         self._infrared_trio = infrared_trio
         self._motors = motors
         self._rgbmatrix = rgbmatrix
-        self._scanner = scanner
+        self._lidar = lidar
         self._callback_shutdown = callback_shutdown
         self._status = Status(GPIO, level)
         self._current_message = None
@@ -400,10 +400,10 @@ class Controller():
         # ROAM                    ..............................................
         elif event is Event.ROAM:
             self._log.critical('event: roam.')
-            self._scanner.enable()
+            self._lidar.enable()
             self._rgbmatrix.disable()
             self._rgbmatrix.clear()
-            values = self._scanner.scan()
+            values = self._lidar.scan()
 
 #           time.sleep(2.0)
 #           self._infrared_trio.disable()

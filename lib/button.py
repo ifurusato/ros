@@ -43,20 +43,24 @@ class Button(AbstractTask):
 
     button_priority = 6
 
-    def __init__(self, queue, pin, toggle, mutex):
+    def __init__(self, config, queue, mutex):
         '''
         Parameters:
 
-           queue:   the message queue to receive messages from this task
-           toggle:  if true, the value toggles when the button is pushed 
-                    rather than acting as a momentary button
-           mutex:   vs godzilla
+           config:          the YAML-based application configuration
+           queue:           the message queue to receive messages from this task
+           mutex:           vs godzilla
         '''
         super().__init__("button", queue, None, Button.button_priority, mutex)
-        self._log.debug('initialising button task on pin {}.'.format(pin))
-        self._toggle = toggle
+        if config is None:
+            raise ValueError('no configuration provided.')
         self._queue = queue
-        self._button = GpioButton(pin)
+        _config = config['ros'].get('button')
+        _pin = _config.get('pin')
+        self._toggle = _config.get('toggle') # if true, the value toggles when the button is pushed rather than acting as a momentary button
+        self._log.info('initialising button on pin {:d}; toggle={}'.format(_pin, self._toggle))
+        self._queue = queue
+        self._button = GpioButton(_pin)
         self._value = False
         self._log.debug('ready.')
 
