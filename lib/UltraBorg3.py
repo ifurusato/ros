@@ -27,10 +27,10 @@ See the website at www.piborg.org/ultraborg for more details
 """
 
 # Import the libraries we need
-import io
-import fcntl
-import types
-import time
+import io, fcntl, types, time
+
+from colorama import init, Fore, Style
+init()
 
 # Constant values
 I2C_SLAVE               = 0x0703
@@ -40,6 +40,8 @@ PWM_MIN                 = 2000  # Should be a 1 ms burst, typical servo minimum
 PWM_MAX                 = 4000  # Should be a 2 ms burst, typical servo maximum
 DELAY_AFTER_EEPROM      = 0.01  # Time to wait after updating an EEPROM value before reading
 PWM_UNSET               = 0xFFFF
+READ_DELAY_SEC          = 0.01 # time to wait for a reading off of the ultrasonic sensor
+#READ_DELAY_SEC          = 0.0001 # time to wait for a reading off of the ultrasonic sensor
 
 I2C_ID_SERVO_USM        = 0x36
 
@@ -261,7 +263,7 @@ Under most circumstances you should use the appropriate function instead of RawR
         """
         while retryCount > 0:
             self.RawWrite(command, [])
-            time.sleep(0.000001)
+            time.sleep(READ_DELAY_SEC)
             rawReply = self.i2cRead.read(length)
             reply = []
             for singleByte in rawReply:
@@ -298,7 +300,7 @@ Print(message)
 Wrapper used by the UltraBorg instance to print messages, will call printFunction if set, print otherwise
         """
         if self.printFunction == None:
-            print(message)
+            print(Fore.BLACK + "ultraborg         : INFO  : " + message + Style.RESET_ALL)
         else:
             self.printFunction(message)
 

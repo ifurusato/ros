@@ -73,6 +73,13 @@ def main():
         _lidar = Lidar(_config, _player, Level.INFO)
         _lidar.enable()
         values = _lidar.scan()
+
+        _angle_at_min = values[0]
+        _min_mm       = values[1]
+        _angle_at_max = values[2]
+        _max_mm       = values[3]
+        _log.info(Fore.CYAN + Style.BRIGHT + 'min. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_min, _min_mm))
+        _log.info(Fore.CYAN + Style.BRIGHT + 'max. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_max, _max_mm))
         time.sleep(1.0)
         _lidar.close()
         _log.info(Fore.CYAN + Style.BRIGHT + 'test complete.')

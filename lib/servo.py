@@ -141,7 +141,8 @@ class Servo():
             Returns 0 for no object detected or no ultrasonic module attached.
 
             This admittedly is not a servo function but since we have an UltraBorg
-            supporting this servo, this becomes a convenience method.
+            supporting this servo, this becomes a convenience method. The ultrasonic
+            sensor should be connected to the same number as the servo.
         '''
         if self._number == 1:
             if useRawDistance:

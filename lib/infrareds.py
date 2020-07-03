@@ -34,30 +34,28 @@ class NullInfrared():
 
 # ..............................................................................
 class Infrareds():
-
-
-    def __init__(self, config, queue, level):
-        '''
+    '''
         A convenience class that collectively creates, enables and disables the set of infrared sensors. 
         This includes:
 
           * a port and starboard short range digital (boolean) sensor
           * either a center short range digital sensor or a long range analog sensor, and 
           * port and starboard digital side sensors
+    '''
 
-        The pin numbers for each are provided in the configuration.
+    def __init__(self, config, queue, level):
+        '''
+            Initialises the Infrared sensors. The pin numbers for each are provided in the configuration.
 
-        Parameters:
-
-           config:          the YAML-based application configuration
-           queue:           the message queue to receive messages from this task
-           level:           the logging level
+            Parameters:
+               config:  the YAML-based application configuration
+               queue:   the message queue to receive messages from this task
+               level:   the logging level
         '''
         super().__init__()
         self._log = Logger('infrareds', level)
         if config is None:
             raise ValueError('no configuration provided.')
-        self._queue = queue
         _config = config['ros'].get('infrared')
         _port_pin       = _config.get('port_pin')
         _cntr_pin       = _config.get('center_pin')
@@ -65,6 +63,7 @@ class Infrareds():
         _port_side_pin  = _config.get('port_side_pin')
         _stbd_side_pin  = _config.get('stbd_side_pin')
         self._use_lr_ir = _config.get('use_long_range') # if True uses LongRangeInfrared for center sensor
+        self._queue = queue
 
         # these auto-start their threads
         self._infrared_port       = Infrared(self._queue, _port_pin, Orientation.PORT, Event.INFRARED_PORT, level)

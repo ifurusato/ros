@@ -89,7 +89,7 @@ class FileWriter():
             self._enabled = False
             self._log.info('closing...')
             while self._active:
-                self._log.warning('waiting for writer to close...')
+                self._log.warning('waiting for file writer to close...')
                 time.sleep(0.5)
             self._log.info('joining file write thread...')
             self._thread.join()
@@ -113,11 +113,8 @@ class FileWriter():
             _string = _fin.read()
             _template = Template(_string)
             _elapsed = data[0]
-            _kp = data[1]
-            _ki = data[2]
-            _kd = data[3]
-            self._log.critical('ELAPSED={}; P={}; I={}; D={}.'.format(_elapsed, _kp, _ki, _kd))
-            _output = _template.substitute(ELAPSED_SEC=_elapsed, KP=_kp, KI=_ki, KD=_kd)
+            self._log.debug('ELAPSED={}'.format(_elapsed))
+            _output = _template.substitute(ELAPSED_SEC=_elapsed)
             _fout = open(self._gnuplot_output_file, "w")
             _fout.write(_output)
             _fout.close()
@@ -138,7 +135,7 @@ class FileWriter():
                     while len(queue) > 0:
                         _data = queue.pop()
                         _file.write(_data)
-                        self._log.info('wrote row {}'.format(_data))
+                        self._log.debug('wrote row {}'.format(_data))
                     time.sleep(0.01)
             self._log.info('exited file write loop.')
         finally:

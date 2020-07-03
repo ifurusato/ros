@@ -7,10 +7,10 @@
 #
 # author:   Murray Altheim
 # created:  2020-03-16
-# modified: 2020-03-26
+# modified: 2020-06-12
 #
 
-import time, threading
+import time, threading, traceback
 from colorama import init, Fore, Style
 init()
 
@@ -29,59 +29,62 @@ from lib.feature import Feature
 
 class BatteryCheck(Feature): 
     '''
-        This uses two channels of an ADS1015 to measure both the raw voltage of the 
-        battery and that of the 5 volt regulator. If either fall below a specified
-        threshold a low battery message is sent to the message queue.
+        This uses three channels of an ADS1015 to measure both the raw voltage of the 
+        battery and that of two 5 volt regulators, labeled A and B. If any fall below
+        a specified threshold a low battery message is sent to the message queue.
 
-        battery_channel:   the ADS1015 channel: 0, 1 or 2 used to measure the raw battery voltage
-        five_volt_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
+        If unable to establish communication with the ADS1015 this will raise a
+        RuntimeError.
+
+        battery_channel:     the ADS1015 channel: 0, 1 or 2 used to measure the raw battery voltage
+        five_volt_a_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
+        five_volt_b_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
         queue:     the message queue
         level:     the logging level
     '''
 
     # configuration ....................
     CHANNELS = ['in0/ref', 'in1/ref', 'in2/ref']
-    FIVE_VOLT_CHANNEL        = 1
-    BATTERY_CHANNEL          = 2
     # how many times should we sample before accepting a first value?
-    SETTLE_COUNT             = 3
-    # raw and 5v regulator thresholds set from known measurements:
-    RAW_BATTERY_THRESHOLD    = 17.74
-    LOW_5V_BATTERY_THRESHOLD = 4.75
-#   LOW_5V_BATTERY_THRESHOLD = 4.82
-    # how long between sampling?
 
     def __init__(self, config, queue, level):
         self._log = Logger("battery", level)
         self._config = config
-        if self._config:
-            self._log.info('configuration provided.')
-            self._enable_messaging = self._config['ros'].get('battery').get('enable_messaging')
-            self._log.info('enable messaging: {}'.format(self._enable_messaging))
-        else:
-            self._log.warning('no configuration provided.')
-            self._enable_messaging = False
-            self._log.info('enable messaging: {} (default)'.format(self._enable_messaging))
-        # move all this manual config to YAML config
+        if config is None:
+            raise ValueError('no configuration provided.')
+        
+        self._log.info('configuration provided.')
+        _battery_config = self._config['ros'].get('battery')
+        _enable_messaging           = _battery_config.get('enable_messaging')
+        self.set_enable_messaging(_enable_messaging)
+        self._five_volt_a_channel   = _battery_config.get('five_volt_a_channel')
+        self._five_volt_b_channel   = _battery_config.get('five_volt_b_channel')
+        self._battery_channel       = _battery_config.get('battery_channel')
+        self._raw_battery_threshold = _battery_config.get('raw_battery_threshold')
+        self._five_volt_threshold   = _battery_config.get('low_5v_threshold')
+        self._settle_count          = _battery_config.get('settle_count')
+        self._log.info('setting 5v regulator threshold to {:>5.2f}v with A on channel {}, B on channel {}; raw battery threshold to {:>5.2f}v on channel {}'.format(\
+                self._five_volt_threshold, self._five_volt_a_channel, self._five_volt_b_channel, self._raw_battery_threshold, self._battery_channel))
+
         self._queue = queue
-        self._battery_channel       = BatteryCheck.CHANNELS[BatteryCheck.BATTERY_CHANNEL]
-        self._five_volt_channel     = BatteryCheck.CHANNELS[BatteryCheck.FIVE_VOLT_CHANNEL]
-        self._raw_battery_threshold = BatteryCheck.RAW_BATTERY_THRESHOLD
-        self._five_volt_threshold   = BatteryCheck.LOW_5V_BATTERY_THRESHOLD
         self._battery_voltage       = 0.0
-        self._regulator_voltage     = 0.0
-        self._log.info('setting 5v regulator threshold to {:>5.2f}v on channel {}, raw battery threshold to {:>5.2f}v on channel {}'.format(\
-                self._five_volt_threshold, self._five_volt_channel, self._raw_battery_threshold, self._battery_channel))
-        self._ads1015 = ADS1015()
-        self._ads1015.set_mode('single')
-        self._ads1015.set_programmable_gain(2.048)
-        self._ads1015.set_sample_rate(1600)
-        self._reference = self._ads1015.get_reference_voltage()
-        self._log.info('reference voltage: {:6.3f}v'.format(self._reference))
+        self._regulator_a_voltage   = 0.0
+        self._regulator_b_voltage   = 0.0
         if level is Level.DEBUG:
-            self._loop_delay_sec = 1 # seconds
+            self.set_loop_delay_sec(1)
         else:
-            self._loop_delay_sec = 3
+            self.set_loop_delay_sec(3)
+
+        try:
+            self._ads1015 = ADS1015()
+            self._ads1015.set_mode('single')
+            self._ads1015.set_programmable_gain(2.048)
+            self._ads1015.set_sample_rate(1600)
+            self._reference = self._ads1015.get_reference_voltage()
+            self._log.info('reference voltage: {:6.3f}v'.format(self._reference))
+        except Exception as e:
+            raise RuntimeError('error configuring AD converter: {}'.format(traceback.format_exc()))
+
         self._is_ready = False
         self._closed = False
         self._thread = None
@@ -91,6 +94,24 @@ class BatteryCheck(Feature):
     # ..........................................................................
     def name(self):
         return 'BatteryCheck'
+
+
+    # ..........................................................................
+    def set_loop_delay_sec(self, delay_sec):
+        self._loop_delay_sec = delay_sec 
+        self._log.info('set loop delay to: {:>5.2f}'.format(delay_sec))
+
+
+    # ..........................................................................
+    def set_enable_messaging(self, enable):
+        '''
+            If true we enable low battery messages to be sent.
+        '''
+        self._enable_messaging = enable
+        if enable:
+            self._log.info(Fore.GREEN + 'enable messaging: {}'.format(self._enable_messaging))
+        else:
+            self._log.info(Fore.RED + 'enable messaging: {}'.format(self._enable_messaging))
 
 
     # ..........................................................................
@@ -111,8 +132,14 @@ class BatteryCheck(Feature):
 
 
     # ..........................................................................
-    def get_regulator_voltage(self):
-        return self._regulator_voltage
+    def get_regulator_a_voltage(self):
+        return self._regulator_a_voltage
+
+
+    # ..........................................................................
+    def get_regulator_b_voltage(self):
+        return self._regulator_b_voltage
+
 
 
     # ..........................................................................
@@ -135,24 +162,32 @@ class BatteryCheck(Feature):
         self._log.info('battery check started...')
         count = 0
         while self._enabled:
-            self._battery_voltage   = self._ads1015.get_compensated_voltage(channel=self._battery_channel, reference_voltage=self._reference)
-            self._regulator_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_channel, reference_voltage=self._reference)
-#               self._log.info(Style.BRIGHT + Fore.CYAN + 'BATTERY: {:>5.2f}v'.format(self._battery_voltage) + Style.RESET_ALL)
-#               self._log.info(Style.BRIGHT + Fore.CYAN + '5V REG:  {:>5.2f}v'.format(self._regulator_voltage) + Style.RESET_ALL)
-            self._is_ready = count > BatteryCheck.SETTLE_COUNT
+            self._log.info('battery channel: {}; reference: {}v'.format(self._battery_channel, self._reference ))
+            self._log.info('battery channel: type: {}; reference type: {}v'.format(type(self._battery_channel), type(self._reference) ))
+            self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel, reference_voltage=self._reference)
+            self._log.info('five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))
+            self._regulator_a_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_a_channel, reference_voltage=self._reference)
+            self._regulator_b_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_b_channel, reference_voltage=self._reference)
+            self._log.info('voltage A: {}; B: {}.'.format( self._regulator_a_voltage, self._regulator_b_voltage))
+            return
+            self._is_ready = count > self._settle_count
             if self._is_ready:
                 if self._battery_voltage < self._raw_battery_threshold:
                     self._log.warning('battery low: {:>5.2f}v'.format(self._battery_voltage))
                     if self._enable_messaging:
                         self._queue.add(Message(Event.BATTERY_LOW))
-                elif self._regulator_voltage < self._five_volt_threshold:
-                    self._log.warning('5V regulator low:  {:>5.2f}v'.format(self._regulator_voltage))
+                elif self._regulator_a_voltage < self._five_volt_threshold:
+                    self._log.warning('5V regulator A low:  {:>5.2f}v'.format(self._regulator_a_voltage))
+                    if self._enable_messaging:
+                        self._queue.add(Message(Event.BATTERY_LOW))
+                elif self._regulator_b_voltage < self._five_volt_threshold:
+                    self._log.warning('5V regulator B low:  {:>5.2f}v'.format(self._regulator_b_voltage))
                     if self._enable_messaging:
                         self._queue.add(Message(Event.BATTERY_LOW))
                 else:
-                    self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator: {:>5.2f}v'.format(self._battery_voltage, self._regulator_voltage))
+                    self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v'.format(self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
             else:
-                self._log.debug('battery: {:>5.2f}v; regulator: {:>5.2f}v (stabilising)'.format(self._battery_voltage, self._regulator_voltage))
+                self._log.debug('battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v (stabilising)'.format(self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
             time.sleep(self._loop_delay_sec)
             count += 1
 

@@ -13,7 +13,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.devnull import DevNull
-from lib.logger import Level
+from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.queue import MessageQueue
 from lib.batterycheck import BatteryCheck
@@ -35,9 +35,9 @@ def main():
 
     try:
     
-        print('batterycheck_test :' + Fore.CYAN + ' INFO  : starting test...' + Style.RESET_ALL)
-    
-        print('batterycheck_test :' + Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.' + Style.RESET_ALL)
+        _log = Logger("batterycheck test", Level.INFO)
+        _log.info('starting test...')
+        _log.info(Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.')
     
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
@@ -45,21 +45,29 @@ def main():
         _config = _loader.configure(filename)
     
         _queue = MessageQueue(Level.INFO)
-        _battery_check = BatteryCheck(_config, _queue, Level.DEBUG)
+        _battery_check = BatteryCheck(_config, _queue, Level.INFO)
+        _battery_check.set_loop_delay_sec(0.5)
+        _battery_check.set_enable_messaging(True)
         _battery_check.enable()
-    
+
+        _log.info('ready? {}'.format(_battery_check.is_ready()))
+
         count = 0
-#       while True:
         while not _battery_check.is_ready() and count < 10:
+            count += 1
+            time.sleep(0.5)
+
+        while count < 20:
             count += 1
             time.sleep(0.5)
     
         _battery_check.close()
-        print('batterycheck_test :' + Fore.CYAN + ' INFO  : complete.' + Style.RESET_ALL)
+        _log.info('complete.')
     
     except KeyboardInterrupt:
-        print('batterycheck_test :' + Fore.BLACK + Style.BRIGHT + ' INFO  : Ctrl-C caught: complete.' + Style.RESET_ALL)
-        sys.exit(0)
+        _log.info('Ctrl-C caught: complete.')
+    except Exception as e:
+        _log.error('error closing master: {}'.format(e))
     finally:
         sys.exit(0)
 

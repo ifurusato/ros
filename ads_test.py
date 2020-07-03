@@ -27,7 +27,9 @@ def main():
 
     print('ads_test          :' + Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.' + Style.RESET_ALL)
 
-    CHANNEL = 'in0/ref'
+    CHANNEL_0 = 'in0/ref'
+    CHANNEL_1 = 'in1/ref'
+    CHANNEL_2 = 'in2/ref'
     ads1015 = ADS1015()
     ads1015.set_mode('single')
     ads1015.set_programmable_gain(2.048)
@@ -39,8 +41,10 @@ def main():
     count = 0
     while count < 10:
         count += 1
-        value = ads1015.get_compensated_voltage(channel=CHANNEL, reference_voltage=reference)
-        print('ads_test          :' + Fore.CYAN + ' INFO  : A0 value: {:6.3f}v'.format(value) + Style.RESET_ALL)
+        value_0 = ads1015.get_compensated_voltage(channel=CHANNEL_0, reference_voltage=reference)
+        value_1 = ads1015.get_compensated_voltage(channel=CHANNEL_1, reference_voltage=reference)
+        value_2 = ads1015.get_compensated_voltage(channel=CHANNEL_2, reference_voltage=reference)
+        print('ads_test          :' + Fore.CYAN + ' INFO  : A0={:6.3f}v; A1={:6.3f}v; A2={:6.3f}v;'.format(value_0, value_1, value_2) + Style.RESET_ALL)
         time.sleep(0.25)
 
     print('ads_test          :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.' + Style.RESET_ALL)

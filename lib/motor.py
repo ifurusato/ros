@@ -61,7 +61,7 @@ class Motor():
         self._log = Logger('motor:{}'.format(orientation.label), level)
         self._log.info('initialising {} motor...'.format(orientation))
         self._log.debug('_reverse_motor_orientation: {}'.format(self._reverse_motor_orientation))
-        self._reverse_encoder_orientation =  cfg.get('reverse_encoder_orientation')
+        self._reverse_encoder_orientation = cfg.get('reverse_encoder_orientation')
         self._log.debug('_reverse_encoder_orientation: {}'.format(self._reverse_encoder_orientation))
         # GPIO pins configured for A1, B1, A2 and B2
         self._rotary_encoder_a1_port = cfg.get('rotary_encoder_a1_port') # default: 22
@@ -160,18 +160,21 @@ class Motor():
         '''
             This callback is used to capture encoder steps.
         '''
-        if self._orientation is Orientation.PORT:
-            self._steps = self._steps - pulse
+        if not self._reverse_encoder_orientation:
+            if self._orientation is Orientation.PORT:
+                self._steps = self._steps + pulse
+            else:
+                self._steps = self._steps - pulse
         else:
-            self._steps = self._steps + pulse
-#       print('{}: {:+d} steps'.format(self._orientation.name, self._steps))
+            if self._orientation is Orientation.PORT:
+                self._steps = self._steps - pulse
+            else:
+                self._steps = self._steps + pulse
         self._log.debug(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
-#       print('decoder:{}      :'.format(self._orientation.label) + Fore.BLACK + Style.DIM + ' DEBUG : {}: {:+d} steps'.format(self._orientation.label, self._steps) + Style.RESET_ALL)
         if self._steps % self._sample_rate == 0:
             if self._steps_begin != 0:
                 self._velocity = ( (self._steps - self._steps_begin) / (time.time() - self._stepcount_timestamp) / self._velocity_fudge_factor ) # steps / duration
                 self._max_velocity = max(self._velocity, self._max_velocity)
-#               self._log.debug("{:d} steps;\tvelocity: {:>5.1f}/{:>5.1f}".format(self._steps, self._velocity, self._max_velocity))
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
@@ -289,7 +292,6 @@ class Motor():
             This is an alias to accelerate(speed).
         '''
         self._log.info('ahead to speed of {}...'.format(speed))
-#       self._decoder.set_clockwise(True) # TEMP
         self.accelerate(speed, SlewRate.NORMAL, -1)
         self._log.debug('ahead complete.')
 
@@ -300,7 +302,6 @@ class Motor():
             Moves forwards specified number of steps, then stops.
         '''
 #       self._log.info('step ahead {} steps to speed of {}...'.format(steps,speed))
-#       self._decoder.set_clockwise(True) # TEMP
         self.accelerate(speed, SlewRate.NORMAL, steps)
 #       self._log.debug('step ahead complete.')
         pass
@@ -313,9 +314,7 @@ class Motor():
             This is an alias to accelerate(-1 * speed).
         '''
         self._log.info('astern at speed of {}...'.format(speed))
-#       self._decoder.set_clockwise(False) # TEMP
         self.accelerate(-1.0 * speed, SlewRate.NORMAL, -1)
-#       self._decoder.set_clockwise(True) # TEMP
         self._log.debug('astern complete.')
 
 
@@ -325,7 +324,6 @@ class Motor():
             Moves backwards specified number of steps, then stops.
         '''
         self._log.info('step astern {} steps to speed of {}...'.format(steps,speed))
-#       self._decoder.set_clockwise(False) # TEMP
         self.accelerate(speed, SlewRate.NORMAL, steps)
         self._log.debug('step astern complete.')
         pass

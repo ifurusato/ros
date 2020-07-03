@@ -66,8 +66,9 @@ class Color(Enum):
     MAGENTA       = ( 19, 255.0, 0.0, 255.0)
     DARK_MAGENTA  = ( 20, 128.0, 0.0, 128.0)
     LIGHT_YELLOW  = ( 21, 255.0, 255.0, 128.0)
-    YELLOW        = ( 22, 255.0, 255.0, 0.0)
-    DARK_YELLOW   = ( 23, 128.0, 128.0, 0.0)
+    PURPLE        = ( 22, 77.0, 26.0, 177.0)
+    YELLOW        = ( 23, 255.0, 255.0, 0.0)
+    DARK_YELLOW   = ( 24, 128.0, 128.0, 0.0)
 
     # ignore the first param since it's already set by __new__
     def __init__(self, num, red, green, blue):

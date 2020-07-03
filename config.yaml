@@ -1,5 +1,5 @@
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, 
+# the Robot Operating System project and is released under the "Apache Licence,
 # Version 2.0". Please see the LICENSE file included as part of this package.
 #
 # YAML configuration for Robot Operating System (ROS) ..........................
@@ -18,18 +18,22 @@ ros:
     enable_self_shutdown: false                  # enables the robot to shut itself down (not good during demos)
     main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
     battery:
-        enable_messaging:  False                 # if true we enable low battery messages to be sent
+        enable_messaging:   True                 # if true we enable low battery messages to be sent
+        five_volt_a_channel:   2                 # AD channel for power supply A
+        five_volt_b_channel:   1                 # AD channel for power supply B
+        battery_channel:       0                 # AD channel for raw battery voltage
+        raw_battery_threshold: 17.74             # raw and 5v regulator thresholds set from known measurements:
+        low_5v_threshold:      4.75              # really 4.82v
+        settle_count:          3                 # how many times should we sample before accepting a first value?
     lidar:
-#       min_angle: -45.0                         # minimum scan angle (clearance of bumper)
-#       max_angle:  45.0                         # maximum scan angle (clearance of bumper)
-        min_angle: -30.0                         # minimum scan angle (clearance of bumper)
-        max_angle:  30.0                         # maximum scan angle (clearance of bumper)
+        min_angle: -45.0                         # minimum scan angle (clearance of bumper)
+        max_angle:  45.0                         # maximum scan angle (clearance of bumper)
         play_sound: False                        # if true, play 'ping' sound during scanning
-#       degree_step: 5.0                         # resolution of scan
-#       tof_range: 'medium'                      # ToF range: performance, long, medium or short
-        degree_step: 2.0                         # resolution of scan
+        degree_step: 5.0                         # resolution of scan
         step_delay_sec: 0.10                     # how long to linger at each degree step to permit a reading
+#       tof_range: 'medium'                      # ToF range: performance, long, medium or short
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
+        servo_number: 1                          # use this servo
     wall_follower:
         port_angle: -90.0                        # port-facing scan angle
         starboard_angle: 90.0                    # starboard-facing scan angle
@@ -40,7 +44,7 @@ ros:
         max_angle:  90.0                         # maximum scan angle
         degree_step: 5.0                         # resolution of scan
         use_raw_distance: True                   # use raw distance, faster than when filtered
-        read_delay_sec: 0.3                      # how long to wait at position for reading
+        read_delay_sec: 0.01                     # how long to wait at position for reading
         servo_number: 2                          # use this servo
     cat_scan:
         active_angle:  -90.0                     # servo position with arm raised
@@ -58,6 +62,8 @@ ros:
     button:
         pin:           24                        # pin connected to hardware button
         toggle:      True                        # toggle or momentary button
+    status:
+        led_pin:       27                        # pin connected to status LED
     bumper:
         port_pin:      21                        # pin connected to port bumper
         center_pin:    19                        # pin connected to center bumper
@@ -73,34 +79,49 @@ ros:
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22
-        rotary_encoder_b1_port: 17
-        rotary_encoder_a2_stbd: 27
+        rotary_encoder_b1_port: 23
+        rotary_encoder_a2_stbd: 17
         rotary_encoder_b2_stbd: 18
         reverse_motor_orientation:   False       # in case you wire something up backwards
-        reverse_encoder_orientation: True        # ditto
+        reverse_encoder_orientation: False       # ditto
         sample_rate: 10                          # how many pulses per encoder measurement?
         velocity_fudge_factor: 14.0              # convert raw velocity to approximate a percentage
         max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid:
-            enable_slew:    True
-            slew_limit:     15.0
+            enable_slew:    False
             enable_p:       True
             enable_i:       False
             enable_d:       True
             kp:             0.0016
             ki:             0.0010
             kd:             0.00010
+            clip_limit:     0.8         # negative and positive power limit
             sample_time_ms: 20
-    slewlimiter:
-        rate_limit: 0.100  # value change permitted per millisecond
+    slew:
+        rate_limit: 0.0025      # value change permitted per millisecond
+        minimum_output: 0.00    # lower limit of permitted output values
+        maximum_output: 100.00  # upper limit of permitted output values
 
     filewriter:
         extension: '.dat'                        # file extension (must include the dot)
         directory_name: 'data'                   # output directory name
         default_filename_prefix: 'motors'        # output directory name
-        gnuplot_template_file: 'settings_pid_template.gp'  # template for gnuplot settings
-        gnuplot_output_file: 'settings_pid.gp'   # output file for gnuplot settings
+        gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
+        gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
+    i2c_master:
+        device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        channel:       1                         # SMBus channel
+        assignments:                             # pin assignments: a pin number followed by:
+            0:  'AIN'                            # 'DIN' (digital input); 'DNP' (digital input, pullup); 'AIN' (analog input); or 'OUT' (output)
+            1:  'AIN'
+            2:  'AIN'
+            3:  'AIN'
+            4:  'AIN'
+            7:  'OUT'
+            9:  'DNP'
+            10: 'DNP'
+            11: 'DNP'
     features:
         ht0740: False
         placeholder: ''

@@ -88,7 +88,7 @@ def main():
             time.sleep(1.0)
             _count += 1
 
-        time.sleep(5.0)
+        time.sleep(9.0)
 
         _catscan.close()
         _log.info('test complete.')

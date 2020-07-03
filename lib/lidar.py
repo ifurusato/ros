@@ -43,6 +43,7 @@ class Lidar():
             self._step_delay_sec = _config.get('step_delay_sec')  
             _range_value = _config.get('tof_range')  
             _range = Range.from_str(_range_value)
+            _servo_number = _config.get('servo_number')  
         else:
             self._log.warning('no configuration provided.')
             self._play_sound = False
@@ -52,13 +53,13 @@ class Lidar():
             self._degree_step = 3.0
             self._step_delay_sec = 0.01
             _range = Range.PERFORMANCE
+            _servo_number = 1
 #           _range = Range.LONG
 #           _range = Range.MEDIUM
 #           _range = Range.SHORT
 
         self._log.info('scan range of {} from {:>4.1f}° to {:>4.1f}° with step of {:>4.1f}°'.format(_range, self._min_angle, self._max_angle, self._degree_step))
         self._player = player
-        _servo_number = 1
         self._servo = Servo(self._config, _servo_number, level)
         self._tof = TimeOfFlight(_range, Level.WARN)
         self._error_range = 0.067
@@ -76,7 +77,7 @@ class Lidar():
     def scan(self):
         if not self._enabled:
             self._log.warning('cannot scan: disabled.')
-            return
+            return None
         try:
     
             start = time.time()
@@ -122,10 +123,9 @@ class Lidar():
             time.sleep(0.1)
 #           self._log.info('complete.')
             elapsed = time.time() - start
+            self._log.info('min. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_min, _min_mm))
+            self._log.info('max. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_max, _max_mm))
             self._log.info('scan complete: {:>5.2f}sec elapsed.'.format(elapsed))
-
-            self._log.info(Fore.CYAN + Style.BRIGHT + 'mix. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_min, _min_mm))
-            self._log.info(Fore.CYAN + Style.BRIGHT + 'max. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_max, _max_mm))
             self._servo.set_position(0.0)
 #           self._servo.set_position(_angle_at_max)
 #           self.close()

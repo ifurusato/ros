@@ -90,30 +90,36 @@ class UltrasonicScanner():
                     wait_count += 1
                 self._log.debug(Fore.GREEN + Style.BRIGHT + 'measured degrees: {:>5.2f}°: \ttarget: {:>5.2f}°; waited: {:d}'.format(\
                         self._servo.get_position(degrees), degrees, wait_count))
-                mm = self._servo.get_distance(_max_retries, self._use_raw_distance)
+                _mm = self._servo.get_distance(_max_retries, self._use_raw_distance)
                 # if we get a zero we keep trying...
-                if mm <= 0.01:
-                    retry_count = 0
-                    while mm == 0.0 and retry_count < _max_retries:
-                        mm = self._servo.get_distance(_max_retries, self._use_raw_distance)
-                        if mm <= 0.01:
-                            self._log.info('distance at {:>5.2f}°: '.format(degrees) + Fore.RED + '\t{:>6.0f}mm'.format(mm) + '\t retries: {:d}'.format(retry_count))
-                        else:
-                            self._log.info('distance at {:>5.2f}°: \t{:>6.0f}mm'.format(degrees, mm) + Fore.BLACK + ' (on retry)')
-                        retry_count += 1
-                        time.sleep(0.1)
+                if _mm is None:
+                    self._log.info('failed to read distance at {:>5.2f}°.'.format(degrees))
                 else:
-                    self._log.info('distance at {:>5.2f}°: \t{:>6.0f}mm'.format(degrees, mm))
-
-                # capture min and max at angles
-                _min_mm = min(_min_mm, mm)
-                if mm == _min_mm:
-                    _angle_at_min = degrees
-                _max_mm = max(_max_mm, mm)
-                if mm == _max_mm:
-                    _angle_at_max = degrees
-                time.sleep(self._read_delay_sec)
-#               time.sleep(0.1)
+                    if _mm <= 0.01:
+                        retry_count = 0
+                        while _mm == 0.0 and retry_count < _max_retries:
+                            _mm = self._servo.get_distance(_max_retries, self._use_raw_distance)
+                            if _mm is None:
+                                self._log.info('failed to read distance at {:>5.2f}°: '.format(degrees) + Fore.RED + '\t retries: {:d}'.format(retry_count))
+                            else:
+                                if _mm <= 0.01:
+                                    self._log.info('distance at {:>5.2f}°: '.format(degrees) + Fore.RED + '\t{:>6.0f}mm'.format(_mm) + '\t retries: {:d}'.format(retry_count))
+                                else:
+                                    self._log.info('distance at {:>5.2f}°: \t{:>6.0f}mm'.format(degrees, _mm) + Fore.BLACK + ' (on retry)')
+                            retry_count += 1
+                            time.sleep(0.1)
+                    else:
+                        self._log.info('distance at {:>5.2f}°: \t{:>6.0f}mm'.format(degrees, _mm))
+                    if _mm is not None:
+                        # capture min and max at angles
+                        _min_mm = min(_min_mm, _mm)
+                        if _mm == _min_mm:
+                            _angle_at_min = degrees
+                        _max_mm = max(_max_mm, _mm)
+                        if _mm == _max_mm:
+                            _angle_at_max = degrees
+                    time.sleep(self._read_delay_sec)
+#                   time.sleep(0.1)
             else:
                 self._log.warning('requested position: {:>5.2f}° out range of servo movement.'.format(degrees))
 

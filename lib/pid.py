@@ -44,6 +44,7 @@ class PID():
         self._motor = motor
         self._orientation = motor.get_orientation()
         self._log = Logger('pid:{}'.format(self._orientation.label), level)
+
         self._millis  = lambda: int(round(time.time() * 1000))
         self._counter = itertools.count()
         self._last_error = 0.0
@@ -52,13 +53,17 @@ class PID():
         self._stats_queue = None
         self._filewriter_closed = False
 
-        # slew limiter ...............................................
-        self._slewlimiter = SlewLimiter(config, self._orientation, Level.INFO)
 
         # PID configuration ..........................................
         cfg = config['ros'].get('motors').get('pid')
         self._enable_slew = cfg.get('enable_slew')
-        self._slew_limit = cfg.get('slew_limit')
+        if self._enable_slew:
+            # slew limiter ...............................................
+            self._slewlimiter = SlewLimiter(config, self._orientation, Level.INFO)
+
+        _clip_max = cfg.get('clip_limit')
+        _clip_min = -1.0 * _clip_max
+        self._clip   = lambda n: _clip_min if n <= _clip_min else _clip_max if n >= _clip_max else n
         self._enable_p = cfg.get('enable_p')
         self._enable_i = cfg.get('enable_i')
         self._enable_d = cfg.get('enable_d')
@@ -92,6 +97,7 @@ class PID():
     def get_tuning(self):
         return [ self._kp, self._ki, self._kd ]
 
+
     # ..........................................................................
     def get_tuning_info(self):
         '''
@@ -124,7 +130,6 @@ class PID():
             Performs the PID calculation during a loop, returning once the
             number of steps have been reached.
 
-            
             Velocity is the target velocity of the robot, expressed as
             either an enumerated value or a decimal from 0.0 to 100.0,
             where 50.0 is considered half-speed (though this will not be
@@ -137,7 +142,7 @@ class PID():
 
         if type(target_velocity) is Velocity:
             _target_velocity = target_velocity.value
-        else:           
+        else:
             _target_velocity = target_velocity
 
         _step_limit = _current_steps + steps
@@ -145,18 +150,14 @@ class PID():
         self._start_time = time.time()
         _is_accelerating = (self._motor.get_velocity() < _target_velocity)
 
-#       self._slewlimiter.set_rate_limit(20.0)
-        _slew_was_enabled = self._slewlimiter.is_enabled()
-        if not _slew_was_enabled:
-            self._slewlimiter.enable()
-            self._slewlimiter.start()
+        if self._enable_slew:
+            if not self._slewlimiter.is_enabled():
+                self._slewlimiter.enable()
+                self._slewlimiter.start()
 
         while self._motor.get_steps() < _step_limit:
-
-#           _starting_velocity = self._motor.get_velocity()
             if self._enable_slew:
-#               _slewed_target_velocity = self.slew_velocity(direction, _starting_velocity, _target_velocity, slew_rate)
-                _slewed_target_velocity = self._slewlimiter.slew(direction, _target_velocity)
+                _slewed_target_velocity = self._slewlimiter.slew(self._motor.get_velocity(), _target_velocity)
                 _changed = self._compute(_slewed_target_velocity)
             else:
                 _changed = self._compute(_target_velocity)
@@ -178,7 +179,7 @@ class PID():
         _elapsed = time.time() - self._start_time
         self._elapsed_sec = int(round(_elapsed)) + 1
         self._log.info(Fore.GREEN + Style.BRIGHT + 'step to complete; {:5.2f} sec elapsed.'.format(_elapsed))
-        if not _slew_was_enabled: # if not a repeat call
+        if self._enable_slew: # if not a repeat call
             self._slewlimiter.reset(0.0)
         self._motor.reset_interrupt()
 
@@ -244,17 +245,7 @@ class PID():
     #           self._log.debug(Fore.CYAN + Style.BRIGHT + '_output: {:>5.4f}'.format(_output) + Style.NORMAL + ' = (P={:+5.4f}) + (I={:+5.4f}) + (D={:+5.4f})'.format(_p_diff, _i_diff, _d_diff))
 
                 # clipping .....................................................
-                _clipped_output = _output
-                _clip_max = 0.500 # TODO change to config property
-                if _output >= 0:
-                    _clipped_output = min(_output, _clip_max)
-                else:
-                    _clipped_output = max(_output, -1.0 * _clip_max)
-                if abs(_clipped_output) == abs(_output):
-    #               self._log.debug(Fore.CYAN + Style.DIM   + 'NO CLIP:   out: {:+5.3f}; clipped: {:+5.3f}; max: {:+5.4f})'.format(_output, _clipped_output, _clip_max))
-                    pass
-                else:
-                    self._log.info(Fore.CYAN + Style.BRIGHT + 'CLIPPING:  out: {:+5.3f}; clipped: {:+5.3f}; max: {:+5.4f})'.format(_output, _clipped_output, _clip_max))
+                _clipped_output = self._clip(_output)
 
                 # set motor power ..............................................
                 _power_level = _current_power + _clipped_output
@@ -285,31 +276,6 @@ class PID():
 
             self._last_time = _now
             return _changed
-
-
-    # ..........................................................................
-    def slew_velocity(self, direction, current_velocity, target_velocity, slew_rate):
-        '''
-            The returned result is the maximum amount of permitted change between the
-            current velocity and the target velocity.
-        '''
-        if current_velocity == target_velocity:
-            return target_velocity
-        else:
-            _diff = target_velocity - current_velocity
-            if current_velocity < target_velocity: # we're speeding up...
-                _delta = min(self._slew_limit, _diff)
-                _slewed_target_velocity = current_velocity + _delta
-            else: #                                  we're slowing down...
-                _delta = max((-1.0 * self._slew_limit), _diff)
-                _slewed_target_velocity = current_velocity + _delta
-            if _slewed_target_velocity != target_velocity:
-                self._log.info(Fore.YELLOW + Style.BRIGHT + 'slew: velocity: {:+06.2f} ➔ {:+06.2f}'.format(current_velocity, target_velocity) + Style.BRIGHT \
-                        + '\t diff: {:+06.2f}; limit: {:>5.1f}; delta: {:+05.1f};'.format(_diff, self._slew_limit, _delta) + Fore.WHITE + ' out: {:+06.2f}'.format(_slewed_target_velocity))
-            else:
-                self._log.info(Fore.YELLOW + Style.NORMAL + 'slew: velocity: {:+06.2f} ➔ {:+06.2f}'.format(current_velocity, target_velocity) + Style.BRIGHT \
-                        + '\t diff: {:+06.2f}; limit: {:>5.1f}; delta: {:+05.1f};'.format(_diff, self._slew_limit, _delta) + Fore.WHITE + ' out: {:+06.2f}'.format(_slewed_target_velocity))
-            return _slewed_target_velocity
 
 
     # ..........................................................................
