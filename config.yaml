@@ -16,6 +16,7 @@ pi:
 ros:
     wait_for_button_press: false                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: false                  # enables the robot to shut itself down (not good during demos)
+    enable_player: false                         # enables sound player (disable if no hardware support)
     main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
     battery:
         enable_messaging:   True                 # if true we enable low battery messages to be sent
@@ -26,13 +27,15 @@ ros:
         low_5v_threshold:      4.75              # really 4.82v
         settle_count:          3                 # how many times should we sample before accepting a first value?
     lidar:
-        min_angle: -45.0                         # minimum scan angle (clearance of bumper)
-        max_angle:  45.0                         # maximum scan angle (clearance of bumper)
+        min_angle: -40.0                         # minimum scan angle (clearance of bumper)
+        max_angle:  40.0                         # maximum scan angle (clearance of bumper)
         play_sound: False                        # if true, play 'ping' sound during scanning
         degree_step: 5.0                         # resolution of scan
         step_delay_sec: 0.10                     # how long to linger at each degree step to permit a reading
 #       tof_range: 'medium'                      # ToF range: performance, long, medium or short
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
+        reverse_movement: True                   # reverses the servo movement in case hardware is backwards
+        double_sweep: True                       # if true sweeps in both directions
         servo_number: 1                          # use this servo
     wall_follower:
         port_angle: -90.0                        # port-facing scan angle
@@ -102,13 +105,15 @@ ros:
         rate_limit: 0.0025      # value change permitted per millisecond
         minimum_output: 0.00    # lower limit of permitted output values
         maximum_output: 100.00  # upper limit of permitted output values
-
     filewriter:
         extension: '.dat'                        # file extension (must include the dot)
         directory_name: 'data'                   # output directory name
         default_filename_prefix: 'motors'        # output directory name
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
+    front_sensor:
+        loop_delay_sec: 0.5                      # the loop delay for the integrated front sensor
+        trigger_distance: 100.0                  # the analog sensor value used as the event trigger threshold
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel
@@ -118,10 +123,12 @@ ros:
             2:  'AIN'
             3:  'AIN'
             4:  'AIN'
+#           5:  'AIN'
             7:  'OUT'
             9:  'DNP'
             10: 'DNP'
             11: 'DNP'
+#           12: 'DNP'
     features:
         ht0740: False
         placeholder: ''

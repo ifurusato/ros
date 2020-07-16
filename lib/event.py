@@ -48,7 +48,7 @@ class Event(Enum):
     INFRARED_CENTER        = ( 21, "infrared center",         20,    True)
     INFRARED_STBD          = ( 22, "infrared starboard",      20,    True)
     INFRARED_PORT_SIDE     = ( 23, "infrared port side",      20,    True)
-    INFRARED_STBD_SIDE     = ( 22, "infrared starboard side", 20,    True)
+    INFRARED_STBD_SIDE     = ( 24, "infrared starboard side", 20,    True)
 
     INFRARED_SHORT_RANGE   = ( 25, "infrared short range",    20,    True)
     INFRARED_LONG_RANGE    = ( 26, "infrared long range",     20,    True)

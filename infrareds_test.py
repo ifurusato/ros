@@ -5,6 +5,9 @@
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
 #
+# Note that the Infrareds class and this test are no longer being developed,
+# as the functionality has been replaced by the IntegratedFrontSensor.
+#
 
 import time, sys, signal, threading, itertools
 from colorama import init, Fore, Style

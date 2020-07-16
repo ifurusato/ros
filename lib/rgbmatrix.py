@@ -20,7 +20,8 @@ class DisplayType(Enum):
     BLINKY  = 2
     SCAN    = 3
     RANDOM  = 4
-    DARK    = 5
+    SWORL   = 5
+    DARK    = 6
 
 
 # ..............................................................................
@@ -67,6 +68,8 @@ class RgbMatrix(Feature):
             return RgbMatrix._random
         elif self._display_type is DisplayType.SCAN:
             return RgbMatrix._scan
+        elif self._display_type is DisplayType.SWORL:
+            return RgbMatrix._sworl
         elif self._display_type is DisplayType.DARK:
             return RgbMatrix._dark
 
@@ -144,6 +147,39 @@ class RgbMatrix(Feature):
             time.sleep(0.0001)
         self._clear(rgbmatrix5x5)
         self._log.info('rainbow ended.')
+
+
+    # ..........................................................................
+    def _sworl(self, rgbmatrix5x5):
+        '''
+            Display a sworl pattern, whatever that is.
+        '''
+        global enabled
+        self._log.info('starting sworl...')
+
+        target = Color.LIGHT_BLUE
+        self.set_color(target)
+
+#       for r in numpy.arange(0.0, target.red):
+#           for g in numpy.arange(0.0, target.green):
+#               for b in numpy.arange(0.0, target.blue):
+#                   rgbmatrix5x5.set_all(r, g, b)
+#                   rgbmatrix5x5.show()
+#                   time.sleep(0.01)
+#           if not enabled:
+#               break
+
+#       for r in numpy.arange(target.red, 0.0, -1.0):
+#           for g in numpy.arange(target.green, 0.0, -1.0):
+#               for b in numpy.arange(target.blue, 0.0, -1.0):
+#                   rgbmatrix5x5.set_all(r, g, b)
+#                   rgbmatrix5x5.show()
+#                   time.sleep(0.01)
+#           if not enabled:
+#               break
+
+        self._clear(rgbmatrix5x5)
+        self._log.info('sworl ended.')
 
 
     # ..........................................................................
@@ -292,9 +328,7 @@ class RgbMatrix(Feature):
         '''
             Set the color of the RGB Matrix.
         '''
-        for y in range(self._height):
-            for x in range(self._width):
-                rgbmatrix5x5.set_pixel(x, y, color.red, color.green, color.blue)
+        rgbmatrix5x5.set_all(color.red, color.green, color.blue)
         rgbmatrix5x5.show()
 
 

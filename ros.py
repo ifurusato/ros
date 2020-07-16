@@ -56,16 +56,17 @@ from flask_wrapper import FlaskWrapperService
 # ROS ..........................................................................
 class ROS(AbstractTask):
     '''
-        Extends AbstractTask as a Finite State Machine (FSM) basis of a Robot Operating System 
-        or behaviour-based system (BBS), including spawning the various tasks and an arbitrator 
-        as separate threads, inter-communicating over a common message queue.
+        Extends AbstractTask as a Finite State Machine (FSM) basis of a Robot 
+        Operating System (ROS) or behaviour-based system (BBS), including 
+        spawning the various tasks and an Arbitrator as separate threads, 
+        inter-communicating over a common message queue.
     
-        This establishes a RESTful flask service, a message queue, an arbitrator and a 
-        controller. 
+        This establishes a RESTful flask service, a message queue, an Arbitrator 
+        and a Controller. 
     
-        The message queue receives Event-containing messages, which are passed on to the 
-        arbitrator, whose job it is to determine the highest priority action to execute for 
-        that task cycle.
+        The message queue receives Event-containing messages, which are passed 
+        on to the Arbitrator, whose job it is to determine the highest priority 
+        action to execute for that task cycle.
 
         Example usage:
 
@@ -103,7 +104,6 @@ class ROS(AbstractTask):
         self._log.info('initialised.')
 
 
-#   # ..........................................................................
 #   def configure(self):
 #       '''
 #           Read and return configuration from the YAML file.
@@ -215,8 +215,12 @@ class ROS(AbstractTask):
             self._log.info('enabling feature {}...'.format(feature.name()))
             feature.enable()
 
-        self._log.info('configuring sound player...')
-        self._player = Player(Level.INFO)
+        __enable_player = self._config['ros'].get('enable_player')
+        if __enable_player:
+            self._log.info('configuring sound player...')
+            self._player = Player(Level.INFO)
+        else:
+            self._player = None
 
         vl53l1x_available = True # self.get_property('features', 'vl53l1x')
         self._log.critical('vl53l1x_available? {}'.format(vl53l1x_available))
