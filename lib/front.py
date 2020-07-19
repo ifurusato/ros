@@ -14,7 +14,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
-from lib.i2c_master import I2cMaster
+from lib.i2c_main import I2cMain
 from lib.event import Event
 from lib.message import Message
 
@@ -22,7 +22,7 @@ from lib.message import Message
 class IntegratedFrontSensor():
     '''
         IntegratedFrontSensor: communicates with the integrated front bumpers 
-           and infrared sensors, receiving messages from the I2C Arduino slave,
+           and infrared sensors, receiving messages from the I2C Arduino subordinate,
            sending the messages with its events onto the message bus.
         
         Parameters:
@@ -49,7 +49,7 @@ class IntegratedFrontSensor():
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
 
-        self._master = I2cMaster(config, Level.INFO)
+        self._main = I2cMain(config, Level.INFO)
         self._closed = False
         self._enabled = False
         self._log.info('ready.')
@@ -58,7 +58,7 @@ class IntegratedFrontSensor():
     # ..........................................................................
     def _callback_front(self, pin, pin_type, value):
         '''
-            This is the callback method from the I2C Master, whose events are
+            This is the callback method from the I2C Main, whose events are
             being returned from the Arduino.
 
             The pin designations for each sensor here mirror those in the YAML 
@@ -101,7 +101,7 @@ class IntegratedFrontSensor():
         if not self._closed:
             self._log.info('enabled integrated front sensor.')
             self._enabled = True
-            self._master.front_sensor_loop(self._queue, self._enabled, self._loop_delay_sec, self._callback_front)
+            self._main.front_sensor_loop(self._queue, self._enabled, self._loop_delay_sec, self._callback_front)
         else:
             self._log.warning('cannot enable integrated front sensor: already closed.')
 
@@ -110,8 +110,8 @@ class IntegratedFrontSensor():
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
-        if self._master:
-            self._master.disable()
+        if self._main:
+            self._main.disable()
 
 
     # ..........................................................................

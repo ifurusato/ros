@@ -67,7 +67,7 @@ def main():
     except KeyboardInterrupt:
         _log.info('Ctrl-C caught: complete.')
     except Exception as e:
-        _log.error('error closing master: {}'.format(e))
+        _log.error('error closing main: {}'.format(e))
     finally:
         sys.exit(0)
 

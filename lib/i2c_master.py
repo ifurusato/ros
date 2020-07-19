@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part
-# of the pimaster2ardslave project and is released under the MIT Licence;
+# of the pimain2ardsubordinate project and is released under the MIT Licence;
 # please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
@@ -30,12 +30,12 @@ CLEAR_SCREEN = '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
 #CLEAR_SCREEN = '\n'  # no clear screen
 
 # ..............................................................................
-class I2cMaster():
+class I2cMain():
     '''
-        A Raspberry Pi Master for a corresponding Arduino Slave.
+        A Raspberry Pi Main for a corresponding Arduino Subordinate.
 
         Parameters:
-          device_id:  the I²C address over which the master and slave communicate
+          device_id:  the I²C address over which the main and subordinate communicate
           level:      the log level, e.g., Level.INFO
     '''
 
@@ -43,11 +43,11 @@ class I2cMaster():
         super().__init__()
         if config is None:
             raise ValueError('no configuration provided.')
-        self._config = config['ros'].get('i2c_master')
-        self._device_id  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        self._config = config['ros'].get('i2c_main')
+        self._device_id  = self._config.get('device_id') # i2c hex address of subordinate device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel = self._config.get('channel')
 
-        self._log = Logger('i²cmaster-0x{:02x}'.format(self._device_id), level)
+        self._log = Logger('i²cmain-0x{:02x}'.format(self._device_id), level)
         self._log.info('initialising...')
         self._counter = itertools.count()
         self._loop_count = 0  # currently only used in testing
@@ -215,16 +215,16 @@ class I2cMaster():
         '''
             Close the instance.
         '''
-        self._log.debug('closing I²C master.')
+        self._log.debug('closing I²C main.')
         if not self._closed:
             try:
                 self._closed = True
 #               self._pi.i2c_close(self._handle) # close device
-                self._log.debug('I²C master closed.')
+                self._log.debug('I²C main closed.')
             except Exception as e:
-                self._log.error('error closing master: {}'.format(e))
+                self._log.error('error closing main: {}'.format(e))
         else:
-            self._log.debug('I²C master already closed.')
+            self._log.debug('I²C main already closed.')
 
 
     # ..........................................................................
@@ -287,7 +287,7 @@ class I2cMaster():
         except KeyboardInterrupt:
             self._log.warning('Ctrl-C caught; exiting...')
         except Exception as e:
-            self._log.error('error in master: {}'.format(e))
+            self._log.error('error in main: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
 #       finally:
 #           self.close()
@@ -300,8 +300,8 @@ class I2cMaster():
     # ..........................................................................
     def test_echo(self):
         '''
-            Performs a simple test, sending a series of bytes to the slave, then
-            reading the return values. The Arduino slave's 'isEchoTest' boolean
+            Performs a simple test, sending a series of bytes to the subordinate, then
+            reading the return values. The Arduino subordinate's 'isEchoTest' boolean
             must be set to true. This does not require any hardware configuration
             save that the Raspberry Pi must be connected to the Arduino via I²C
             and that there is no contention on address 0x08.
@@ -365,7 +365,7 @@ class I2cMaster():
         except KeyboardInterrupt:
             self._log.warning('Ctrl-C caught; exiting...')
         except Exception as e:
-            self._log.error('error in master: {}'.format(e))
+            self._log.error('error in main: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
 
 
@@ -439,7 +439,7 @@ class I2cMaster():
         except KeyboardInterrupt:
             self._log.warning('Ctrl-C caught; exiting...')
         except Exception as e:
-            self._log.error('error in master: {}'.format(e))
+            self._log.error('error in main: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
 #       finally:
 #           self.close()

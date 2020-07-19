@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part
-# of the pimaster2ardslave project and is released under the MIT Licence;
+# of the pimain2ardsubordinate project and is released under the MIT Licence;
 # please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
