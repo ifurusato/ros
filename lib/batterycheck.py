@@ -10,7 +10,7 @@
 # modified: 2020-06-12
 #
 
-import time, threading, traceback
+import sys, time, threading, traceback
 from colorama import init, Fore, Style
 init()
 
@@ -57,9 +57,9 @@ class BatteryCheck(Feature):
         _battery_config = self._config['ros'].get('battery')
         _enable_messaging           = _battery_config.get('enable_messaging')
         self.set_enable_messaging(_enable_messaging)
-        self._five_volt_a_channel   = _battery_config.get('five_volt_a_channel')
-        self._five_volt_b_channel   = _battery_config.get('five_volt_b_channel')
-        self._battery_channel       = _battery_config.get('battery_channel')
+        self._five_volt_a_channel   = BatteryCheck.CHANNELS[_battery_config.get('five_volt_a_channel')]
+        self._five_volt_b_channel   = BatteryCheck.CHANNELS[_battery_config.get('five_volt_b_channel')]
+        self._battery_channel       = BatteryCheck.CHANNELS[_battery_config.get('battery_channel')]
         self._raw_battery_threshold = _battery_config.get('raw_battery_threshold')
         self._five_volt_threshold   = _battery_config.get('low_5v_threshold')
         self._settle_count          = _battery_config.get('settle_count')
@@ -163,11 +163,16 @@ class BatteryCheck(Feature):
         count = 0
         while self._enabled:
             self._log.info('battery channel: {}; reference: {}v'.format(self._battery_channel, self._reference ))
-            self._log.info('battery channel: type: {}; reference type: {}v'.format(type(self._battery_channel), type(self._reference) ))
-            self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel, reference_voltage=self._reference)
-            self._log.info('five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))
+
+            self._log.warning('battery channel: {}; reference: {}v'.format(self._battery_channel, self._reference ))
+
+            self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel,     reference_voltage=self._reference)
+            self._log.info('battery voltage: {}.'.format(self._battery_voltage))
+
             self._regulator_a_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_a_channel, reference_voltage=self._reference)
             self._regulator_b_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_b_channel, reference_voltage=self._reference)
+            self._log.info('five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))
+
             self._log.info('voltage A: {}; B: {}.'.format( self._regulator_a_voltage, self._regulator_b_voltage))
             return
             self._is_ready = count > self._settle_count

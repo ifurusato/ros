@@ -24,11 +24,11 @@ from lib.logger import Level, Logger
 from lib.devnull import DevNull
 from lib.event import Event
 from lib.message import Message
-from lib.player import Player
-from lib.queue import MessageQueue
 from lib.abstract_task import AbstractTask 
 from lib.fsm import FiniteStateMachine
+from lib.queue import MessageQueue
 from lib.config_loader import ConfigLoader
+from lib.player import Player
 from lib.configurer import Configurer
 
 # TODO move to feature importer
@@ -37,7 +37,7 @@ from lib.lidar import Lidar
 from lib.arbitrator import Arbitrator
 from lib.controller import Controller
 
-from lib.rgbmatrix import RgbMatrix
+#from lib.rgbmatrix import RgbMatrix
 
 # GPIO Setup .....................................
 #GPIO.setwarnings(False)
@@ -84,7 +84,7 @@ class ROS(AbstractTask):
         '''
         self._queue = MessageQueue(Level.INFO)
         self._mutex = threading.Lock()
-        super().__init__("os", self._queue, None, None, self._mutex)
+        super().__init__("ros", self._queue, None, None, self._mutex)
         self._log.info('initialising...')
         self._active        = False
         self._closing       = False
@@ -93,6 +93,7 @@ class ROS(AbstractTask):
         self._motors        = None
         self._arbitrator    = None
         self._controller    = None
+        self._flask_wrapper = None
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
@@ -102,19 +103,6 @@ class ROS(AbstractTask):
         _configurer = Configurer(self, Level.INFO)
         _configurer.scan()
         self._log.info('initialised.')
-
-
-#   def configure(self):
-#       '''
-#           Read and return configuration from the YAML file.
-#       '''
-#       filename = 'config.yaml'
-#       self._log.info('reading from yaml configuration file {}...'.format(filename))
-#       _config = yaml.safe_load(open(filename, 'r'))
-#       for key, value in _config.items():
-#           self._log.debug('config key: {}; value: {}'.format(key, str(value)))
-#       self._log.info('configuration read.')
-#       return _config
 
 
     # ..........................................................................
@@ -147,7 +135,7 @@ class ROS(AbstractTask):
             Set the value of the named property of the application
             configuration, provided its section, property name and value.
         '''
-        self._log.info(Fore.GREEN + 'set config on section \'{}\' for property key: \'{}\' to value: {}.'.format(section, property_name, property_value))
+        self._log.debug(Fore.GREEN + 'set config on section \'{}\' for property key: \'{}\' to value: {}.'.format(section, property_name, property_value))
         if section == 'ros':
             self._config[section].update(property_name = property_value)
         else:
@@ -222,25 +210,29 @@ class ROS(AbstractTask):
         else:
             self._player = None
 
-        vl53l1x_available = True # self.get_property('features', 'vl53l1x')
-        self._log.critical('vl53l1x_available? {}'.format(vl53l1x_available))
-        ultraborg_available = True # self.get_property('features', 'ultraborg')
-        self._log.critical('ultraborg available? {}'.format(ultraborg_available))
-        if vl53l1x_available and ultraborg_available:
-            self._log.critical('starting scanner tool...')
-            self._lidar = Lidar(self._config, self._player, Level.INFO)
-            self._lidar.enable()
-        else:
-            self._log.critical('scanner tool does not have necessary dependencies.')
+#       i2c_slave_address = config['ros'].get('i2c_master').get('device_id') # i2c hex address of I2C slave device
+
+#       vl53l1x_available = False # self.get_property('features', 'vl53l1x')
+#       ultraborg_available = False # self.get_property('features', 'ultraborg')
+#       if vl53l1x_available and ultraborg_available:
+#           self._log.critical('starting scanner tool...')
+#           self._lidar = Lidar(self._config, self._player, Level.INFO)
+#           self._lidar.enable()
+#       else:
+#           self._log.critical('scanner tool does not have necessary dependencies.')
         
+#       self._ifs = IntegratedFrontSensor(self._config, self._queue, Level.INFO)
+    
         # wait to stabilise features?
 
         # configure the Controller and Arbitrator
         self._log.info('configuring controller...')
-        self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._lidar, self._callback_shutdown)
+#       self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._lidar, self._callback_shutdown)
+        self._controller = Controller(self._config, self._switch, self._ifs, self._motors, self._callback_shutdown, Level.INFO)
 
         self._log.info('configuring arbitrator...')
-        self._arbitrator = Arbitrator(_level, self._queue, self._controller, self._mutex)
+        _arbitrator_level = Level.WARN
+        self._arbitrator = Arbitrator(_arbitrator_level, self._queue, self._controller, self._mutex)
 
         flask_enabled = self._config['flask'].get('enabled')
         if flask_enabled:
@@ -266,9 +258,10 @@ class ROS(AbstractTask):
 #       self._log.info('enabling bno055 sensor...')
 #       self._bno055.enable()
 
-        self._log.info('enabling bumpers...')
-        self._bumpers.enable()
+#       self._bumpers.enable()
 
+        self._log.info('enabling integrated front sensor...')
+        self._ifs.enable() 
 #       self._log.info('starting info thread...')
 #       self._info.start()
 
@@ -286,6 +279,7 @@ class ROS(AbstractTask):
 #           which forwards those messages on to the arbitrator, which chooses the
 #           highest priority message to send on to the controller. So the timing
 #           of this loop is inconsequential; it exists solely as a keep-alive.
+#           self._log.info(Fore.BLACK + Style.DIM + 'main loop...')
             time.sleep(_loop_delay_sec)
             # end application loop .........................
     
@@ -353,7 +347,8 @@ class ROS(AbstractTask):
             self._active = False
             self._closing = True
             self._log.info(Style.BRIGHT + 'closing...')
-            self._flask_wrapper.close()
+            if self._flask_wrapper is not None:
+                self._flask_wrapper.close()
             if self._arbitrator:
                 self._arbitrator.disable()
             super().close()

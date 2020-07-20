@@ -16,7 +16,7 @@
 # smbus2 notes from pololu: https://www.pololu.com/docs/0J73/15.9
 #
 
-import sys, time, traceback, itertools
+import sys, time, traceback, itertools, threading
 from smbus2 import SMBus
 #from smbus2 import SMBusWrapper
 from colorama import init, Fore, Style
@@ -26,8 +26,8 @@ from lib.pintype import PinType
 from lib.logger import Logger, Level
 
 #CLEAR_SCREEN = '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' # on MacOSX screen
-CLEAR_SCREEN = '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'          # on Ubuntu screen
-#CLEAR_SCREEN = '\n'  # no clear screen
+#CLEAR_SCREEN = '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'          # on Ubuntu screen
+CLEAR_SCREEN = '\n'  # no clear screen
 
 # ..............................................................................
 class I2cMaster():
@@ -39,21 +39,38 @@ class I2cMaster():
           level:      the log level, e.g., Level.INFO
     '''
 
+    CMD_RETURN_IS_CONFIGURED = 234
+    CMD_RESET_CONFIGURATION = 235
+
     def __init__(self, config, level):
         super().__init__()
         if config is None:
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('i2c_master')
-        self._device_id  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        self._device_id = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel = self._config.get('channel')
 
         self._log = Logger('i²cmaster-0x{:02x}'.format(self._device_id), level)
         self._log.info('initialising...')
         self._counter = itertools.count()
         self._loop_count = 0  # currently only used in testing
+        self._thread = None
+        self._enabled = False
         self._closed = False
         self._i2c = SMBus(self._channel)
         self._log.info('ready: imported smbus2 and obtained I²C bus at address 0x{:02X}...'.format(self._device_id))
+
+
+    # ..........................................................................
+    def enable(self):
+        self._enabled = True
+        self._log.info('enabled.')
+
+
+    # ..........................................................................
+    def disable(self):
+        self._enabled = False
+        self._log.info('disabled.')
 
 
     # ..............................................................................
@@ -68,7 +85,7 @@ class I2cMaster():
 #           _low_byte  = bus.read_byte(self._device_id)
         _data      = _low_byte
         _data     += ( _high_byte << 8 )
-        self._log.debug('read 2 bytes:  hi: {:08b} lo: {:08b} as data: {}'.format(_high_byte, _low_byte, _data))
+        self._log.debug(Fore.BLUE + Style.BRIGHT + 'read 2 bytes:  hi: {:08b} lo: {:08b} as data: {}'.format(_high_byte, _low_byte, _data))
         return _data
 
 
@@ -130,7 +147,8 @@ class I2cMaster():
             self._log.info('configured pin {:d} for DIGITAL_INPUT'.format(pin))
         else:
             _err_msg = self.get_error_message(_received_data)
-            self._log.error('failed to configure pin {:d} for DIGITAL_INPUT; response: {}'.format(pin, _err_msg))
+#           self._log.error('failed to configure pin {:d} for DIGITAL_INPUT; response: {}'.format(pin, _err_msg))
+            raise Exception('failed to configure pin {:d} for DIGITAL_INPUT; response: {}'.format(pin, _err_msg))
 
 
     # ..........................................................................
@@ -150,7 +168,8 @@ class I2cMaster():
             self._log.info('configured pin {:d} for DIGITAL_INPUT_PULLUP'.format(pin))
         else:
             _err_msg = self.get_error_message(_received_data)
-            self._log.error('failed to configure pin {:d} for DIGITAL_INPUT_PULLUP; response: {}'.format(pin, _err_msg))
+#           self._log.error('failed to configure pin {:d} for DIGITAL_INPUT_PULLUP; response: {}'.format(pin, _err_msg))
+            raise Exception('failed to configure pin {:d} for DIGITAL_INPUT_PULLUP; response: {}'.format(pin, _err_msg))
 
 
     # ..........................................................................
@@ -170,7 +189,8 @@ class I2cMaster():
             self._log.info('configured pin {:d} for ANALOG_INPUT'.format(pin))
         else:
             _err_msg = self.get_error_message(_received_data)
-            self._log.error('failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
+#           self._log.error('failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
+            raise Exception('failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
 
 
     # ..........................................................................
@@ -190,7 +210,8 @@ class I2cMaster():
             self._log.info('configured pin {:d} for OUTPUT'.format(pin))
         else:
             _err_msg = self.get_error_message(_received_data)
-            self._log.error('failed to configure pin {:d} for OUTPUT; response: {}'.format(pin, _err_msg))
+#           self._log.error('failed to configure pin {:d} for OUTPUT; response: {}'.format(pin, _err_msg))
+            raise Exception('failed to configure pin {:d} for OUTPUT; response: {}'.format(pin, _err_msg))
 
 
     # ..........................................................................
@@ -211,26 +232,57 @@ class I2cMaster():
 
 
     # ..........................................................................
-    def close(self):
+    def in_loop(self):
         '''
-            Close the instance.
+            Returns true if the main loop is active (the thread is alive).
         '''
-        self._log.debug('closing I²C master.')
-        if not self._closed:
-            try:
-                self._closed = True
-#               self._pi.i2c_close(self._handle) # close device
-                self._log.debug('I²C master closed.')
-            except Exception as e:
-                self._log.error('error closing master: {}'.format(e))
-        else:
-            self._log.debug('I²C master already closed.')
+        return self._thread != None and self._thread.is_alive()
 
 
     # ..........................................................................
-    def front_sensor_loop(self, queue, enabled, loop_delay_sec, callback):
+    def _front_sensor_loop(self, assignments, loop_delay_sec, callback):
+        self._log.info('starting event loop...\n')
+        while self._enabled:
+            _count = next(self._counter)
+#           print(CLEAR_SCREEN)
+            for pin in assignments:
+                pin_type = assignments[pin]
+                self._log.debug('reading from pin {}:\ttype: {}.'.format( pin, pin_type.description))
+                # write and then read response to/from Arduino...
+                _data_to_send = pin
+                self.write_i2c_data(_data_to_send)
+                _received_data = self.read_i2c_data()
+                callback(pin, pin_type, _received_data)
+            time.sleep(loop_delay_sec)
+
+        # we never get here if using 'while True:'
+        self._log.info('exited event loop.')
+
+
+    # ..........................................................................
+    def start_front_sensor_loop(self, assignments, loop_delay_sec, callback):
         '''
-            Configures each of the pin types based on the application-level YAML 
+            This is the method to call to actually start the loop.
+            Configuration must have already occurred.
+        '''
+        if not self._enabled:
+            raise Exception('attempt to start front sensor event loop while disabled.')
+        elif not self._closed:
+            if self._thread is None:
+                enabled = True
+                self._thread = threading.Thread(target=I2cMaster._front_sensor_loop, args=[self, assignments, loop_delay_sec, callback])
+                self._thread.start()
+                self._log.info('started.')
+            else:
+                self._log.warning('cannot enable: process already running.')
+        else:
+            self._log.warning('cannot enable: already closed.')
+
+
+    # ..........................................................................
+    def configure_front_sensor_loop(self):
+        '''
+            Configures each of the pin types based on the application-level YAML
             configuration file, then starts a loop that continues while enabled.
             This passes incoming events from the Arduino to the message queue.
 
@@ -250,49 +302,86 @@ class I2cMaster():
         try:
 
             self._log.info('front_sensor_loop: configuring the arduino and then reading the results...')
-
+            _is_configured = self.is_configured()
             _assignment_config = self._config.get('assignments')
             _assignments = {}
             # configure pins...
             for pin, pin_type_param in _assignment_config.items():
                 pin_type = PinType.from_str(pin_type_param)
-                self._log.debug('configuring pin {}:\ttype: {}.'.format( pin, pin_type.description))
                 _assignments.update({ pin : pin_type })
-                if pin_type is PinType.DIGITAL_INPUT: # configure pin as DIGITAL_INPUT
-                    self.configure_pin_as_digital_input(pin)
-                elif pin_type is PinType.DIGITAL_INPUT_PULLUP: # configure pin as DIGITAL_INPUT_PULLUP
-                    self.configure_pin_as_digital_input_pullup(pin)
-                elif pin_type is PinType.ANALOG_INPUT: # configure pin as ANALOG_INPUT
-                    self.configure_pin_as_analog_input(pin)
-#               elif pin_type is PinType.OUTPUT: # configure pin as OUTPUT
-#                   self.configure_pin_as_output(pin)
-
-            self._log.info('configured. starting event loop...\n')
-            while enabled:
-                _count = next(self._counter)
-                print(CLEAR_SCREEN)
-                for pin in _assignments:
-                    pin_type = _assignments[pin]
-                    self._log.debug('reading from pin {}:\ttype: {}.'.format( pin, pin_type.description))
-                    # write and then read response to/from Arduino...
-                    _data_to_send = pin
-                    self.write_i2c_data(_data_to_send)
-                    _received_data = self.read_i2c_data()
-                    callback(pin, pin_type, _received_data)
-                time.sleep(loop_delay_sec)
-
-            # we never get here if using 'while True:'
-            self._log.info('exited event loop.')
-
+                if not _is_configured:
+                    self._log.info('configuring pin {}:\ttype: {}.'.format( pin, pin_type.description))
+                    if pin_type is PinType.DIGITAL_INPUT: # configure pin as DIGITAL_INPUT
+                        self.configure_pin_as_digital_input(pin)
+                    elif pin_type is PinType.DIGITAL_INPUT_PULLUP: # configure pin as DIGITAL_INPUT_PULLUP
+                        self.configure_pin_as_digital_input_pullup(pin)
+                    elif pin_type is PinType.ANALOG_INPUT: # configure pin as ANALOG_INPUT
+                        self.configure_pin_as_analog_input(pin)
+#                   elif pin_type is PinType.OUTPUT: # configure pin as OUTPUT
+#                       self.configure_pin_as_output(pin)
+                else:
+                    self._log.info('already configuring pin {}:\ttype: {}.'.format( pin, pin_type.description))
+            self._log.info('front sensor loop configured.')
+            return _assignments
         except KeyboardInterrupt:
             self._log.warning('Ctrl-C caught; exiting...')
+            return None
         except Exception as e:
             self._log.error('error in master: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
-#       finally:
-#           self.close()
-#           self._log.info('complete.')
+#           sys.exit(1)
+            return None
 
+
+    # ..........................................................................
+    def is_configured(self):
+        '''
+            Sends a 235 (congiguration check) code to the slave, returning a
+            value as 1 (as True) or 0 (as False).
+        '''
+        try:
+            self._log.info('starting configuration check...')
+            _data_to_send = I2cMaster.CMD_RETURN_IS_CONFIGURED
+            self.write_i2c_data(_data_to_send)
+            _received_data = self.read_i2c_data()
+            if _received_data == 1:
+                self._log.info('configuration check returned: ' + Fore.GREEN + 'true.')
+                return True
+            else:
+                self._log.info('configuration check returned: ' + Fore.CYAN + '{:d}'.format(_received_data))
+                return False
+        except Exception as e:
+            _data_to_send = I2cMaster.CMD_RESET_CONFIGURATION
+            self.write_i2c_data(_data_to_send)
+            _received_data = self.read_i2c_data()
+            traceback.print_exc(file=sys.stdout)
+            if _received_data == 1:
+                self._log.info('configuration recovery returned: ' + Fore.GREEN + 'true.')
+                return True
+            else:
+                self._log.error('error in is_configured check: {}'.format(e) + '; attempted recovery returned: {:d}'.format(_received_data))
+            return False
+
+
+    # ..........................................................................
+    def close(self):
+        '''
+            Close the instance.
+        '''
+        self._log.debug('closing I²C master.')
+        if not self._closed:
+            try:
+                if self._thread != None:
+                    self._thread.join(timeout=1.0)
+                    self._log.debug('front sensor loop thread joined.')
+                    self._thread = None
+                self._closed = True
+#               self._pi.i2c_close(self._handle) # close device
+                self._log.debug('I²C master closed.')
+            except Exception as e:
+                self._log.error('error closing master: {}'.format(e))
+        else:
+            self._log.debug('I²C master already closed.')
 
 
     # tests ====================================================================
@@ -372,10 +461,10 @@ class I2cMaster():
     # ..........................................................................
     def test_configuration(self, loop_count):
         '''
-            Configures each of the pin types based on the application-level YAML 
-            configuration. You can see the result of the configuration on the 
-            Arduino IDE's Serial Monitor (even without any associated hardware). 
-            If you set up the hardware to match this configuration you can also 
+            Configures each of the pin types based on the application-level YAML
+            configuration. You can see the result of the configuration on the
+            Arduino IDE's Serial Monitor (even without any associated hardware).
+            If you set up the hardware to match this configuration you can also
             see the input and output results on the Serial Monitor.
 
             The prototype hardware configuration is as follows:
@@ -397,7 +486,7 @@ class I2cMaster():
             _assignments = {}
             for pin, pin_type_param in _assignment_config.items():
                 pin_type = PinType.from_str(pin_type_param)
-                self._log.debug('configuring pin {}:\ttype: {}.'.format( pin, pin_type.description))
+                self._log.warning('configuring pin {}:\ttype: {}.'.format( pin, pin_type.description))
                 _assignments.update({ pin : pin_type })
                 if pin_type is PinType.DIGITAL_INPUT: # configure pin as DIGITAL_INPUT
                     self.configure_pin_as_digital_input(pin)

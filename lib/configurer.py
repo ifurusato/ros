@@ -61,7 +61,7 @@ class Configurer():
             A convenience method that sets a feature's availability
             to the boolean value.
         '''
-        self._log.info(Fore.GREEN + Style.BRIGHT + '-- set feature available. name: \'{}\' value: \'{}\'.'.format(name, value))
+        self._log.debug(Fore.BLUE + Style.BRIGHT + '-- set feature available. name: \'{}\' value: \'{}\'.'.format(name, value))
         self._ros.set_property('features', name, value)
 
 
@@ -77,11 +77,11 @@ class Configurer():
         # ............................................
         ht0740_available = ( 0x38 in self._addresses )
         if ht0740_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- HT0740 Switch available at 0x38.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- HT0740 Switch available at 0x38.' + Style.RESET_ALL)
             self._addresses.remove(0x38)
             self.configure_ht0740()
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no HT0740 Switch available at 0x38.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no HT0740 Switch available at 0x38.' + Style.RESET_ALL)
         self._set_feature_available('ht0740', ht0740_available)
     
         # ............................................
@@ -90,39 +90,39 @@ class Configurer():
         # ............................................
         thunderborg_available = ( 0x15 in self._addresses )
         if thunderborg_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- ThunderBorg available at 0x15' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ThunderBorg available at 0x15' + Style.RESET_ALL)
             self._addresses.remove(0x15)
             self._configure_thunderborg_motors()
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available at 0x15.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available at 0x15.' + Style.RESET_ALL)
         self._set_feature_available('thunderborg', thunderborg_available)
     
         # ............................................
         ads1015_available = ( 0x48 in self._addresses )
         if ads1015_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- ADS1015 AD Converter available at 0x48.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ADS1015 AD Converter available at 0x48.' + Style.RESET_ALL)
             self._addresses.remove(0x48)
             self.configure_battery_check()
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no ADS1015 AD Converter available at 0x48.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ADS1015 AD Converter available at 0x48.' + Style.RESET_ALL)
         self._set_feature_available('ads1015', ads1015_available)
     
         # ............................................
         # the 5x5 RGB Matrix is at 0x74 for port, 0x77 for starboard
         rgbmatrix5x5_stbd_available = ( 0x74 in self._addresses )
         if rgbmatrix5x5_stbd_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x74.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x74.' + Style.RESET_ALL)
             self._addresses.remove(0x74)
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x74.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x74.' + Style.RESET_ALL)
         self._set_feature_available('rgbmatrix5x5_stbd', rgbmatrix5x5_stbd_available)
 
         rgbmatrix5x5_port_available = ( 0x77 in self._addresses )
         if rgbmatrix5x5_port_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x77.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x77.' + Style.RESET_ALL)
             self._addresses.remove(0x77)
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x77.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x77.' + Style.RESET_ALL)
         self._set_feature_available('rgbmatrix5x5_port', rgbmatrix5x5_port_available)
 
         if rgbmatrix5x5_stbd_available or rgbmatrix5x5_port_available:
@@ -133,83 +133,83 @@ class Configurer():
         # conflicts with the RGB LED matrix, so both cannot be used simultaneously.
         matrix11x7_stbd_available = ( 0x75 in self._addresses )
         if matrix11x7_stbd_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
             self._addresses.remove(0x75)
             from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
         self._set_feature_available('matrix11x7_stbd', matrix11x7_stbd_available)
 
 
         # ............................................
         bno055_available = ( 0x28 in self._addresses )
         if bno055_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- BNO055 orientation sensor available at 0x28.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- BNO055 orientation sensor available at 0x28.' + Style.RESET_ALL)
             self._addresses.remove(0x28)
             self.configure_bno055()
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no BNO055 orientation sensor available at 0x28.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no BNO055 orientation sensor available at 0x28.' + Style.RESET_ALL)
         self._set_feature_available('bno055', bno055_available)
     
         # ............................................
         lsm303d_available = ( 0x1D in self._addresses )
         if lsm303d_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- LSM303D available at 0x1D.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- LSM303D available at 0x1D.' + Style.RESET_ALL)
             self._addresses.remove(0x1D)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no LSM303D available at 0x1D.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no LSM303D available at 0x1D.' + Style.RESET_ALL)
         self._set_feature_available('lsm303d', lsm303d_available)
     
         # ............................................
         vl53l1x_available = ( 0x29 in self._addresses )
         if vl53l1x_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- VL53L1X available at 0x29.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- VL53L1X available at 0x29.' + Style.RESET_ALL)
             self._addresses.remove(0x29)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no VL53L1X available at 0x29.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no VL53L1X available at 0x29.' + Style.RESET_ALL)
         self._set_feature_available('vl53l1x', vl53l1x_available)
     
         # ............................................
         ultraborg_available = ( 0x36 in self._addresses )
         if ultraborg_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- UltraBorg available at 0x36.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- UltraBorg available at 0x36.' + Style.RESET_ALL)
             self._addresses.remove(0x36)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no UltraBorg available at 0x36.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no UltraBorg available at 0x36.' + Style.RESET_ALL)
         self._set_feature_available('ultraborg', ultraborg_available)
     
         # ............................................
         as7262_available = ( 0x49 in self._addresses )
         if as7262_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
             self._addresses.remove(0x49)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
         self._set_feature_available('as7262', as7262_available)
     
         # ............................................
         pijuice_available = ( 0x68 in self._addresses )
         if pijuice_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- PiJuice hat available at 0x68.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- PiJuice hat available at 0x68.' + Style.RESET_ALL)
             self._addresses.remove(0x68)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no PiJuice hat available at 0x68.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no PiJuice hat available at 0x68.' + Style.RESET_ALL)
         self._set_feature_available('pijuice', pijuice_available)
     
         # ............................................
         # NOTE: the default address for the ICM20948 is 0x68, but this conflicts with the PiJuice
         icm20948_available = ( 0x69 in self._addresses )
         if icm20948_available:
-            self._log.info(Fore.CYAN + Style.BRIGHT + '-- ICM20948 available at 0x69.' + Style.RESET_ALL)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ICM20948 available at 0x69.' + Style.RESET_ALL)
             self._addresses.remove(0x69)
     #       from lib.matrix import Matrix
         else:
-            self._log.info(Fore.RED + Style.BRIGHT + '-- no ICM20948 available at 0x69.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ICM20948 available at 0x69.' + Style.RESET_ALL)
         self._set_feature_available('icm20948', icm20948_available)
     
 
@@ -223,17 +223,20 @@ class Configurer():
         self._log.info('configuring button...')
         self._ros._button = Button(self._ros._config, self._ros.get_message_queue(), self._ros._mutex)
 
-        from lib.bumpers import Bumpers
-        self._log.info('configuring bumpers...')
-        self._ros._bumpers = Bumpers(self._ros._config, self._ros.get_message_queue(), None, Level.INFO)
+#       from lib.bumpers import Bumpers
+#       self._log.info('configuring bumpers...')
+#       self._ros._bumpers = Bumpers(self._ros._config, self._ros.get_message_queue(), None, Level.INFO)
 
-        from lib.infrareds import Infrareds
-        self._log.info('configuring infrared trio...')
-        self._ros._infrareds = Infrareds(self._ros._config, self._ros.get_message_queue(), Level.INFO)
+#       from lib.infrareds import Infrareds
+#       self._ros._infrareds = Infrareds(self._ros._config, self._ros.get_message_queue(), Level.INFO)
 
-        from lib.player import Sound, Player
-        self._log.info('configuring player...')
-        self._ros._player = Player(Level.INFO)
+        self._log.info('configuring integrated front sensors...')
+        from lib.ifs import IntegratedFrontSensor
+        self._ros._ifs = IntegratedFrontSensor(self._ros._config, self._ros._queue, Level.INFO)
+
+#       from lib.player import Sound, Player
+#       self._log.info('configuring player...')
+#       self._ros._player = Player(Level.INFO)
 
         self._log.warning('default features ready.')
 

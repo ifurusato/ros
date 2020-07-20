@@ -26,7 +26,7 @@ from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.event import Event
 from lib.queue import MessageQueue
-from lib.front import IntegratedFrontSensor
+from lib.ifs import IntegratedFrontSensor
 
 _ifs = None
 
@@ -76,7 +76,6 @@ def main():
         _queue = MockMessageQueue(Level.INFO)
 #       _queue = MessageQueue(Level.INFO)
 
-        _loop_count = 10000
         _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
         _ifs.enable() 
 

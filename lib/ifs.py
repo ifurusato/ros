@@ -45,13 +45,17 @@ class IntegratedFrontSensor():
         self._config = config['ros'].get('front_sensor')
         self._queue = queue
         self._log = Logger("front-sensor", level)
-        self._trigger_distance = self._config.get('trigger_distance')
+        self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
+        self._port_trigger_distance = self._config.get('port_trigger_distance')
+        self._center_trigger_distance = self._config.get('center_trigger_distance')
+        self._stbd_trigger_distance = self._config.get('stbd_trigger_distance')
+        self._stbd_side_trigger_distance = self._config.get('stbd_side_trigger_distance')
+        self._log.info('event thresholds: port side=' + Fore.RED + '{:>5.2f}; port={:>5.2f}; ' + Fore.BLUE + 'center={:>5.2f}; ' + Fore.GREEN + 'stbd={:>5.2f}; stbd side={:>5.2f}')
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
-
         self._master = I2cMaster(config, Level.INFO)
-        self._closed = False
         self._enabled = False
+        self._closed = False
         self._log.info('ready.')
 
 
@@ -65,21 +69,23 @@ class IntegratedFrontSensor():
             configuration.
         '''
         self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
+        if not self._enabled:
+            return
         _message = None
         if pin == 0:
-            if value > self._trigger_distance:
+            if value > self._stbd_side_trigger_distance:
                 _message = Message(Event.INFRARED_STBD_SIDE)
         elif pin == 1:
-            if value > self._trigger_distance:
+            if value > self._stbd_trigger_distance:
                 _message = Message(Event.INFRARED_STBD)
         elif pin == 2:
-            if value > self._trigger_distance:
+            if value > self._center_trigger_distance:
                 _message = Message(Event.INFRARED_CENTER)
         elif pin == 3:
-            if value > self._trigger_distance:
+            if value > self._port_trigger_distance:
                 _message = Message(Event.INFRARED_PORT)
         elif pin == 4:
-            if value > self._trigger_distance:
+            if value > self._port_side_trigger_distance:
                 _message = Message(Event.INFRARED_PORT_SIDE)
         elif pin == 9:
             if value == 1:
@@ -101,7 +107,13 @@ class IntegratedFrontSensor():
         if not self._closed:
             self._log.info('enabled integrated front sensor.')
             self._enabled = True
-            self._master.front_sensor_loop(self._queue, self._enabled, self._loop_delay_sec, self._callback_front)
+            assignments = self._master.configure_front_sensor_loop()
+            if assignments is not None:
+                self._master.enable()
+                if not self._master.in_loop():
+                    self._master.start_front_sensor_loop(assignments, self._loop_delay_sec, self._callback_front)
+            else:
+                self._log.error('cannot start integrated front sensor.')
         else:
             self._log.warning('cannot enable integrated front sensor: already closed.')
 
@@ -110,8 +122,7 @@ class IntegratedFrontSensor():
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
-        if self._master:
-            self._master.disable()
+        self._master.disable()
 
 
     # ..........................................................................
