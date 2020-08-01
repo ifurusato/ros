@@ -46,11 +46,14 @@ class IntegratedFrontSensor():
         self._queue = queue
         self._log = Logger("front-sensor", level)
         self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
-        self._port_trigger_distance = self._config.get('port_trigger_distance')
-        self._center_trigger_distance = self._config.get('center_trigger_distance')
-        self._stbd_trigger_distance = self._config.get('stbd_trigger_distance')
+        self._port_trigger_distance      = self._config.get('port_trigger_distance')
+        self._center_trigger_distance    = self._config.get('center_trigger_distance')
+        self._stbd_trigger_distance      = self._config.get('stbd_trigger_distance')
         self._stbd_side_trigger_distance = self._config.get('stbd_side_trigger_distance')
-        self._log.info('event thresholds: port side=' + Fore.RED + '{:>5.2f}; port={:>5.2f}; ' + Fore.BLUE + 'center={:>5.2f}; ' + Fore.GREEN + 'stbd={:>5.2f}; stbd side={:>5.2f}')
+        self._log.info('event thresholds:' \
+                + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance, self._port_trigger_distance) \
+                + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance) \
+                + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance ))
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
         self._master = I2cMaster(config, Level.INFO)
@@ -66,25 +69,26 @@ class IntegratedFrontSensor():
             being returned from the Arduino.
 
             The pin designations for each sensor here mirror those in the YAML 
-            configuration.
+            configuration. The default pins A1-A5 are defined as IR analog
+            sensors, 9-11 are digital bumper sensors.
         '''
         self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
         if not self._enabled:
             return
         _message = None
-        if pin == 0:
+        if pin == 1:
             if value > self._stbd_side_trigger_distance:
                 _message = Message(Event.INFRARED_STBD_SIDE)
-        elif pin == 1:
+        elif pin == 2:
             if value > self._stbd_trigger_distance:
                 _message = Message(Event.INFRARED_STBD)
-        elif pin == 2:
+        elif pin == 3:
             if value > self._center_trigger_distance:
                 _message = Message(Event.INFRARED_CENTER)
-        elif pin == 3:
+        elif pin == 4:
             if value > self._port_trigger_distance:
                 _message = Message(Event.INFRARED_PORT)
-        elif pin == 4:
+        elif pin == 5:
             if value > self._port_side_trigger_distance:
                 _message = Message(Event.INFRARED_PORT_SIDE)
         elif pin == 9:

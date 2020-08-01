@@ -9,13 +9,9 @@
 # created:  2020-04-30
 # modified: 2020-05-24
 #
-# This tests a hardware configuration of one button, one LED, two digital
-# and one analog infrared sensors, first configuring the Arduino and then
-# performing a communications loop.
-#
-# This requires installation of pigpio, e.g.:
-#
-#   % sudo pip3 install pigpio
+# This tests the hardware configuration determined by the config.yaml file.
+# This is generally the configuration of the integrated Front Bumper, which
+# includes five analog infrared sensors (A0-A4) and three bumpers (pins 9-11).
 #
 
 from lib.logger import Level
@@ -38,6 +34,7 @@ def main():
         if _master is not None:
 
             # set it to some very large number if you want it to go on for a long time...
+#           _master.test_echo() # see documentation for hardware configuration
             _master.test_configuration(_loop_count) # see documentation for hardware configuration
 
         else:

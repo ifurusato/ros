@@ -16,7 +16,7 @@ init()
 
 from lib.import_gpio import *
 from lib.event import Event
-from lib.status import Status
+#from lib.status import Status
 from lib.enums import Speed, Color, Orientation
 from lib.motors import Motors
 from lib.logger import Logger, Level
@@ -37,7 +37,7 @@ class Controller():
         self._ifs = ifs
         self._motors = motors
         self._callback_shutdown = callback_shutdown
-        self._status = Status(config, GPIO, level)
+#       self._status = Status(config, GPIO, level)
         self._current_message = None
         self._standby = False
         self._log.debug('ready.')
@@ -47,18 +47,18 @@ class Controller():
     def set_standby(self, is_standby):
         if is_standby:
             self._log.info('standby.')
-            self._status.blink(True)
+#           self._status.blink(True)
             self._motors.disable()
             self._switch.off()
             self._ifs.disable()
             self._standby = True
         else:
             self._log.info('active.')
-            self._status.blink(False)
+#           self._status.blink(False)
             self._motors.enable()
             self._switch.on()
             self._ifs.enable()
-            self._status.enable()
+#           self._status.enable()
             self._standby = False
 
 

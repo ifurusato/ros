@@ -18,7 +18,7 @@
 #   % sudo pip3 install pigpio
 #
 
-import itertools
+import time, itertools
 from colorama import init, Fore, Style
 init()
 
@@ -78,9 +78,11 @@ def main():
 
         _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
         _ifs.enable() 
+        while True:
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
-        self._log.warning('Ctrl-C caught; exiting...')
+        print(Fore.RED + 'Ctrl-C caught; exiting...' + Style.RESET_ALL)
     finally:
         if _ifs is not None:
             _ifs.close()

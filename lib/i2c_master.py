@@ -39,8 +39,8 @@ class I2cMaster():
           level:      the log level, e.g., Level.INFO
     '''
 
-    CMD_RETURN_IS_CONFIGURED = 234
-    CMD_RESET_CONFIGURATION = 235
+    CMD_RESET_CONFIGURATION  = 234
+    CMD_RETURN_IS_CONFIGURED = 235
 
     def __init__(self, config, level):
         super().__init__()
@@ -76,40 +76,45 @@ class I2cMaster():
     # ..............................................................................
     def read_i2c_data(self):
         '''
-            Read two bytes (LSB, MSB) from the I²C device at the specified handle, returning the value as an int.
+            Read a byte from the I²C device at the specified handle, returning the value.
+
+            ## Examples:
+            int.from_bytes(b'\x00\x01', "big")        # 1
+            int.from_bytes(b'\x00\x01', "little")     # 256
         '''
+#       self._log.info(Fore.BLUE + Style.BRIGHT + '1. reading byte...')
         with SMBus(self._channel) as bus:
-            _low_byte  = bus.read_byte_data(self._device_id, 0)
-            _high_byte = bus.read_byte_data(self._device_id, 1)
-#           _high_byte = bus.read_byte(self._device_id)
-#           _low_byte  = bus.read_byte(self._device_id)
-        _data      = _low_byte
-        _data     += ( _high_byte << 8 )
-        self._log.debug(Fore.BLUE + Style.BRIGHT + 'read 2 bytes:  hi: {:08b} lo: {:08b} as data: {}'.format(_high_byte, _low_byte, _data))
-        return _data
+#           _byte = bus.read_byte(self._device_id)
+            _byte = bus.read_byte_data(self._device_id, 0)
+            time.sleep(0.01)
+#       self._log.info(Fore.BLUE + Style.BRIGHT + '2. read byte:\t{:08b}'.format(_byte))
+#       self._log.info(Fore.BLUE + Style.BRIGHT + '2. read byte:\t{}'.format(_byte))
+        return _byte
 
 
     # ..........................................................................
     def write_i2c_data(self, data):
         '''
-            Write an int as two bytes (LSB, MSB) to the I²C device at the specified handle.
+            Write a byte to the I²C device at the specified handle.
         '''
-        byteArray = [ data, ( data >> 8 ) ]
+#       self._log.info(Fore.RED + '1. writing byte:\t{:08b}'.format(data))
         with SMBus(self._channel) as bus:
-            bus.write_byte(self._device_id, byteArray[0])
-            bus.write_byte(self._device_id, byteArray[1])
-        self._log.debug('wrote 2 bytes: hi: {:08b};\t lo: {:08b};\t sent data: {}'.format(byteArray[1], byteArray[0], data))
+            bus.write_byte(self._device_id, data)
+            time.sleep(0.01)
+#           bus.write_byte_data(self._device_id, 0, data)
+#       self._log.info(Fore.RED + '2. wrote byte:\t{}'.format(data))
 
 
     # ..........................................................................
     def get_input_from_pin(self, pinPlusOffset):
         '''
             Sends a message to the pin (which should already include an offset if
-            this is intended to return a non-pin value), returning the result.
+            this is intended to return a non-pin value), returning the result as
+            a byte.
         '''
         self.write_i2c_data(pinPlusOffset)
         _received_data  = self.read_i2c_data()
-        self._log.debug('received response from pin {:d} of {:>5.2f}.'.format(pinPlusOffset, _received_data))
+        self._log.debug('received response from pin {:d} of {:08b}.'.format(pinPlusOffset, _received_data))
         return _received_data
 
 
@@ -127,7 +132,7 @@ class I2cMaster():
             self.write_i2c_data(pin + 160)
             self._log.debug('set pin {:d} as LOW.'.format(pin))
         _received_data  = self.read_i2c_data()
-        self._log.debug('received response on pin {:d} of {:>5.2f}.'.format(pin, _received_data))
+        self._log.debug('received response on pin {:d} of {:08b}.'.format(pin, _received_data))
         return _received_data
 
 
@@ -185,11 +190,14 @@ class I2cMaster():
         self._log.debug('configuring pin {:d} for ANALOG_INPUT...'.format(pin))
         self.write_i2c_data(pin + 96)
         _received_data = self.read_i2c_data()
+        print(Fore.GREEN + 'RX: ' + Fore.MAGENTA + Style.BRIGHT + '_received_data: {}'.format(_received_data) + Style.RESET_ALL)
         if pin == _received_data:
             self._log.info('configured pin {:d} for ANALOG_INPUT'.format(pin))
         else:
             _err_msg = self.get_error_message(_received_data)
 #           self._log.error('failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
+            print(Fore.MAGENTA + Style.BRIGHT + 'failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
+  
             raise Exception('failed to configure pin {:d} for ANALOG_INPUT; response: {}'.format(pin, _err_msg))
 
 
@@ -224,9 +232,9 @@ class I2cMaster():
             250: "250: PIN_UNASSIGNED",         # configuration error
             251: "251: PIN_ASSIGNED_AS_OUTPUT", # configuration error
             252: "252: PIN_ASSIGNED_AS_INPUT",  # configuration error
-            253: "253: TOO_MUCH_DATA",          # returned on communications error
+            253: "253: SYNCHRONISATION_ERROR",  # returned on communications error
             254: "254: UNRECOGNISED_COMMAND",   # returned on communications error
-            255: "255: UNDEFINED_ERROR"         # returned on any other error
+            255: "255: NO_DATA"                 # considered as a 'null'
         }
         return switcher.get(n, "{}: UNRECOGNISED_ERROR".format(n))
 
@@ -251,7 +259,9 @@ class I2cMaster():
                 # write and then read response to/from Arduino...
                 _data_to_send = pin
                 self.write_i2c_data(_data_to_send)
+                time.sleep(0.2)
                 _received_data = self.read_i2c_data()
+                time.sleep(0.2)
                 callback(pin, pin_type, _received_data)
             time.sleep(loop_delay_sec)
 
@@ -348,7 +358,7 @@ class I2cMaster():
                 self._log.info('configuration check returned: ' + Fore.GREEN + 'true.')
                 return True
             else:
-                self._log.info('configuration check returned: ' + Fore.CYAN + '{:d}'.format(_received_data))
+                self._log.info('configuration check returned: ' + Fore.CYAN + '{}'.format(_received_data))
                 return False
         except Exception as e:
             _data_to_send = I2cMaster.CMD_RESET_CONFIGURATION
@@ -359,7 +369,7 @@ class I2cMaster():
                 self._log.info('configuration recovery returned: ' + Fore.GREEN + 'true.')
                 return True
             else:
-                self._log.error('error in is_configured check: {}'.format(e) + '; attempted recovery returned: {:d}'.format(_received_data))
+                self._log.error('error in is_configured check: {}'.format(e) + '; attempted recovery returned: {}'.format(_received_data))
             return False
 
 
@@ -402,10 +412,10 @@ class I2cMaster():
                 _data_to_send = _data[i]
                 self.write_i2c_data(_data_to_send)
                 _received_data = self.read_i2c_data()
-                if _data_to_send != _received_data:
-                    self._log.error('echo failed:   {} != {}'.format(_data_to_send, _received_data))
-                else:
+                if _data_to_send == _received_data:
                     self._log.info('echo succeeded: {} == {}'.format(_data_to_send, _received_data))
+                else:
+                    self._log.error('echo failed:   {} != {}'.format(_data_to_send, _received_data))
 
 #           self._pi.i2c_close()
             self._log.info('echo test complete.')

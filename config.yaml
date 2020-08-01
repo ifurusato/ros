@@ -112,7 +112,7 @@ ros:
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
     front_sensor:
-        loop_delay_sec: 0.05                     # the loop delay for the integrated front sensor
+        loop_delay_sec: 0.01                     # the loop delay for the integrated front sensor
         # the analog sensor value used as event trigger thresholds:
         port_side_trigger_distance: 70.0         # port side analog IR sensor
         port_trigger_distance:      90.0         # port analog IR sensor
@@ -123,12 +123,12 @@ ros:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel
         assignments:                             # pin assignments: a pin number followed by:
-            0:  'AIN'                            # 'DIN' (digital input); 'DNP' (digital input, pullup); 'AIN' (analog input); or 'OUT' (output)
+#           0:  'AIN'                            # 'DIN' (digital input); 'DNP' (digital input, pullup); 'AIN' (analog input); or 'OUT' (output)
             1:  'AIN'
             2:  'AIN'
             3:  'AIN'
             4:  'AIN'
-#           5:  'AIN'
+            5:  'AIN'
 #           7:  'OUT'
             9:  'DNP'
             10: 'DNP'

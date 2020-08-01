@@ -2,6 +2,9 @@
 
 import sys, time, colorsys, threading
 from enum import Enum
+from colorama import init, Fore, Style
+init()
+
 
 try:
     import numpy
@@ -157,29 +160,31 @@ class RgbMatrix(Feature):
         global enabled
         self._log.info('starting sworl...')
 
-        target = Color.LIGHT_BLUE
-        self.set_color(target)
-
-#       for r in numpy.arange(0.0, target.red):
-#           for g in numpy.arange(0.0, target.green):
-#               for b in numpy.arange(0.0, target.blue):
-#                   rgbmatrix5x5.set_all(r, g, b)
-#                   rgbmatrix5x5.show()
-#                   time.sleep(0.01)
-#           if not enabled:
-#               break
-
-#       for r in numpy.arange(target.red, 0.0, -1.0):
-#           for g in numpy.arange(target.green, 0.0, -1.0):
-#               for b in numpy.arange(target.blue, 0.0, -1.0):
-#                   rgbmatrix5x5.set_all(r, g, b)
-#                   rgbmatrix5x5.show()
-#                   time.sleep(0.01)
-#           if not enabled:
-#               break
-
-        self._clear(rgbmatrix5x5)
-        self._log.info('sworl ended.')
+        try:
+            for r in range(0, 10, 1):
+                rgbmatrix5x5.set_all(r, 0, 0)
+                rgbmatrix5x5.show()
+                time.sleep(0.003)
+            for i in range(0, 5):
+                for r in range(10, 250, 10):
+                    _blue = r - 128 if r > 128 else 0 
+                    rgbmatrix5x5.set_all(r, _blue, 0)
+                    rgbmatrix5x5.show()
+                    time.sleep(0.01)
+                if not enabled:
+                    break;
+                for r in range(250, 10, -10):
+                    _blue = r - 128 if r > 128 else 0 
+                    rgbmatrix5x5.set_all(r, _blue, 0)
+                    rgbmatrix5x5.show()
+                    time.sleep(0.01)
+                if not enabled:
+                    break;
+            self._log.info('sworl ended.')
+        except KeyboardInterrupt:
+            self._log.info('sworl interrupted.')
+        finally:
+            self.set_color(Color.BLACK)
 
 
     # ..........................................................................
@@ -350,6 +355,7 @@ class RgbMatrix(Feature):
         if self._closing:
             self._log.warning('already closing.')
             return
+        self.set_color(Color.BLACK)
         self._closing = True
         self.disable()
         self._closed = True
