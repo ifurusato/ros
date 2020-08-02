@@ -15,7 +15,7 @@
 #
 
 from lib.logger import Level
-from lib.i2c_master import I2cMaster
+from lib.i2c_ifs import I2cMaster
 from lib.config_loader import ConfigLoader
 
 # ..............................................................................
@@ -28,15 +28,13 @@ def main():
         filename = 'config.yaml'
         _config = _loader.configure(filename)
 
+        _loop_delay_sec = 0.7
         _loop_count = 10000
         _master = I2cMaster(_config, Level.INFO)
 
-        if _master is not None:
-
-            # set it to some very large number if you want it to go on for a long time...
-#           _master.test_echo() # see documentation for hardware configuration
-            _master.test_configuration(_loop_count) # see documentation for hardware configuration
-
+        _master.enable()
+        if not _master.in_loop():
+            _master.start_front_sensor_loop(_loop_delay_sec, self._callback_front)
         else:
             raise Exception('unable to establish contact with Arduino on address 0x{:02X}'.format(_device_id))
 

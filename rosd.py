@@ -27,6 +27,7 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 
 from lib.logger import Level, Logger
+from lib.config_loader import ConfigLoader
 from ros import ROS
 
 # ..............................................................................
@@ -39,15 +40,20 @@ class RosDaemon():
     '''
         Monitors a toggle switch, mirroring its state on an LED.
 
-        This state is to start or halt a ROS thread.
+        This state is used to enable or disable the ROS. This replaces rather
+        than reuses the Status class (as a reliable simplification).
     '''
-    def __init__(self, gpio, level):
+    def __init__(self, config, gpio, level):
         self._log = Logger("rosd", level)
         self._gpio = gpio
         self._gpio.setmode(GPIO.BCM)
         self._gpio.setwarnings(False)
-        self._led_pin = 27
-        self._switch_pin = 14
+        if config is None:
+            raise ValueError('no configuration provided.')
+        self._log.info('configuration provided.')
+        self._config = config['rosd']
+        self._switch_pin = self._config.get('switch_pin') # default 14
+        self._led_pin    = self._config.get('led_pin')    # default 27
         self._log.info('initialising with switch on pin {} and LED on pin {}.'.format(self._switch_pin, self._led_pin))
         self._gpio.setup(self._switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self._gpio.setup(self._led_pin, GPIO.OUT, initial=GPIO.LOW)
@@ -123,10 +129,15 @@ _daemon = None
 
 def main():
     try:
-        _daemon = RosDaemon(GPIO, Level.INFO)
+        _loader = ConfigLoader(Level.INFO)
+        filename = 'config.yaml'
+        _config = _loader.configure(filename)
+
+        _daemon = RosDaemon(_config, GPIO, Level.INFO)
         while True:
             _daemon.read_state()
             time.sleep(0.2)
+
     except Exception:
         print('error starting ros daemon: {}'.format(traceback.format_exc()))
     finally:

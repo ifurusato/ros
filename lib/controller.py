@@ -28,12 +28,12 @@ class Controller():
         Responds to Events.
     '''
 #   def __init__(self, level, config, switch, infrared_trio, motors, rgbmatrix, lidar, callback_shutdown):
-    def __init__(self, config, switch, ifs, motors, callback_shutdown, level):
+    def __init__(self, config, ifs, motors, callback_shutdown, level):
         super().__init__()
         self._log = Logger('controller', level)
         self._config = config
         self._enable_self_shutdown = self._config['ros'].get('enable_self_shutdown')
-        self._switch = switch
+#       self._switch = switch
         self._ifs = ifs
         self._motors = motors
         self._callback_shutdown = callback_shutdown
@@ -49,14 +49,14 @@ class Controller():
             self._log.info('standby.')
 #           self._status.blink(True)
             self._motors.disable()
-            self._switch.off()
+#           self._switch.off()
             self._ifs.disable()
             self._standby = True
         else:
             self._log.info('active.')
 #           self._status.blink(False)
             self._motors.enable()
-            self._switch.on()
+#           self._switch.on()
             self._ifs.enable()
 #           self._status.enable()
             self._standby = False
@@ -133,7 +133,7 @@ class Controller():
             self._log.info('event: standby.')
             # disable motors until button press
             self._motors.disable()
-            self._switch.off()
+#           self._switch.off()
             self._standby = True
 
 

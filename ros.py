@@ -28,15 +28,12 @@ from lib.abstract_task import AbstractTask
 from lib.fsm import FiniteStateMachine
 from lib.queue import MessageQueue
 from lib.config_loader import ConfigLoader
-from lib.player import Player
 from lib.configurer import Configurer
-
-# TODO move to feature importer
-from lib.lidar import Lidar
-
 from lib.arbitrator import Arbitrator
 from lib.controller import Controller
 
+#from lib.player import Player
+#from lib.lidar import Lidar
 #from lib.rgbmatrix import RgbMatrix
 
 # GPIO Setup .....................................
@@ -49,7 +46,7 @@ led_1_path = '/sys/class/leds/led1/brightness'
 _level = Level.INFO
 
 # import RESTful Flask Service
-from flask_wrapper import FlaskWrapperService
+#from flask_wrapper import FlaskWrapperService
 
 # ==============================================================================
 
@@ -89,11 +86,11 @@ class ROS(AbstractTask):
         self._active        = False
         self._closing       = False
         self._disable_leds  = False
-        self._switch        = None
+#       self._switch        = None
         self._motors        = None
         self._arbitrator    = None
         self._controller    = None
-        self._flask_wrapper = None
+#       self._flask_wrapper = None
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
@@ -203,12 +200,12 @@ class ROS(AbstractTask):
             self._log.info('enabling feature {}...'.format(feature.name()))
             feature.enable()
 
-        __enable_player = self._config['ros'].get('enable_player')
-        if __enable_player:
-            self._log.info('configuring sound player...')
-            self._player = Player(Level.INFO)
-        else:
-            self._player = None
+#       __enable_player = self._config['ros'].get('enable_player')
+#       if __enable_player:
+#           self._log.info('configuring sound player...')
+#           self._player = Player(Level.INFO)
+#       else:
+#           self._player = None
 
 #       i2c_slave_address = config['ros'].get('i2c_master').get('device_id') # i2c hex address of I2C slave device
 
@@ -228,7 +225,7 @@ class ROS(AbstractTask):
         # configure the Controller and Arbitrator
         self._log.info('configuring controller...')
 #       self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._lidar, self._callback_shutdown)
-        self._controller = Controller(self._config, self._switch, self._ifs, self._motors, self._callback_shutdown, Level.INFO)
+        self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, Level.INFO)
 
         self._log.info('configuring arbitrator...')
         _arbitrator_level = Level.WARN
@@ -289,22 +286,22 @@ class ROS(AbstractTask):
         # end main ...................................
 
 
-    # ..........................................................................
-    def configure_web_server(self):
-        '''
-            Start flask web server.
-        '''
-        try:
-            self._mutex.acquire()
-            self._log.info('starting web service...')
-            self._flask_wrapper = FlaskWrapperService(self._queue, self._controller)
-            self._flask_wrapper.start()
-        except KeyboardInterrupt:
-            self._log.error('caught Ctrl-C interrupt.')
-        finally:
-            self._mutex.release()
-            time.sleep(1)
-            self._log.info(Fore.BLUE + 'web service started.' + Style.RESET_ALL)
+#   # ..........................................................................
+#   def configure_web_server(self):
+#       '''
+#           Start flask web server.
+#       '''
+#       try:
+#           self._mutex.acquire()
+#           self._log.info('starting web service...')
+#           self._flask_wrapper = FlaskWrapperService(self._queue, self._controller)
+#           self._flask_wrapper.start()
+#       except KeyboardInterrupt:
+#           self._log.error('caught Ctrl-C interrupt.')
+#       finally:
+#           self._mutex.release()
+#           time.sleep(1)
+#           self._log.info(Fore.BLUE + 'web service started.' + Style.RESET_ALL)
 
 
     # ..........................................................................
@@ -347,8 +344,8 @@ class ROS(AbstractTask):
             self._active = False
             self._closing = True
             self._log.info(Style.BRIGHT + 'closing...')
-            if self._flask_wrapper is not None:
-                self._flask_wrapper.close()
+#           if self._flask_wrapper is not None:
+#               self._flask_wrapper.close()
             if self._arbitrator:
                 self._arbitrator.disable()
             super().close()
@@ -365,8 +362,8 @@ class ROS(AbstractTask):
 
 #           self._info.close()
 #           self._rgbmatrix.close()
-            if self._switch:
-                self._switch.close()
+#           if self._switch:
+#               self._switch.close()
 #           super(AbstractTask, self).close()
             if self._arbitrator:
                 self._arbitrator.close()

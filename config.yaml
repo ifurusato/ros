@@ -13,6 +13,10 @@ pi:
     led_1_path:   '/sys/class/leds/led1/brightness'
     sudo_name:    'sudo'
 
+rosd:
+    switch_pin: 14                               # the GPIO pin connected to the 'enable' toggle switch
+    led_pin: 27                                  # the GPIO pin connected to the status LED
+
 ros:
     wait_for_button_press: false                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: false                  # enables the robot to shut itself down (not good during demos)
@@ -112,7 +116,7 @@ ros:
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
     front_sensor:
-        loop_delay_sec: 0.01                     # the loop delay for the integrated front sensor
+        loop_delay_sec: 0.5                     # the loop delay for the integrated front sensor
         # the analog sensor value used as event trigger thresholds:
         port_side_trigger_distance: 70.0         # port side analog IR sensor
         port_trigger_distance:      90.0         # port analog IR sensor

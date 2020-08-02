@@ -4,9 +4,11 @@
 #
 # After copying the file you'll need to reload all daemons:
 #
-#  % sudo systemctl daemon-reload
+#   % sudo systemctl daemon-reload
 #
-# See: https://medium.com/@Tankado95/how-to-run-a-python-code-as-a-service-using-systemctl-4f6ad1835bf2
+# and to enable its use upon each startup:
+#
+#   % sudo systemctl enable rosd
 #
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
 # the Robot Operating System project and is released under the "Apache Licence, 
@@ -16,6 +18,8 @@
 # created:  2020-08-01
 # modified: 2020-08-01
 #
+# See: https://medium.com/@Tankado95/how-to-run-a-python-code-as-a-service-using-systemctl-4f6ad1835bf2
+# See: https://www.freedesktop.org/software/systemd/man/systemd.service.html
 # ..............................................................................
 
 [Unit]
@@ -25,9 +29,10 @@ After=multi-user.target
 [Service]
 WorkingDirectory=/home/pi/ros
 User=pi
-Type=idle
-ExecStart=/usr/bin/python3 /home/pi/ros/ros.d/rosd.py &> /dev/null
-Restart=always
+Type=simple
+ExecStart=/usr/bin/python3 /home/pi/ros/rosd.py &> /dev/null
+Restart=on-success
+#PidFile=/home/pi/ros/.rosd.pid
 
 [Install]
 WantedBy=multi-user.target

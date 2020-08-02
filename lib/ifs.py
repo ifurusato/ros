@@ -14,7 +14,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
-from lib.i2c_master import I2cMaster
+from lib.i2c_ifs import I2cMaster
 from lib.event import Event
 from lib.message import Message
 
@@ -35,7 +35,6 @@ class IntegratedFrontSensor():
     
            _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
            _ifs.enable()
-
     '''
 
     # ..........................................................................
@@ -63,44 +62,45 @@ class IntegratedFrontSensor():
 
 
     # ..........................................................................
-    def _callback_front(self, pin, pin_type, value):
+    def _callback(self, pin, pin_type, value):
         '''
             This is the callback method from the I2C Master, whose events are
             being returned from the Arduino.
 
-            The pin designations for each sensor here mirror those in the YAML 
-            configuration. The default pins A1-A5 are defined as IR analog
+            The pin designations for each sensor are hard-coded to match the 
+            robot's hardware as well as the Arduino. There's little point in 
+            configuring this in the YAML since it's hard-coded in both hardware
+            and software. The default pins A1-A5 are defined as IR analog 
             sensors, 9-11 are digital bumper sensors.
         '''
-        self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
         if not self._enabled:
             return
+        self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
         _message = None
         if pin == 1:
-            if value > self._stbd_side_trigger_distance:
-                _message = Message(Event.INFRARED_STBD_SIDE)
+            if value > self._port_side_trigger_distance:
+                _message = Message(Event.INFRARED_PORT_SIDE)
         elif pin == 2:
-            if value > self._stbd_trigger_distance:
-                _message = Message(Event.INFRARED_STBD)
+            if value > self._port_trigger_distance:
+                _message = Message(Event.INFRARED_PORT)
         elif pin == 3:
             if value > self._center_trigger_distance:
                 _message = Message(Event.INFRARED_CENTER)
         elif pin == 4:
-            if value > self._port_trigger_distance:
-                _message = Message(Event.INFRARED_PORT)
+            if value > self._stbd_trigger_distance:
+                _message = Message(Event.INFRARED_STBD)
         elif pin == 5:
-            if value > self._port_side_trigger_distance:
-                _message = Message(Event.INFRARED_PORT_SIDE)
+            if value > self._stbd_side_trigger_distance:
+                _message = Message(Event.INFRARED_STBD_SIDE)
         elif pin == 9:
             if value == 1:
-                _message = Message(Event.BUMPER_STBD)
+                _message = Message(Event.BUMPER_PORT)
         elif pin == 10:
             if value == 1:
                 _message = Message(Event.BUMPER_CENTER)
         elif pin == 11:
             if value == 1:
-                _message = Message(Event.BUMPER_PORT)
-
+                _message = Message(Event.BUMPER_STBD)
         if _message is not None:
             _message.set_value(value)
             self._queue.add(_message)
@@ -111,11 +111,9 @@ class IntegratedFrontSensor():
         if not self._closed:
             self._log.info('enabled integrated front sensor.')
             self._enabled = True
-            assignments = self._master.configure_front_sensor_loop()
-            if assignments is not None:
-                self._master.enable()
-                if not self._master.in_loop():
-                    self._master.start_front_sensor_loop(assignments, self._loop_delay_sec, self._callback_front)
+            self._master.enable()
+            if not self._master.in_loop():
+                self._master.start_front_sensor_loop(self._loop_delay_sec, self._callback)
             else:
                 self._log.error('cannot start integrated front sensor.')
         else:

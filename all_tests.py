@@ -14,7 +14,6 @@ init()
 
 from lib.devnull import DevNull
 from lib.logger import Level
-from lib.player import Sound, Player
 
 # exception handler ............................................................
 def signal_handler(signal, frame):
@@ -32,30 +31,21 @@ def main():
     try:
         print('all_tests         :' + Fore.CYAN + ' INFO  : executing tests...' + Style.RESET_ALL)
 
-        _player = Player(Level.INFO)
 
         subprocess.call("ads_test.py", shell=True)
-        _player.play(Sound.BLIP)
 
         subprocess.call("batterycheck_test.py", shell=True)
-        _player.play(Sound.BLIP)
 
         subprocess.call("rgbmatrix_test.py", shell=True)
-        _player.play(Sound.BLIP)
 
         subprocess.call("button_test.py", shell=True)
-        _player.play(Sound.ALARM)
 
         subprocess.call("bumpers_test.py", shell=True)
-        _player.play(Sound.ALARM)
 
         subprocess.call("infrareds_test.py", shell=True)
-        _player.play(Sound.ALARM)
 
         subprocess.call("scanner_test.py", shell=True)
-        _player.play(Sound.ALARM)
 
-#       _player.play(Sound.ALARM)
 #       subprocess.call("motors_test.py", shell=True)
 
         time.sleep(5.0)
