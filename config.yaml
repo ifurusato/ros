@@ -71,18 +71,18 @@ ros:
         toggle:      True                        # toggle or momentary button
     status:
         led_pin:       27                        # pin connected to status LED
-    bumper:
-        port_pin:      21                        # pin connected to port bumper
-        center_pin:    19                        # pin connected to center bumper
-        starboard_pin: 13                        # pin connected to starboard bumper
-        upper_pin:      7                        # pin connected to upper bumper
-    infrared:
-        port_pin:           6                    # pin connected to port infrared
-        center_pin:         0                    # pin connected to center infrared (use zero if using LR IR)
-        stbd_pin:          16                    # pin connected to starboard infrared
-        port_side_pin:      5                    # pin connected to port side infrared
-        stbd_side_pin:     12                    # pin connected to starboard side infrared
-        use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
+#   bumper:
+#       port_pin:      21                        # pin connected to port bumper
+#       center_pin:    19                        # pin connected to center bumper
+#       starboard_pin: 13                        # pin connected to starboard bumper
+#       upper_pin:      7                        # pin connected to upper bumper
+#   infrared:
+#       port_pin:           6                    # pin connected to port infrared
+#       center_pin:         0                    # pin connected to center infrared (use zero if using LR IR)
+#       stbd_pin:          16                    # pin connected to starboard infrared
+#       port_side_pin:      5                    # pin connected to port side infrared
+#       stbd_side_pin:     12                    # pin connected to starboard side infrared
+#       use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22
@@ -115,8 +115,10 @@ ros:
         default_filename_prefix: 'motors'        # output directory name
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
-    front_sensor:
-        loop_delay_sec: 0.5                     # the loop delay for the integrated front sensor
+    integrated_front_sensor:
+        device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        channel:       1                         # SMBus channel
+        loop_delay_sec: 0.05                     # the loop delay for the integrated front sensor
         # the analog sensor value used as event trigger thresholds:
         port_side_trigger_distance: 70.0         # port side analog IR sensor
         port_trigger_distance:      90.0         # port analog IR sensor

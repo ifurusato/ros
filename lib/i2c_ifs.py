@@ -42,9 +42,6 @@ class I2cMaster():
           level:      the log level, e.g., Level.INFO
     '''
 
-    CMD_RESET_CONFIGURATION  = 234
-    CMD_RETURN_IS_CONFIGURED = 235
-
     def __init__(self, config, level):
         super().__init__()
         if config is None:

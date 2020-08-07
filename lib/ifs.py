@@ -9,14 +9,21 @@
 # created:  2020-01-18
 # modified: 2020-02-06
 
-import time, sys, threading
+import sys, time, threading, itertools
 from colorama import init, Fore, Style
 init()
 
+try:
+    from smbus2 import SMBus
+except Exception:
+    sys.exit("This script requires the smbus2 module.\nInstall with: sudo pip3 install smbus2")
+
+from lib.pintype import PinType
 from lib.logger import Logger, Level
-from lib.i2c_ifs import I2cMaster
 from lib.event import Event
 from lib.message import Message
+
+CLEAR_SCREEN = '\n'  # no clear screen
 
 # ..............................................................................
 class IntegratedFrontSensor():
@@ -41,9 +48,11 @@ class IntegratedFrontSensor():
     def __init__(self, config, queue, level):
         if config is None:
             raise ValueError('no configuration provided.')
-        self._config = config['ros'].get('front_sensor')
+        self._config = config['ros'].get('integrated_front_sensor')
         self._queue = queue
         self._log = Logger("front-sensor", level)
+        self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        self._channel                    = self._config.get('channel')
         self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
         self._port_trigger_distance      = self._config.get('port_trigger_distance')
         self._center_trigger_distance    = self._config.get('center_trigger_distance')
@@ -55,9 +64,10 @@ class IntegratedFrontSensor():
                 + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance ))
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
-        self._master = I2cMaster(config, Level.INFO)
+        self._counter = itertools.count()
+        self._thread  = None
         self._enabled = False
-        self._closed = False
+        self._closed  = False
         self._log.info('ready.')
 
 
@@ -111,9 +121,8 @@ class IntegratedFrontSensor():
         if not self._closed:
             self._log.info('enabled integrated front sensor.')
             self._enabled = True
-            self._master.enable()
-            if not self._master.in_loop():
-                self._master.start_front_sensor_loop(self._loop_delay_sec, self._callback)
+            if not self.in_loop():
+                self.start_front_sensor_loop()
             else:
                 self._log.error('cannot start integrated front sensor.')
         else:
@@ -121,10 +130,134 @@ class IntegratedFrontSensor():
 
 
     # ..........................................................................
+    def in_loop(self):
+        '''
+            Returns true if the main loop is active (the thread is alive).
+        '''
+        return self._thread != None and self._thread.is_alive()
+
+
+    # ..........................................................................
+    def _front_sensor_loop(self):
+        self._log.info('starting event loop...\n')
+
+        while self._enabled:
+            _count = next(self._counter)
+            print(CLEAR_SCREEN)
+
+            # pin 1: analog infrared sensor ................
+            _received_data = self.get_input_from_pin(1)
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 1) + ( Fore.RED if ( _received_data > 100.0 ) else Fore.YELLOW ) \
+                    + Style.BRIGHT + '{:d}'.format(_received_data) + Style.DIM + '\t(analog value 0-255)')
+            self._callback(1, PinType.ANALOG_INPUT, _received_data)
+
+            # pin 2: analog infrared sensor ................
+            _received_data = self.get_input_from_pin(2)
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 2) + ( Fore.RED if ( _received_data > 100.0 ) else Fore.YELLOW ) \
+                    + Style.BRIGHT + '{:d}'.format(_received_data) + Style.DIM + '\t(analog value 0-255)')
+            self._callback(2, PinType.ANALOG_INPUT, _received_data)
+
+            # pin 3: analog infrared sensor ................
+            _received_data = self.get_input_from_pin(3)
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 3) + ( Fore.RED if ( _received_data > 100.0 ) else Fore.YELLOW ) \
+                    + Style.BRIGHT + '{:d}'.format(_received_data) + Style.DIM + '\t(analog value 0-255)')
+            self._callback(3, PinType.ANALOG_INPUT, _received_data)
+
+            # pin 4: analog infrared sensor ................
+            _received_data = self.get_input_from_pin(4)
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 4) + ( Fore.RED if ( _received_data > 100.0 ) else Fore.YELLOW ) \
+                    + Style.BRIGHT + '{:d}'.format(_received_data) + Style.DIM + '\t(analog value 0-255)')
+            self._callback(4, PinType.ANALOG_INPUT, _received_data)
+
+            # pin 5: analog infrared sensor ................
+            _received_data = self.get_input_from_pin(5)
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 5) + ( Fore.RED if ( _received_data > 100.0 ) else Fore.YELLOW ) \
+                    + Style.BRIGHT + '{:d}'.format(_received_data) + Style.DIM + '\t(analog value 0-255)')
+            self._callback(5, PinType.ANALOG_INPUT, _received_data)
+
+            # pin 9: digital bumper sensor .................
+            _received_data = self.get_input_from_pin(9)
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 9) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_received_data) \
+                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._callback(9, PinType.DIGITAL_INPUT_PULLUP, _received_data)
+
+            # pin 10: digital bumper sensor ................
+            _received_data = self.get_input_from_pin(10)
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 10) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_received_data) \
+                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._callback(10, PinType.DIGITAL_INPUT_PULLUP, _received_data)
+
+            # pin 11: digital bumper sensor ................
+            _received_data = self.get_input_from_pin(11)
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 11) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_received_data) \
+                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._callback(11, PinType.DIGITAL_INPUT_PULLUP, _received_data)
+
+            time.sleep(self._loop_delay_sec)
+
+        # we never get here if using 'while True:'
+        self._log.info('exited event loop.')
+
+
+    # ..........................................................................
+    def start_front_sensor_loop(self):
+        '''
+            This is the method to call to actually start the loop.
+        '''
+        if not self._enabled:
+            raise Exception('attempt to start front sensor event loop while disabled.')
+        elif not self._closed:
+            if self._thread is None:
+                enabled = True
+                self._thread = threading.Thread(target=IntegratedFrontSensor._front_sensor_loop, args=[self])
+                self._thread.start()
+                self._log.info('started.')
+            else:
+                self._log.warning('cannot enable: process already running.')
+        else:
+            self._log.warning('cannot enable: already closed.')
+
+
+    # ..............................................................................
+    def read_i2c_data(self):
+        '''
+            Read a byte from the I²C device at the specified handle, returning the value.
+
+            ## Examples:
+            int.from_bytes(b'\x00\x01', "big")        # 1
+            int.from_bytes(b'\x00\x01', "little")     # 256
+        '''
+        with SMBus(self._channel) as bus:
+            _byte = bus.read_byte_data(self._device_id, 0)
+            time.sleep(0.01)
+        return _byte
+
+
+    # ..........................................................................
+    def write_i2c_data(self, data):
+        '''
+            Write a byte to the I²C device at the specified handle.
+        '''
+        with SMBus(self._channel) as bus:
+            bus.write_byte(self._device_id, data)
+            time.sleep(0.01)
+
+
+    # ..........................................................................
+    def get_input_from_pin(self, pin):
+        '''
+            Sends a message to the pin, returning the result as a byte.
+        '''
+        self.write_i2c_data(pin)
+        _received_data  = self.read_i2c_data()
+        self._log.debug('received response from pin {:d} of {:08b}.'.format(pin, _received_data))
+        return _received_data
+
+
+    # ..........................................................................
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
-        self._master.disable()
 
 
     # ..........................................................................
@@ -132,9 +265,21 @@ class IntegratedFrontSensor():
         '''
             Permanently close and disable the integrated front sensor.
         '''
-        self._closed = True
-        self._enabled = False
-        self._log.info('closed.')
+        if not self._closed:
+            self._log.info('closing ifs...')
+            try:
+                self._enabled = False
+                if self._thread != None:
+                    self._thread.join(timeout=1.0)
+                    self._log.debug('front sensor loop thread joined.')
+                    self._thread = None
+                self._closed = True
+#               self._pi.i2c_close(self._handle) # close device
+                self._log.info('closed.')
+            except Exception as e:
+                self._log.error('error closing: {}'.format(e))
+        else:
+            self._log.debug('already closed.')
 
 
 #EOF

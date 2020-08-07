@@ -159,6 +159,11 @@ class ROS(AbstractTask):
 
 
     # ..........................................................................
+    def get_arbitrator(self):
+        return self._arbitrator
+
+
+    # ..........................................................................
     def add_feature(self, feature):
         '''
             Add the feature to the list of features. Features must have 

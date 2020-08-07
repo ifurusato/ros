@@ -25,6 +25,8 @@ except Exception:
 import os, signal, sys, time, threading, traceback
 from datetime import datetime
 import RPi.GPIO as GPIO
+from colorama import init, Fore, Style
+init()
 
 from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader
@@ -45,6 +47,7 @@ class RosDaemon():
     '''
     def __init__(self, config, gpio, level):
         self._log = Logger("rosd", level)
+        self._log.warning('INIT ROSD...')
         self._gpio = gpio
         self._gpio.setmode(GPIO.BCM)
         self._gpio.setwarnings(False)
@@ -58,7 +61,7 @@ class RosDaemon():
         self._gpio.setup(self._switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self._gpio.setup(self._led_pin, GPIO.OUT, initial=GPIO.LOW)
         self._old_state = False
-        self._thread = None
+        self._ros = None
         self._thread_timeout_delay_sec = 1
         _rosd_mask = os.umask(0)              # I'm doing this weird three lines trick
         os.umask(_rosd_mask)                  # due to the behaviour of os.umask.
@@ -67,6 +70,7 @@ class RosDaemon():
         self._log.info('uid:  {}'.format(os.getuid()))
         self._log.info('gid:  {}'.format(os.getgid()))
         self._log.info('rosd ready.')
+        self._log.warning('ROSD READY.')
 
 
     # ..........................................................................
@@ -96,29 +100,41 @@ class RosDaemon():
     # ..........................................................................
     def enable(self):
         self._log.info('ros state enabled at: {}           +++++++++++++++++ '.format(self._get_timestamp()))
-        if self._thread is None:
-            self._log.info('STARTING ROS           +++++++++++++++++++++++++++++++++++++ ')
-            self._thread = ROS()
-            self._thread.start()
+        if self._ros is None:
+            self._log.info(Fore.RED + 'STARTING ROS           +++++++++++++++++++++++++++++++++++++ ')
+            self._ros = ROS()
+            self._ros.start()
             self._log.info('ros started.')
         else:
             self._log.info('cannot start ros: thread already exists.')
+            _arbitrator = self._ros.get_arbitrator()
+            _arbitrator.set_suppressed(False)
         self._gpio.output(self._led_pin, True)
 
 
     # ..........................................................................
     def disable(self):
         self._log.info('ros state disabled at: {}          ----------------- '.format(self._get_timestamp()))
-        if self._thread is not None:
-            self._log.info('HALTING ROS        --------------------------------------- ')
-            self._thread.join(timeout=self._thread_timeout_delay_sec)
-            self._log.info('ros thread joined.')
-            self._thread = None
+        if self._ros is not None:
+            self._log.info('suppressing ros arbitrator... ')
+            _arbitrator = self._ros.get_arbitrator()
+            _arbitrator.set_suppressed(True)
+            self._log.info('ros arbitrator suppressed.')
+            self._ros = None
         self._gpio.output(self._led_pin,False)
+        # TODO make it flash instead
+
 
     # ..........................................................................
     def close(self):
         self._log.info('closing rosd...')
+        if self._ros is not None:
+            self._log.info('HALTING ROS        --------------------------------------- ')
+            self._ros.join(timeout=self._thread_timeout_delay_sec)
+            self._log.info('ros thread joined.')
+            self._ros = None
+        else:
+            self._log.warning('ros thread was null.')
         self._gpio.output(self._led_pin,False)
         self._log.info('rosd closed.')
 
@@ -127,7 +143,7 @@ class RosDaemon():
 
 _daemon = None
 
-def main():
+def main(argv):
     try:
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
@@ -146,7 +162,7 @@ def main():
         print('rosd complete.')
 
 # ..............................................................................
-
+'''
 with daemon.DaemonContext(
     stdout=sys.stdout,
     stderr=sys.stderr,
@@ -158,6 +174,12 @@ with daemon.DaemonContext(
         signal.SIGTERM: shutdown,
         signal.SIGTSTP: shutdown
     }) as context:
-    main()
+    main(sys.argv[1:])
+#   main()
+'''
+
+# call main ....................................................................
+if __name__== "__main__":
+    main(sys.argv[1:])
 
 #EOF

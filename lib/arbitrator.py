@@ -51,9 +51,16 @@ class Arbitrator(threading.Thread):
         self._is_enabled = True
         self._closing    = False
         self._closed     = False
+        self._suppressed = False
         self._idle_loop_count = 0
         self._counter = itertools.count()
         self._log.debug('ready.')
+
+
+    # ..........................................................................
+    def set_suppressed(self, suppressed):
+        self._suppressed = suppressed
+        self._log.info('suppressed: {}'.format(suppressed))
 
 
     # ..........................................................................
@@ -74,46 +81,47 @@ class Arbitrator(threading.Thread):
         while self._is_enabled:
 #           with self._mutex:
             self._loop_count = next(self._counter)
-            # there are 604800 seconds in a week, 6 decimal places should do...
-            self._log.debug('loop {:06d} begins with queue of {} elements.'.format(self._loop_count, self._queue.size()))
-            next_messages = self._queue.next_group(5)
-            if len(next_messages) == 0:
-                self._log.debug('message queue was empty.'.format(len(next_messages)))
-            elif len(next_messages) == 1:
-                self._log.debug('obtained one message from queue...'.format(len(next_messages)))
+            if self._suppressed:
+                # if suppressed just clear the queue so events don't build up
+                self._queue.clear()
             else:
-                self._log.debug('obtained {} messages from queue...'.format(len(next_messages)))
-            first_message = True
-            for i in range(len(next_messages)):
-                next_message = next_messages[i]
-                if first_message:
-                    self._idle_loop_count = 0 # reset
-                    self.accept_highest_priority_message(next_message)
+                # there are 604800 seconds in a week, 6 decimal places should do...
+                self._log.debug('loop {:06d} begins with queue of {} elements.'.format(self._loop_count, self._queue.size()))
+                next_messages = self._queue.next_group(5)
+                if len(next_messages) == 0:
+                    self._log.debug('message queue was empty.'.format(len(next_messages)))
+                elif len(next_messages) == 1:
+                    self._log.debug('obtained one message from queue...'.format(len(next_messages)))
                 else:
-                    self._log.debug('{}: message #{:07d};\tpriority #{}: {}.'.format(i, \
-                            next_message.get_number(), next_message.get_priority(), next_message.get_description()))
-                first_message = False
-            # we don't care about the messages in the queue that weren't high enough priority
-            self._queue.clear()
-            _current_message = self._controller.get_current_message()
-            if _current_message is not None:
-                if _current_message.get_event() == Event.STANDBY:
-                    self._log.debug('{:06d} : current event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
-                    if ( self._loop_count % 10 ) == 0:
-                        self._log.info('{:06d} : standing by...'.format(self._loop_count))
-                else:
-                    self._log.info('{:06d} : event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
-            else: # no messages: we're idle.
-                self._idle_loop_count += 1
-                if self._idle_loop_count <= 500:
-                    if ( self._loop_count % 50 ) == 0:
-                        self._log.info('{:06d} : idle.'.format(self._loop_count))
-                else: # after being idle for a long time, dim the message
-                    if ( self._loop_count % 500 ) == 0:
-                        self._log.info(Style.DIM + '{:06d} : idle...'.format(self._loop_count))
-
-#           if not self._is_enabled:
-#               return
+                    self._log.debug('obtained {} messages from queue...'.format(len(next_messages)))
+                first_message = True
+                for i in range(len(next_messages)):
+                    next_message = next_messages[i]
+                    if first_message:
+                        self._idle_loop_count = 0 # reset
+                        self.accept_highest_priority_message(next_message)
+                    else:
+                        self._log.debug('{}: message #{:07d};\tpriority #{}: {}.'.format(i, \
+                                next_message.get_number(), next_message.get_priority(), next_message.get_description()))
+                    first_message = False
+                # we don't care about the messages in the queue that weren't high enough priority
+                self._queue.clear()
+                _current_message = self._controller.get_current_message()
+                if _current_message is not None:
+                    if _current_message.get_event() == Event.STANDBY:
+                        self._log.debug('{:06d} : current event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
+                        if ( self._loop_count % 10 ) == 0:
+                            self._log.info('{:06d} : standing by...'.format(self._loop_count))
+                    else:
+                        self._log.info('{:06d} : event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
+                else: # no messages: we're idle.
+                    self._idle_loop_count += 1
+                    if self._idle_loop_count <= 500:
+                        if ( self._loop_count % 50 ) == 0:
+                            self._log.info('{:06d} : idle.'.format(self._loop_count))
+                    else: # after being idle for a long time, dim the message
+                        if ( self._loop_count % 500 ) == 0:
+                            self._log.info(Style.DIM + '{:06d} : idle...'.format(self._loop_count))
             time.sleep(loop_delay_sec)
 
         self._log.info('loop end.')

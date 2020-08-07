@@ -75,6 +75,14 @@ class Configurer():
         '''
 
         # ............................................
+        ifs_available = ( 0x08 in self._addresses )
+        if ifs_available:
+            self._log.info(Fore.CYAN + Style.BRIGHT + '-- ItsyBitsy available at 0x08; configuring IntegratedFrontSensor.' + Style.RESET_ALL)
+            self._addresses.remove(0x08)
+            self.configure_ifs()
+       
+
+        # ............................................
         ht0740_available = ( 0x38 in self._addresses )
         if ht0740_available:
             self._log.debug(Fore.CYAN + Style.BRIGHT + '-- HT0740 Switch available at 0x38.' + Style.RESET_ALL)
@@ -218,7 +226,7 @@ class Configurer():
         '''
             Import dependencies and configure default features.
         '''
-        self._log.warning('configure default features...')
+        self._log.info('configure default features...')
         from lib.button import Button
         self._log.info('configuring button...')
         self._ros._button = Button(self._ros._config, self._ros.get_message_queue(), self._ros._mutex)
@@ -230,15 +238,11 @@ class Configurer():
 #       from lib.infrareds import Infrareds
 #       self._ros._infrareds = Infrareds(self._ros._config, self._ros.get_message_queue(), Level.INFO)
 
-        self._log.info('configuring integrated front sensors...')
-        from lib.ifs import IntegratedFrontSensor
-        self._ros._ifs = IntegratedFrontSensor(self._ros._config, self._ros._queue, Level.INFO)
-
 #       from lib.player import Sound, Player
 #       self._log.info('configuring player...')
 #       self._ros._player = Player(Level.INFO)
 
-        self._log.warning('default features ready.')
+        self._log.info('default features ready.')
 
 
     # ..........................................................................
@@ -246,7 +250,7 @@ class Configurer():
         '''
             Import the ThunderBorg library, then configure the Motors.
         '''
-        self._log.warning('configure thunderborg & motors...')
+        self._log.info('configure thunderborg & motors...')
         global pi
         try:
             self._log.info('importing ThunderBorg...')
@@ -311,8 +315,15 @@ class Configurer():
 
 
     # ..........................................................................
+    def configure_ifs(self):
+        self._log.info('configuring integrated front sensors...')
+        from lib.ifs import IntegratedFrontSensor
+        self._ros._ifs = IntegratedFrontSensor(self._ros._config, self._ros._queue, Level.INFO)
+
+
+    # ..........................................................................
     def configure_ht0740(self):
-        self._log.warning('configure ht0740...')
+        self._log.info('configure ht0740...')
         from lib.switch import Switch
         self._log.info('configuring switch...')
         self._ros._switch = Switch(Level.INFO)
@@ -327,7 +338,7 @@ class Configurer():
 
     # ..........................................................................
     def configure_battery_check(self):
-        self._log.warning('configure battery check...')
+        self._log.info('configure battery check...')
         from lib.batterycheck import BatteryCheck
         _battery_check = BatteryCheck(self._ros._config, self._ros.get_message_queue(), Level.INFO)
         self._ros.add_feature(_battery_check)
@@ -335,7 +346,7 @@ class Configurer():
 
     # ..........................................................................
     def configure_rgbmatrix(self):
-        self._log.warning('configure rgbmatrix...')
+        self._log.info('configure rgbmatrix...')
         from lib.rgbmatrix import RgbMatrix, DisplayType
         self._log.debug('configuring random blinky display...')
 #       self._ros._rgbmatrix = RgbMatrix(Level.INFO)
@@ -345,7 +356,7 @@ class Configurer():
 
     # ..........................................................................
     def configure_bno055(self):
-        self._log.warning('configure bno055...')
+        self._log.info('configure bno055...')
         from lib.bno055 import BNO055
         self._log.info('configuring BNO055 9DoF sensor...')
         self._ros._bno055 = BNO055(self._ros.get_message_queue(), Level.INFO)
