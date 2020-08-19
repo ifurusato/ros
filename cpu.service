@@ -1,0 +1,41 @@
+# This cpu service configuration file should be copied to:
+#
+#  /lib/systemd/system/
+#
+# After copying the file you'll need to reload all daemons:
+#
+#  % sudo systemctl daemon-reload
+#
+# and to enable its use upon each startup:
+#
+#  % sudo systemctl enable cpu
+#
+# You can then use it like service, e.g.,
+#
+#  % sudo systemctl status cpu
+#  % sudo systemctl start cpu
+#  % sudo systemctl stop cpu
+#
+# This requires use of the python-daemon library, which can be installed via:
+#
+#  % sudo pip3 install python-daemon
+#
+# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
+# the Robot Operating System project and is released under the "Apache Licence, 
+# Version 2.0". Please see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2020-08-01
+# modified: 2020-08-19
+#
+
+[Unit]
+Description=CPU Display
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python3 /home/pi/ros/cpu.py > /home/pi/log/cpu.log 2>&1
+
+[Install]
+WantedBy=multi-user.target
