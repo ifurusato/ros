@@ -260,7 +260,7 @@ class Video():
                     self._log.info('starting streaming server...')
                     address = ('', self._port)
                     server = StreamingServer(address, StreamingHandler, f_is_enabled)
-                    self._killer = lambda: Video.kill(camera, output_splitter)
+                    self._killer = lambda: self.close(camera, output_splitter)
                     server.serve_forever()
                 else: # keepalive
                     while f_is_enabled():
@@ -271,26 +271,8 @@ class Video():
                 self._log.error('error streaming video: {}'.format(traceback.format_exc()))
             finally:
                 self._log.info(Fore.RED + 'finally.')
-                Video.kill(camera, server, output_splitter)
+                self.close(camera, server, output_splitter)
         self._log.info('_start: complete.')
-
-    # ..........................................................................
-    @staticmethod
-    def kill(camera, output):
-        print(Fore.YELLOW + 'kill video...' + Style.RESET_ALL)
-        if camera:
-            if camera.recording:
-                camera.stop_recording()
-                print(Fore.YELLOW + 'camera stopped recording.' + Style.RESET_ALL)
-            if not camera.closed:
-                camera.close()
-                print(Fore.YELLOW + 'camera closed.' + Style.RESET_ALL)
-        if output:
-            output.flush()
-            print(Fore.YELLOW + 'output flushed.' + Style.RESET_ALL)
-            output.close()
-            print(Fore.YELLOW + 'output closed.' + Style.RESET_ALL)
-        print(Fore.YELLOW + 'video killed.' + Style.RESET_ALL)
 
     # ..........................................................................
     def _annotate(self, camera, f_is_enabled):
@@ -334,8 +316,7 @@ class Video():
             camera.annotate_foreground = Color.from_string('#ffdada')
             camera.annotate_background = Color.from_string('#440000')
             if self._ctrl_lights:
-                self._port_light.light()
-                self._stbd_light.light()
+                self.set_lights(True)
         else:
             self._log.debug('day mode.')
             camera.iso = 100
@@ -344,8 +325,17 @@ class Video():
             camera.annotate_foreground = Color.from_string('#111111')
             camera.annotate_background = Color.from_string('#ffffff')
             if self._ctrl_lights:
-                self._port_light.clear()
-                self._stbd_light.clear()
+                self.set_lights(False)
+
+    # ..........................................................................
+    def set_lights(self, on):
+        if on:
+            self._port_light.light()
+            self._stbd_light.light()
+        else:
+            self._port_light.clear()
+            self._stbd_light.clear()
+
 
     # ..........................................................................
     def is_enabled(self):
@@ -365,8 +355,8 @@ class Video():
         self._thread = threading.Thread(target=Video._start, args=[self, _output, lambda: self.is_enabled(), ])
         self._thread.setDaemon(True)
         self._thread.start()
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'started: flag: {}'.format(self._enabled))
-        self._log.info('started.')
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video started. (flag: {})'.format(self._enabled))
+#       self._log.info('started.')
 
     # ..........................................................................
     def stop(self):
@@ -396,7 +386,7 @@ class Video():
             self._convert_to_mp4()
         self._log.info('stopped.')
 
-
+    # ..........................................................................
     def _convert_to_mp4(self):
         if os.path.exists(self._filename):
             self._log.info('converting file {} to mp4...'.format(self._filename))
@@ -408,6 +398,25 @@ class Video():
                 self._log.info('removed h264 video source.')
         else:
             self._log.warning('could not convert to mp4: file {} did not exist.'.format(self._filename))
+
+    # ..........................................................................
+    def close(self, camera, output):
+        self._log.info('closing video...')
+        if self._ctrl_lights:
+            self.set_lights(False)
+        if camera:
+            if camera.recording:
+                camera.stop_recording()
+                self._log.debug('camera stopped recording.')
+            if not camera.closed:
+                camera.close()
+                self._log.debug('camera closed.')
+        if output:
+            output.flush()
+            self._log.debug('output flushed.')
+            output.close()
+            self._log.debug('output closed.')
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video closed.')
 
 
 #EOF
