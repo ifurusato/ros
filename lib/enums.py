@@ -103,15 +103,43 @@ class Speed(Enum): # deprecated
 
 # ..............................................................................
 class Velocity(Enum):
-    STOP          =  0.0
-    DEAD_SLOW     = 20.0
-    SLOW          = 30.0
-    HALF          = 50.0
-    TWO_THIRDS    = 66.7
-    THREE_QUARTER = 75.0
-    FULL          = 90.0
-    EMERGENCY     = 100.0
-    MAXIMUM       = 100.000001
+    STOP          = ( 1,  0.0 )
+    DEAD_SLOW     = ( 2, 20.0 )
+    SLOW          = ( 3, 30.0 )
+    HALF          = ( 4, 50.0 )
+    TWO_THIRDS    = ( 5, 66.7 )
+    THREE_QUARTER = ( 6, 75.0 )
+    FULL          = ( 7, 90.0 )
+    EMERGENCY     = ( 8, 100.0 )
+    MAXIMUM       = ( 9, 100.000001 )
+
+    # ignore the first param since it's already set by __new__
+    def __init__(self, num, value):
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @staticmethod
+    def get_slower_than(velocity):
+        '''
+            Provided a value between 0-100, return the next lower Velocity.
+        '''
+        if velocity < Velocity.DEAD_SLOW.value:
+            return Velocity.STOP
+        elif velocity < Velocity.SLOW.value:
+            return Velocity.DEAD_SLOW
+        elif velocity < Velocity.HALF.value:
+            return Velocity.SLOW
+        elif velocity < Velocity.TWO_THIRDS.value:
+            return Velocity.HALF
+        elif velocity < Velocity.THREE_QUARTER.value:
+            return Velocity.TWO_THIRDS
+        elif velocity < Velocity.FULL.value:
+            return Velocity.THREE_QUARTER
+        else:
+            return Velocity.FULL
 
 
 # ..............................................................................

@@ -70,7 +70,7 @@ class Infrareds():
         if self._use_lr_ir:
             self._infrared_center = LongRangeInfrared(self._queue, 0, level)
         else:
-            self._infrared_center = Infrared(self._queue, _cntr_pin, Orientation.CENTER, Event.INFRARED_CENTER, level)
+            self._infrared_center = Infrared(self._queue, _cntr_pin, Orientation.CNTR, Event.INFRARED_CNTR, level)
         self._infrared_stbd       = Infrared(self._queue, _stbd_pin, Orientation.STBD, Event.INFRARED_STBD, level)
 
         self._infrared_port_side  = Infrared(self._queue, _port_side_pin, Orientation.PORT_SIDE, Event.INFRARED_PORT_SIDE, level)

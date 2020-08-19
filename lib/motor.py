@@ -356,9 +356,10 @@ class Motor():
 
         # accelerate to target velocity...
         self._accelerate_to_velocity(velocity, slew_rate, _step_limit)
+        self._log.info(Fore.YELLOW + 'REACHED TARGET VELOCITY: {:>5.2f}, now maintaining...'.format(velocity))
 
         # now maintain velocity...
-        self.maintain_velocity(velocity, _step_limit)
+#       self.maintain_velocity(velocity, _step_limit)
 
         self._log.info(Fore.BLUE + Style.BRIGHT + 'accelerated to velocity {:>5.2f} at power: {:>5.2f}. '.format(velocity, self.get_current_power_level()))
 

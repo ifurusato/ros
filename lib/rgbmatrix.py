@@ -24,7 +24,8 @@ class DisplayType(Enum):
     SCAN    = 3
     RANDOM  = 4
     SWORL   = 5
-    DARK    = 6
+    SOLID   = 6
+    DARK    = 7
 
 
 # ..............................................................................
@@ -49,6 +50,7 @@ class RgbMatrix(Feature):
         self._width  = self._rgbmatrix5x5_PORT.width
         self._thread_PORT = None
         self._thread_STBD = None
+        self._color = Color.RED # used by _solid
         enabled = False
         self._closing = False
         self._closed = False
@@ -73,6 +75,8 @@ class RgbMatrix(Feature):
             return RgbMatrix._scan
         elif self._display_type is DisplayType.SWORL:
             return RgbMatrix._sworl
+        elif self._display_type is DisplayType.SOLID:
+            return RgbMatrix._solid
         elif self._display_type is DisplayType.DARK:
             return RgbMatrix._dark
 
@@ -185,6 +189,24 @@ class RgbMatrix(Feature):
             self._log.info('sworl interrupted.')
         finally:
             self.set_color(Color.BLACK)
+
+
+    def set_solid_color(self, color):
+        self._color = color
+
+
+    # ..........................................................................
+    def _solid(self, rgbmatrix5x5):
+        '''
+            Display a specified static, solid color on only the port display.
+        '''
+        global enabled
+#       self.set_color(self._color)
+#       self._set_color(self._rgbmatrix5x5_STBD, self._color)
+        self._set_color(self._rgbmatrix5x5_PORT, self._color)
+        self._log.info('starting solid color to {}...'.format(str.lower(self._color.name)))
+        while enabled:
+            time.sleep(0.2)
 
 
     # ..........................................................................

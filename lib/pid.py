@@ -250,13 +250,13 @@ class PID():
                 # set motor power ..............................................
                 _power_level = _current_power + _clipped_output
                 if abs(_output) <= 0.0005: # we're pretty close to the right value
-                    self._log.info(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
+                    self._log.debug(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
                             + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
                 elif _output >= 0: # we're going too slow
-                    self._log.info(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
+                    self._log.debug(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
                             + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
                 else:              # we're going too fast
-                    self._log.info(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
+                    self._log.debug(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
                             + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
 
                 self._motor.set_motor_power(_power_level)

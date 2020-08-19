@@ -38,8 +38,8 @@ class MessageQueue():
         heap = []
         self._counter = itertools.count()
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
+        self._consumers = []
         self._log.info('MessageQueue ready.')
-
 
     # ......................................................
     def get_queue(self):
@@ -48,16 +48,24 @@ class MessageQueue():
         '''
         return self._queue
 
+    # ..........................................................................
+    def add_consumer(self, consumer):
+        '''
+            Add a consumer to the optional list of message consumers.
+        '''
+        return self._consumers.append(consumer)
 
-    # ......................................................
+    # ..........................................................................
     def add(self, message):
         '''
-            Add a new Message to the queue.
+            Add a new Message to the queue, then additionally to any consumers.
         '''
         self._queue.put(message);
         message.set_number(next(self._counter))
-        self._log.info('ADDED message #{}: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
-
+        self._log.debug('added message #{} to queue: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
+        # we're finished, now add to any consumers
+        for consumer in self._consumers:
+            consumer.add(message);
 
     # ......................................................
     def empty(self):
@@ -66,14 +74,12 @@ class MessageQueue():
         '''
         return self._queue.empty()
 
-
     # ......................................................
     def size(self):
         '''
             Returns the current size of the queue. This returns "the approximate size of the queue (not reliable!)"
         '''
         return self._queue.qsize()
-
 
     # ......................................................
     def next(self):
@@ -86,7 +92,6 @@ class MessageQueue():
             pass
         self._log.debug('returning message: {} of priority {}.'.format(message.get_description(), message.get_priority()))
         return message
-
 
     # ......................................................
     def next_group(self, count):
@@ -105,17 +110,15 @@ class MessageQueue():
         self._log.debug('returning {} messages.'.format(len(messages)))
         return messages
 
-
     # ......................................................
     def respond(self, event):
         '''
-            Responds to the Event.
+            Responds to the Event by wrapping it in Message and adding it to the backing queue.
         '''
         self._log.info('RESPOND to event {}.'.format(event.name))
         _message = Message(event)
         self.add(_message)
         return jsonify( [ { 'id': _message.get_number() }, { 'event': event.name }, { 'priority': event.priority } ] )
-
 
     # ......................................................
     def clear(self):
@@ -128,6 +131,5 @@ class MessageQueue():
             except Empty:
                 continue
             self._queue.task_done()
-
 
 #EOF

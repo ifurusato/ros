@@ -32,17 +32,16 @@ class Bumpers():
         super().__init__()
         self._log = Logger('bumpers', level)
         self._log.debug('initialising bumpers...')
+        if self._config is None:
+            raise ValueError("no configuration provided.")
         self._config = config
-        if self._config:
-            _config = self._config['ros'].get('bumper')
-            self._port_pin  = _config.get('port_pin')
-            self._cntr_pin  = _config.get('center_pin')
-            self._stbd_pin  = _config.get('starboard_pin')
-            self._upper_pin = _config.get('upper_pin')
-            self._log.info('bumper pins: port={:d}; center={:d}; starboard={:d}; upper={:d}'.format(\
-                    self._port_pin, self._cntr_pin, self._stbd_pin, self._upper_pin)) 
-        else: raise ValueError("no configuration provided.")
-
+        _config = self._config['ros'].get('bumper')
+        self._port_pin  = _config.get('port_pin')
+        self._cntr_pin  = _config.get('center_pin')
+        self._stbd_pin  = _config.get('starboard_pin')
+        self._upper_pin = _config.get('upper_pin')
+        self._log.info('bumper pins: port={:d}; center={:d}; starboard={:d}; upper={:d}'.format(\
+                self._port_pin, self._cntr_pin, self._stbd_pin, self._upper_pin)) 
         self._queue = queue
 
         # these auto-start their threads
@@ -77,7 +76,7 @@ class Bumpers():
     def activated_center(self):
         if self._enabled:
             self._log.info(Style.BRIGHT + 'activated: ' + Style.NORMAL + Fore.BLUE + 'center bumper sensor.' + Style.RESET_ALL)
-            self._queue.add(Message(Event.BUMPER_CENTER))
+            self._queue.add(Message(Event.BUMPER_CNTR))
         else:
             self._log.info('[DISABLED] bumper activated center.')
         pass

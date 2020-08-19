@@ -11,6 +11,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Level, Logger
+from lib.enums import Orientation
 try:
     from matrix11x7 import Matrix11x7
     from matrix11x7.fonts import font3x5
@@ -29,9 +30,14 @@ class Matrix():
         This provides a threaded text display, as well as using the matrix as a
         light source.
     '''
-    def __init__(self, level):
+    def __init__(self, orientation, level):
         self._log = Logger("matrix", level)
-        self._matrix11x7 = Matrix11x7()
+        if orientation is Orientation.PORT:
+            self._matrix11x7 = Matrix11x7(i2c_address=0x77)
+        elif orientation is Orientation.STBD:
+            self._matrix11x7 = Matrix11x7(i2c_address=0x75) # default
+        else:
+            raise Exception('unexpected value for orientation.')
         self._matrix11x7.set_brightness(0.4)
         self._is_enabled = False
         self._screens = 0

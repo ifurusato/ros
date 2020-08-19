@@ -31,6 +31,8 @@ import io, fcntl, types, time
 from colorama import init, Fore, Style
 init()
 
+from lib.logger import Level, Logger
+
 # Constant values
 I2C_SLAVE                   = 0x0703
 PWM_MAX                     = 255
@@ -203,6 +205,10 @@ printFunction           Function reference to call when printing text, if None "
     i2cWrite                = None
     i2cRead                 = None
 
+    def __init__(self, level):
+        super().__init__()
+        self._log = Logger('thunderborg', level)
+        self._log.info('ready.')
 
     def RawWrite(self, command, data):
         """
@@ -268,10 +274,11 @@ Print(message)
 
 Wrapper used by the ThunderBorg instance to print(messages, will call printFunction if set, print otherwise)
         """
-        if self.printFunction == None:
-            print(message)
-        else:
-            self.printFunction(message)
+        self._log.info(message)
+#       if self.printFunction == None:
+#           print(message)
+#       else:
+#           self.printFunction(message)
 
 
     def NoPrint(self, message):
@@ -387,7 +394,7 @@ e.g.
             raise
         except:
 #           self.Print('Failed reading motor 2 drive level!')
-            print('thunderborg       :' + Fore.YELLOW + ' WARN  : failed reading motor 2 drive level.' + Style.RESET_ALL)
+            self._log.debug('failed reading motor 2 drive level.')
             return None
 
         power = float(i2cRecv[2]) / float(PWM_MAX)
@@ -449,7 +456,7 @@ e.g.
             raise
         except:
 #           self.Print('Failed reading motor 1 drive level!')
-            print('thunderborg       :' + Fore.YELLOW + ' WARN  : failed reading motor 1 drive level.' + Style.RESET_ALL)
+            self._log.debug('failed reading motor 1 drive level.')
             return None
 
         power = float(i2cRecv[2]) / float(PWM_MAX)

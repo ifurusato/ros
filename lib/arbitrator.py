@@ -23,6 +23,7 @@
 '''
 
 import time, threading, itertools
+import datetime as dt
 from colorama import init, Fore, Style
 init()
 
@@ -30,29 +31,37 @@ from .logger import Logger
 from .event import Event
 from .enums import ActionState
 
-# loop delay 20ms
-loop_delay_sec = 20 / 1000
-#loop_delay_sec = 1.0
 
 # ..............................................................................
 class Arbitrator(threading.Thread):
+    '''
+        Arbitrates a stream of events from a MessageQueue according to 
+        priority, returning to a Controller the highest priority of them.
 
-    ballistic_loop_delay_sec = 0.2
+        The Controller API is:
 
-    # ..........................................................................
-    def __init__(self, level, queue, controller, mutex):
+          .get_current_message()   returns the last message received
+          .act(_current_message, _action_complete_callback)
+                                   act upon the current message, with
+                                   a callback called upon completion
+    '''
+    def __init__(self, config, queue, controller, level):
         super().__init__()
-        self._log = Logger('arbitrator', level)
         threading.Thread.__init__(self)
-        self._tasks = []
+        self._log = Logger('arbitrator', level)
+        if config is None:
+            raise ValueError('no configuration provided.')
+        self._config = config['ros'].get('arbitrator')
+        self._idle_loop_count = 0
+        self._loop_delay_sec = self._config.get('loop_delay_sec')
+        self._ballistic_loop_delay_sec = self._config.get('ballistic_loop_delay_sec')
         self._queue = queue
         self._controller = controller
-        self._mutex = mutex
+        self._tasks = []
         self._is_enabled = True
         self._closing    = False
         self._closed     = False
         self._suppressed = False
-        self._idle_loop_count = 0
         self._counter = itertools.count()
         self._log.debug('ready.')
 
@@ -79,7 +88,7 @@ class Arbitrator(threading.Thread):
     def run(self):
         self._log.info('arbitrating tasks...')
         while self._is_enabled:
-#           with self._mutex:
+            _start_time = dt.datetime.now()
             self._loop_count = next(self._counter)
             if self._suppressed:
                 # if suppressed just clear the queue so events don't build up
@@ -122,7 +131,10 @@ class Arbitrator(threading.Thread):
                     else: # after being idle for a long time, dim the message
                         if ( self._loop_count % 500 ) == 0:
                             self._log.info(Style.DIM + '{:06d} : idle...'.format(self._loop_count))
-            time.sleep(loop_delay_sec)
+            time.sleep(self._loop_delay_sec)
+            _delta = dt.datetime.now() - _start_time
+            _elapsed_ms = int(_delta.total_seconds() * 1000)
+            self._log.info(Fore.MAGENTA + Style.BRIGHT + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM)
 
         self._log.info('loop end.')
 
@@ -186,7 +198,7 @@ class Arbitrator(threading.Thread):
             # then wait until completed
             while not _current_message.is_complete():
                 self._log.info('loop: waiting on ballistic action {}...'.format(_current_message.get_action().description))
-                time.sleep(Arbitrator.ballistic_loop_delay_sec)
+                time.sleep(self._ballistic_loop_delay_sec)
         else:
             self._log.info('acting upon accepted highest priority message #{}: {}'.format(message.get_number(), message.get_description()))
             self._controller.act(_current_message, self._action_complete_callback)

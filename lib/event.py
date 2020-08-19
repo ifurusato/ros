@@ -40,14 +40,20 @@ class Event(Enum):
     STANDBY                = ( 6, "standby",                  6,     False)
     # bumper ...........................
     BUMPER_PORT            = ( 10, "bumper port",             10,    True)
-    BUMPER_CENTER          = ( 11, "bumper center",           10,    True)
+    BUMPER_CNTR            = ( 11, "bumper center",           10,    True)
     BUMPER_STBD            = ( 12, "bumper starboard",        10,    True)
     # infrared .........................
     INFRARED_PORT          = ( 20, "infrared port",           20,    True)
-    INFRARED_CENTER        = ( 21, "infrared center",         20,    True)
-    INFRARED_STBD          = ( 22, "infrared starboard",      20,    True)
-    INFRARED_PORT_SIDE     = ( 23, "infrared port side",      20,    True)
-    INFRARED_STBD_SIDE     = ( 24, "infrared starboard side", 20,    True)
+    INFRARED_PORT_FAR      = ( 21, "infrared port far",       40,    True)
+    INFRARED_CNTR          = ( 22, "infrared cntr",           20,    True)
+    INFRARED_CNTR_FAR      = ( 23, "infrared cntr far",       40,    True)
+    INFRARED_STBD          = ( 24, "infrared stbd",           20,    True)
+    INFRARED_STBD_FAR      = ( 25, "infrared stbd far",       40,    True)
+    INFRARED_PORT_SIDE     = ( 26, "infrared port side",      20,    True)
+    INFRARED_PORT_SIDE_FAR = ( 27, "infrared port side far",  40,    True)
+    INFRARED_STBD_SIDE     = ( 28, "infrared stbd side",      20,    True)
+    INFRARED_STBD_SIDE_FAR = ( 29, "infrared stbd side far",  40,    True)
+
     # emergency movements ..............
     EMERGENCY_ASTERN       = ( 30, "emergency astern",        15,    True)
     # movement ahead ...................
@@ -77,7 +83,23 @@ class Event(Enum):
     TURN_TO_STBD           = ( 82, "turn to starboard",       100,   False)
     TURN_AHEAD_STBD        = ( 83, "turn ahead starboard",    100,   False)
     # high level behaviours ............
-    ROAM                   = ( 89, "roam",                    100,   False)
+    ROAM                   = ( 90, "roam",                    100,   False)
+    SNIFF                  = ( 91, "sniff",                   100,   True)
+    START_VIDEO            = ( 92, "start video",             150,   False)
+    STOP_VIDEO             = ( 93, "stop video",              150,   False)
+    LIGHTS_ON              = ( 94, "lights on",               150,   False)
+    LIGHTS_OFF             = ( 95, "lights off",              150,   False)
+
+    # movement directives ..............
+    FORWARD_VELOCITY       = ( 101, "forward velocity",       200,   False)
+    THETA                  = ( 102, "theta",                  200,   False)
+    PORT_VELOCITY          = ( 103, "port velocity",          200,   False)
+    PORT_THETA             = ( 104, "port theta",             200,   False)
+    STBD_VELOCITY          = ( 105, "starboard velocity",     200,   False)
+    STBD_THETA             = ( 106, "starboard theta",        200,   False)
+
+    # other behaviours .................
+    NO_ACTION              = ( 500, "no action",              500,   False)
 
     # ..................................
     def __new__(cls, *args, **kwds):
@@ -131,15 +153,15 @@ class Event(Enum):
         # bumper ...........................
         elif label.upper() == 'BUMPER_PORT': 
             return Event.BUMPER_PORT
-        elif label.upper() == 'BUMPER_CENTER': 
-            return Event.BUMPER_CENTER
+        elif label.upper() == 'BUMPER_CNTR': 
+            return Event.BUMPER_CNTR
         elif label.upper() == 'BUMPER_STBD': 
             return Event.BUMPER_STBD
         # infrared .........................
         elif label.upper() == 'INFRARED_PORT': 
             return Event.INFRARED_PORT
-        elif label.upper() == 'INFRARED_CENTER': 
-            return Event.INFRARED_CENTER
+        elif label.upper() == 'INFRARED_CNTR': 
+            return Event.INFRARED_CNTR
         elif label.upper() == 'INFRARED_STBD': 
             return Event.INFRARED_STBD
         elif label.upper() == 'INFRARED_PORT_SIDE': 
@@ -199,7 +221,25 @@ class Event(Enum):
         # high level behaviours ............
         elif label.upper() == 'ROAM': 
             return Event.ROAM
+        elif label.upper() == 'FORWARD_VELOCITY':     
+            return Event.FORWARD_VELOCITY
+        elif label.upper() == 'THETA':               
+            return Event.THETA
+        elif label.upper() == 'PORT_VELOCITY':      
+            return Event.PORT_VELOCITY
+        elif label.upper() == 'PORT_THETA':        
+            return Event.PORT_THETA
+        elif label.upper() == 'STBD_VELOCITY':   
+            return Event.STBD_VELOCITY
+        elif label.upper() == 'STBD_THETA':      
+            return Event.STBD_THETA
+        elif label.upper() == 'SNIFF':      
+            return Event.SNIFF
+
+        elif label.upper() == 'NO_ACTION':      
+            return Event.NO_ACTION
         else:
             raise NotImplementedError
+
 
 #EOF

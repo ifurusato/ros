@@ -163,9 +163,6 @@ class BatteryCheck(Feature):
         count = 0
         while self._enabled:
             self._log.info('battery channel: {}; reference: {}v'.format(self._battery_channel, self._reference ))
-
-            self._log.warning('battery channel: {}; reference: {}v'.format(self._battery_channel, self._reference ))
-
             self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel,     reference_voltage=self._reference)
             self._log.info('battery voltage: {}.'.format(self._battery_voltage))
 

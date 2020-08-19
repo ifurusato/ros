@@ -53,6 +53,7 @@ class IntegratedFrontSensor():
         self._log = Logger("front-sensor", level)
         self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel                    = self._config.get('channel')
+        # short distance:
         self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
         self._port_trigger_distance      = self._config.get('port_trigger_distance')
         self._center_trigger_distance    = self._config.get('center_trigger_distance')
@@ -62,11 +63,23 @@ class IntegratedFrontSensor():
                 + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance, self._port_trigger_distance) \
                 + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance) \
                 + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance ))
+        # long distance:
+        self._port_side_trigger_distance_far = self._config.get('port_side_trigger_distance_far')
+        self._port_trigger_distance_far      = self._config.get('port_trigger_distance_far')
+        self._center_trigger_distance_far    = self._config.get('center_trigger_distance_far')
+        self._stbd_trigger_distance_far      = self._config.get('stbd_trigger_distance_far')
+        self._stbd_side_trigger_distance_far = self._config.get('stbd_side_trigger_distance_far')
+        self._log.info('long distance event thresholds:' \
+                + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance_far, self._port_trigger_distance_far) \
+                + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance_far) \
+                + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance_far, self._stbd_side_trigger_distance_far ))
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
         self._counter = itertools.count()
         self._thread  = None
         self._enabled = False
+        self._suppressed = False
+        self._closing = False
         self._closed  = False
         self._log.info('ready.')
 
@@ -83,37 +96,56 @@ class IntegratedFrontSensor():
             and software. The default pins A1-A5 are defined as IR analog 
             sensors, 9-11 are digital bumper sensors.
         '''
-        if not self._enabled:
+        if not self._enabled or self._suppressed:
+            self._log.debug(Fore.BLACK + Style.DIM + 'SUPPRESSED callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
             return
-        self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
+#       self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
         _message = None
+       
+        # NOTE: the shorter range infrared triggers preclude the longer range triggers 
         if pin == 1:
             if value > self._port_side_trigger_distance:
+                _message = Message(Event.INFRARED_PORT_SIDE)
+            elif value > self._port_side_trigger_distance_far:
                 _message = Message(Event.INFRARED_PORT_SIDE)
         elif pin == 2:
             if value > self._port_trigger_distance:
                 _message = Message(Event.INFRARED_PORT)
+            elif value > self._port_trigger_distance_far:
+                _message = Message(Event.INFRARED_PORT_FAR)
         elif pin == 3:
             if value > self._center_trigger_distance:
-                _message = Message(Event.INFRARED_CENTER)
+                _message = Message(Event.INFRARED_CNTR)
+            elif value > self._center_trigger_distance_far:
+                _message = Message(Event.INFRARED_CNTR_FAR)
         elif pin == 4:
             if value > self._stbd_trigger_distance:
                 _message = Message(Event.INFRARED_STBD)
+            elif value > self._stbd_trigger_distance_far:
+                _message = Message(Event.INFRARED_STBD_FAR)
         elif pin == 5:
             if value > self._stbd_side_trigger_distance:
                 _message = Message(Event.INFRARED_STBD_SIDE)
+            elif value > self._stbd_side_trigger_distance_far:
+                _message = Message(Event.INFRARED_STBD_SIDE_FAR)
         elif pin == 9:
             if value == 1:
                 _message = Message(Event.BUMPER_PORT)
         elif pin == 10:
             if value == 1:
-                _message = Message(Event.BUMPER_CENTER)
+                _message = Message(Event.BUMPER_CNTR)
         elif pin == 11:
             if value == 1:
                 _message = Message(Event.BUMPER_STBD)
         if _message is not None:
             _message.set_value(value)
             self._queue.add(_message)
+
+
+    # ..........................................................................
+    def suppress(self, state):
+        self._log.info('suppress {}.'.format(state))
+        self._suppressed = state
 
 
     # ..........................................................................
@@ -143,7 +175,7 @@ class IntegratedFrontSensor():
 
         while self._enabled:
             _count = next(self._counter)
-            print(CLEAR_SCREEN)
+#           print(CLEAR_SCREEN)
 
             # pin 1: analog infrared sensor ................
             _received_data = self.get_input_from_pin(1)
@@ -265,8 +297,12 @@ class IntegratedFrontSensor():
         '''
             Permanently close and disable the integrated front sensor.
         '''
+        if self._closing:
+            self._log.info('already closing front sensor.')
+            return
         if not self._closed:
-            self._log.info('closing ifs...')
+            self._closing = True
+            self._log.info('closing...')
             try:
                 self._enabled = False
                 if self._thread != None:

@@ -57,7 +57,7 @@ class Button(AbstractTask):
         self._queue = queue
         _config = config['ros'].get('button')
         _pin = _config.get('pin')
-        self._log.warning('CONFIGURING BUTTON ON PIN {}'.format(_pin))
+        self._log.warning('configuring button on pin {}'.format(_pin))
         self._toggle = _config.get('toggle') # if true, the value toggles when the button is pushed rather than acting as a momentary button
         self._log.info('initialising button on pin {:d}; toggle={}'.format(_pin, self._toggle))
         self._queue = queue

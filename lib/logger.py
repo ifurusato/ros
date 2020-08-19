@@ -22,7 +22,6 @@ class Level(Enum):
 class Logger:
 
     def __init__(self, name, level):
-
         # create logger
         self.__log = logging.getLogger(name)
         self.__log.propagate = False
@@ -36,23 +35,29 @@ class Logger:
             sh.setFormatter(logging.Formatter('%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s'))
             self.__log.addHandler(sh)
 
-    def debug(self,message):
+    def get_mutex(self):
+        return self._mutex
+
+    def set_mutex(self, mutex):
+        self._mutex = mutex
+
+    def debug(self, message):
         with self._mutex:
             self.__log.debug(Fore.BLACK + "DEBUG : " + message + Style.RESET_ALL)
 
-    def info(self,message):
+    def info(self, message):
         with self._mutex:
             self.__log.info(Fore.CYAN + "INFO  : " + message + Style.RESET_ALL)
 
-    def warning(self,message):
+    def warning(self, message):
         with self._mutex:
             self.__log.warning(Fore.YELLOW + "WARN  : " + message + Style.RESET_ALL)
 
-    def error(self,message):
+    def error(self, message):
         with self._mutex:
             self.__log.error(Fore.RED + Style.NORMAL + "ERROR : " + Style.BRIGHT + message + Style.RESET_ALL)
 
-    def critical(self,message):
+    def critical(self, message):
         with self._mutex:
             self.__log.critical(Fore.WHITE + "FATAL : " + Style.BRIGHT + message + Style.RESET_ALL)
 

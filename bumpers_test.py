@@ -37,7 +37,7 @@ class MockMessageQueue():
         self._counter = itertools.count()
         self._events = []
         self._events.append(Event.BUMPER_PORT)
-        self._events.append(Event.BUMPER_CENTER)
+        self._events.append(Event.BUMPER_CNTR)
         self._events.append(Event.BUMPER_STBD)
         self._events.append(Event.BUMPER_UPPER)
 
@@ -50,10 +50,10 @@ class MockMessageQueue():
             if event in self._events:
                 print('bumpers_test      :' + Fore.BLUE + Style.BRIGHT + ' INFO  : BUMPER_PORT: {}'.format(event.description) + Style.RESET_ALL)
             self._remove_event(Event.BUMPER_PORT)
-        elif event is Event.BUMPER_CENTER:
+        elif event is Event.BUMPER_CNTR:
             if event in self._events:
                 print('bumpers_test      :' + Fore.BLUE + Style.BRIGHT + ' INFO  : BUMPER_PORT: {}'.format(event.description) + Style.RESET_ALL)
-            self._remove_event(Event.BUMPER_CENTER)
+            self._remove_event(Event.BUMPER_CNTR)
         elif event is Event.BUMPER_STBD:
             if event in self._events:
                 print('bumpers_test      :' + Fore.BLUE + Style.BRIGHT + ' INFO  : BUMPER_PORT: {}'.format(event.description) + Style.RESET_ALL)

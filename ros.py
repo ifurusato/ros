@@ -31,6 +31,9 @@ from lib.config_loader import ConfigLoader
 from lib.configurer import Configurer
 from lib.arbitrator import Arbitrator
 from lib.controller import Controller
+from lib.batlevel import BatteryLevelIndicator
+from lib.indicator import Indicator
+from lib.gamepad import Gamepad
 
 #from lib.player import Player
 #from lib.lidar import Lidar
@@ -46,7 +49,7 @@ led_1_path = '/sys/class/leds/led1/brightness'
 _level = Level.INFO
 
 # import RESTful Flask Service
-#from flask_wrapper import FlaskWrapperService
+from flask_wrapper import FlaskWrapperService
 
 # ==============================================================================
 
@@ -58,8 +61,8 @@ class ROS(AbstractTask):
         spawning the various tasks and an Arbitrator as separate threads, 
         inter-communicating over a common message queue.
     
-        This establishes a RESTful flask service, a message queue, an Arbitrator 
-        and a Controller. 
+        This establishes a message queue, an Arbitrator and a Controller, as
+        well as an optional RESTful flask-based web service.
     
         The message queue receives Event-containing messages, which are passed 
         on to the Arbitrator, whose job it is to determine the highest priority 
@@ -72,6 +75,10 @@ class ROS(AbstractTask):
                 _ros.start()
             except Exception:
                 _ros.close()
+
+      
+        There is also a rosd linux daemon, which can be used to start, enable
+        and disable ros (actually via its Arbitrator).
     '''
 
     # ..........................................................................
@@ -90,11 +97,13 @@ class ROS(AbstractTask):
         self._motors        = None
         self._arbitrator    = None
         self._controller    = None
+        self._gamepad       = None
 #       self._flask_wrapper = None
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         self._config = _loader.configure(filename)
+        self._gamepad_enabled = self._config['ros'].get('gamepad').get('enabled')
         # import available features
         self._features = []
         _configurer = Configurer(self, Level.INFO)
@@ -159,6 +168,35 @@ class ROS(AbstractTask):
 
 
     # ..........................................................................
+    def _connect_gamepad(self):
+        if not self._gamepad_enabled:
+            self._log.info('gamepad disabled.')
+            return
+        if self._gamepad is None:
+            self._log.info('creating gamepad...')
+            self._gamepad = Gamepad(self._config, self._queue, Level.INFO)
+        if self._gamepad is not None:
+            self._log.info('enabling gamepad...')
+            self._gamepad.enable()
+            _count = 0
+            while not self._gamepad.has_connection():
+                _count += 1
+                if _count == 1:
+                    self._log.info('connecting to gamepad...')
+                else:
+                    self._log.info('gamepad not connected; re-trying... [{:d}]'.format(_count))
+                self._gamepad.connect()
+                time.sleep(0.5)
+                if self._gamepad.has_connection() or _count > 5:
+                    break
+
+
+    # ..........................................................................
+    def has_connected_gamepad(self):
+        return self._gamepad is not None and self._gamepad.has_connection()
+
+
+    # ..........................................................................
     def get_arbitrator(self):
         return self._arbitrator
 
@@ -175,12 +213,11 @@ class ROS(AbstractTask):
 
     # ..........................................................................
     def _callback_shutdown(self):
-        __enable_self_shutdown = self._config['ros'].get('enable_self_shutdown')
+        _enable_self_shutdown = self._config['ros'].get('enable_self_shutdown')
         if _enable_self_shutdown:
             self._log.critical('callback: shutting down os...')
-            if self._arbitrator:
-                self._arbitrator.disable()
             self.close()
+            sys.exit(0)
         else:
             self._log.critical('self-shutdown disabled.')
 
@@ -194,6 +231,16 @@ class ROS(AbstractTask):
         '''
         super(AbstractTask, self).run()
         loop_count = 0
+        # display banner!
+        _banner = '\n' \
+                  'ros\n' \
+                  'ros                         █▒▒▒▒▒▒▒     █▒▒▒▒▒▒     █▒▒▒▒▒▒    █▒▒  \n' \
+                + 'ros                         █▒▒   █▒▒   █▒▒   █▒▒   █▒▒         █▒▒  \n' \
+                + 'ros                         █▒▒▒▒▒▒     █▒▒   █▒▒    █▒▒▒▒▒▒    █▒▒  \n' \
+                + 'ros                         █▒▒  █▒▒    █▒▒   █▒▒         █▒▒        \n' \
+                + 'ros                         █▒▒   █▒▒    █▒▒▒▒▒▒     █▒▒▒▒▒▒    █▒▒  \n' \
+                + 'ros\n'
+        self._log.info(_banner)
 
         self._disable_leds = self._config['pi'].get('disable_leds')
         if self._disable_leds:
@@ -229,30 +276,32 @@ class ROS(AbstractTask):
 
         # configure the Controller and Arbitrator
         self._log.info('configuring controller...')
-#       self._controller = Controller(Level.INFO, self._config, self._switch, self._infrareds, self._motors, self._rgbmatrix, self._lidar, self._callback_shutdown)
         self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, Level.INFO)
 
         self._log.info('configuring arbitrator...')
-        _arbitrator_level = Level.WARN
-        self._arbitrator = Arbitrator(_arbitrator_level, self._queue, self._controller, self._mutex)
+        self._arbitrator = Arbitrator(self._config, self._queue, self._controller, Level.WARN)
 
-        flask_enabled = self._config['flask'].get('enabled')
-        if flask_enabled:
+        _flask_enabled = self._config['flask'].get('enabled')
+        if _flask_enabled:
             self._log.info('starting flask web server...')
             self.configure_web_server()
         else:
             self._log.info('not starting flask web server (suppressed from command line).')
 
+        # bluetooth gamepad controller
+        if self._gamepad_enabled:
+            self._connect_gamepad()
 
         self._log.warning('Press Ctrl-C to exit.')
 
-        wait_for_button_press = self._config['ros'].get('wait_for_button_press')
-        self._controller.set_standby(wait_for_button_press)
+        _wait_for_button_press = self._config['ros'].get('wait_for_button_press')
+        self._controller.set_standby(_wait_for_button_press)
 
         # begin main loop ..............................
 
-#       self._log.info('starting battery check thread...')
-#       self._battery_check.enable()
+        self._log.info('starting battery check thread...')
+        self._ble = BatteryLevelIndicator(Level.INFO)
+        self._ble.enable()
 
         self._log.info('starting button thread...')
         self._button.start()
@@ -261,6 +310,10 @@ class ROS(AbstractTask):
 #       self._bno055.enable()
 
 #       self._bumpers.enable()
+
+        self._indicator = Indicator(Level.INFO)
+        # add indicator as message consumer
+        self._queue.add_consumer(self._indicator)
 
         self._log.info('enabling integrated front sensor...')
         self._ifs.enable() 
@@ -275,13 +328,16 @@ class ROS(AbstractTask):
         main_loop_delay_ms = self._config['ros'].get('main_loop_delay_ms')
         self._log.info('begin main os loop with {:d}ms delay.'.format(main_loop_delay_ms))
         _loop_delay_sec = main_loop_delay_ms / 1000
+        _main_loop_count = 0
         self._arbitrator.start()
-        while self._arbitrator.is_alive():
+        self._active = True
+        while self._active:
 #           The sensors and the flask service sends messages to the message queue,
 #           which forwards those messages on to the arbitrator, which chooses the
 #           highest priority message to send on to the controller. So the timing
 #           of this loop is inconsequential; it exists solely as a keep-alive.
-#           self._log.info(Fore.BLACK + Style.DIM + 'main loop...')
+            _main_loop_count += 1
+            self._log.info(Fore.BLACK + Style.DIM + '[{:d}] main loop...'.format(_main_loop_count))
             time.sleep(_loop_delay_sec)
             # end application loop .........................
     
@@ -291,22 +347,22 @@ class ROS(AbstractTask):
         # end main ...................................
 
 
-#   # ..........................................................................
-#   def configure_web_server(self):
-#       '''
-#           Start flask web server.
-#       '''
-#       try:
-#           self._mutex.acquire()
-#           self._log.info('starting web service...')
-#           self._flask_wrapper = FlaskWrapperService(self._queue, self._controller)
-#           self._flask_wrapper.start()
-#       except KeyboardInterrupt:
-#           self._log.error('caught Ctrl-C interrupt.')
-#       finally:
-#           self._mutex.release()
-#           time.sleep(1)
-#           self._log.info(Fore.BLUE + 'web service started.' + Style.RESET_ALL)
+    # ..........................................................................
+    def configure_web_server(self):
+        '''
+            Start flask web server.
+        '''
+        try:
+            self._mutex.acquire()
+            self._log.info('starting web service...')
+            self._flask_wrapper = FlaskWrapperService(self._queue, self._controller)
+            self._flask_wrapper.start()
+        except KeyboardInterrupt:
+            self._log.error('caught Ctrl-C interrupt.')
+        finally:
+            self._mutex.release()
+            time.sleep(1)
+            self._log.info(Fore.BLUE + 'web service started.' + Style.RESET_ALL)
 
 
     # ..........................................................................
@@ -349,12 +405,15 @@ class ROS(AbstractTask):
             self._active = False
             self._closing = True
             self._log.info(Style.BRIGHT + 'closing...')
-#           if self._flask_wrapper is not None:
-#               self._flask_wrapper.close()
-            if self._arbitrator:
-                self._arbitrator.disable()
-            super().close()
-#           self._arbitrator.join(timeout=1.0)
+
+            if self._gamepad:
+                self._gamepad.close() 
+            if self._motors:
+                self._motors.close()
+            if self._ifs:
+                self._ifs.close() 
+            if self._ble:
+                self._ble.disable()
 
             # close features
             for feature in self._features:
@@ -362,16 +421,23 @@ class ROS(AbstractTask):
                 feature.close()
             self._log.info('finished closing features.')
 
-            if self._motors:
-                self._motors.close()
+            if self._arbitrator:
+                self._arbitrator.disable()
+                self._arbitrator.close()
+#               self._arbitrator.join(timeout=1.0)
+            if self._controller:
+                self._controller.disable()
+
+#           if self._flask_wrapper is not None:
+#               self._flask_wrapper.close()
+
+            super().close()
 
 #           self._info.close()
 #           self._rgbmatrix.close()
 #           if self._switch:
 #               self._switch.close()
 #           super(AbstractTask, self).close()
-            if self._arbitrator:
-                self._arbitrator.close()
 
             if self._disable_leds:
                 # restore LEDs
@@ -387,11 +453,14 @@ class ROS(AbstractTask):
 
 # ==============================================================================
 
+_ros = None
+
 # exception handler ............................................................
 
 def signal_handler(signal, frame):
     print('\nsignal handler    :' + Fore.MAGENTA + Style.BRIGHT + ' INFO  : Ctrl-C caught: exiting...' + Style.RESET_ALL)
-    _ros.close()
+    if _ros is not None:
+        _ros.close()
     print(Fore.MAGENTA + 'exit.' + Style.RESET_ALL)
     sys.stderr = DevNull()
 #   sys.exit()
@@ -403,10 +472,7 @@ def print_help():
     '''
     print('usage: ros.py [-h (help) | -n (do not start web server)]')
 
-
 # main .........................................................................
-
-_ros = ROS()
 
 def main(argv):
 
@@ -414,6 +480,7 @@ def main(argv):
 
     try:
 
+        _ros = ROS()
         _ros.start()
 
 #   except KeyboardInterrupt:
@@ -421,7 +488,8 @@ def main(argv):
 #       _ros.close()
     except Exception:
         print(Fore.RED + Style.BRIGHT + 'error starting ros: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-        _ros.close()
+        if _ros:
+            _ros.close()
 
 # call main ....................................................................
 if __name__== "__main__":

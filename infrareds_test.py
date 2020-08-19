@@ -40,7 +40,7 @@ class MockMessageQueue():
         self._log = Logger("mock queue", Level.INFO)
         self._events = []
         self._events.append(Event.INFRARED_PORT)
-        self._events.append(Event.INFRARED_CENTER)
+        self._events.append(Event.INFRARED_CNTR)
         self._events.append(Event.INFRARED_STBD)
         self._events.append(Event.INFRARED_PORT_SIDE)
         self._events.append(Event.INFRARED_STBD_SIDE)
@@ -54,16 +54,16 @@ class MockMessageQueue():
         message.set_number(next(self._counter))
         self._log.info('added message #{}: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
         event = message.get_event()
-        # note that because we can't have both a CENTER digital sensor and the SHORT_RANGE/LONG_RANGE 
+        # note that because we can't have both a CNTR digital sensor and the SHORT_RANGE/LONG_RANGE 
         # analog sensors, triggering one deletes the other
         if event is Event.INFRARED_PORT:
             if event in self._events:
                 self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
             self._remove_event(Event.INFRARED_PORT)
-        elif event is Event.INFRARED_CENTER:
+        elif event is Event.INFRARED_CNTR:
             if event in self._events:
                 self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
-            self._remove_event(Event.INFRARED_CENTER)
+            self._remove_event(Event.INFRARED_CNTR)
             self._remove_event(Event.INFRARED_SHORT_RANGE)
             self._remove_event(Event.INFRARED_LONG_RANGE)
         elif event is Event.INFRARED_STBD:
@@ -82,12 +82,12 @@ class MockMessageQueue():
             if event in self._events:
                 self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
             self._remove_event(Event.INFRARED_SHORT_RANGE)
-            self._remove_event(Event.INFRARED_CENTER)
+            self._remove_event(Event.INFRARED_CNTR)
         elif event is Event.INFRARED_LONG_RANGE:
             if event in self._events:
                 self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
             self._remove_event(Event.INFRARED_LONG_RANGE)
-            self._remove_event(Event.INFRARED_CENTER)
+            self._remove_event(Event.INFRARED_CNTR)
         else:
             self._log.info(Fore.BLUE + Style.BRIGHT + 'other event: {}'.format(event.description))
         self._display_event_list()

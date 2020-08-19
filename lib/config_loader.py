@@ -9,7 +9,10 @@
 # created:  2020-04-15
 # modified: 2020-04-15
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    exit("This script requires the pyyaml module\nInstall with: sudo pip3 install pyyaml")
 
 from lib.logger import Level, Logger
 

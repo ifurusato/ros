@@ -11,6 +11,12 @@
 #
 
 import time, sys, traceback
+
+try:
+    import pigpio
+except ImportError:
+    sys.exit("This script requires the pigpio module\nInstall with: sudo apt install python3-pigpio")
+
 from threading import Thread
 from fractions import Fraction
 from colorama import init, Fore, Style
@@ -18,65 +24,15 @@ init()
 
 from .logger import Logger, Level
 from .event import Event
-from .enums import SlewRate, Orientation
+from .enums import Direction, SlewRate, Velocity, Orientation
 
 try:
     from .motor import Motor
     print('import            :' + Fore.BLACK + ' INFO  : imported Motor.' + Style.RESET_ALL)
-#except ImportError:
-#   print('import            :' + Fore.RED + ' ERROR : failed to import Motor, using mock...' + Style.RESET_ALL)
-#   from .mock_motor import Motor
 except Exception:
-#   print('import            :' + Fore.RED + ' ERROR : failed to import Motor, using mock...' + Style.RESET_ALL)
-#   from .mock_motor import Motor
     traceback.print_exc(file=sys.stdout)
     print('import            :' + Fore.RED + ' ERROR : failed to import Motor, exiting...' + Style.RESET_ALL)
     sys.exit(1)
-
-# ..........................................................................
-def _configure_thunderborg_motors():
-    '''
-        Import the ThunderBorg library, then configure the Motors.
-    '''
-    print('tbconfig          :' + Fore.CYAN + ' INFO  : configure thunderborg & motors...' + Style.RESET_ALL)
-    global pi
-    try:
-        print('tbconfig          :' + Fore.CYAN + ' INFO  : importing thunderborg...' + Style.RESET_ALL)
-#           sys.path.append('/home/pi/thunderborg')
-        import lib.ThunderBorg3 as ThunderBorg
-        print('tbconfig          :' + Fore.CYAN + ' INFO  : successfully imported thunderborg.' + Style.RESET_ALL)
-        TB = ThunderBorg.ThunderBorg()  # create a new ThunderBorg object
-        TB.Init()                       # set the board up (checks the board is connected)
-        print('tbconfig          :' + Fore.CYAN + ' INFO  : successfully instantiated thunderborg.' + Style.RESET_ALL)
-
-        if not TB.foundChip:
-            boards = ThunderBorg.ScanForThunderBorg()
-            if len(boards) == 0:
-                print('tbconfig          :' + Fore.RED + Style.BRIGHT + ' ERROR : no thunderborg found, check you are attached.' + Style.RESET_ALL)
-            else:
-                print('tbconfig          :' + Fore.RED + Style.BRIGHT + ' ERROR : no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress) + Style.RESET_ALL)
-                for board in boards:
-                    print('tbconfig          :' + Fore.RED + Style.BRIGHT + ' ERROR :     {:02x} {:d}'.format(board, board))
-                print('tbconfig          :' + Fore.RED + Style.BRIGHT + ' ERROR : if you need to change the I²C address change the setup line so it is correct, e.g. TB.i2cAddress = {:0x}'.format(boards[0]) + Style.RESET_ALL)
-            sys.exit(1)
-        TB.SetLedShowBattery(True)
-        return TB
-
-    except Exception as e:
-        print('tbconfig          :' + Fore.RED + Style.BRIGHT + ' ERROR : unable to import thunderborg: {}'.format(e) + Style.RESET_ALL)
-        traceback.print_exc(file=sys.stdout)
-        sys.exit(1)
-
-
-def _import_pigpio():
-    try:
-        import pigpio
-        pi = pigpio.pi()
-        print('import            :' + Fore.CYAN + ' INFO  : successfully imported pigpio.' + Style.RESET_ALL)
-        return pi
-    except Exception:
-    #except ModuleNotFoundError:
-        print('import            :' + Fore.RED + ' ERROR : failed to import pigpio, operating without Pi.' + Style.RESET_ALL)
 
 
 # ..............................................................................
@@ -89,12 +45,12 @@ class Motors():
         self._log = Logger('motors', level)
         self._log.info('initialising motors...')
         if pi is None:
-            pi = _import_pigpio()
+            pi = pigpio.pi()
             if pi is None:
                 raise Exception('unable to configure pigpio.')
         self._pi = pi
         if tb is None:
-            tb = _configure_thunderborg_motors()
+            tb = self._configure_thunderborg_motors(level)
             if tb is None:
                 raise Exception('unable to configure thunderborg.')
         self._tb = tb
@@ -102,10 +58,12 @@ class Motors():
 
         self._port_motor = Motor(config, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
+        self._port_pid = self._port_motor.get_pid_controller()
 #       self._log.debug('implementing class for port motor: {}'.format(type(self._port_motor)))
         self._stbd_motor = Motor(config, self._tb, self._pi, Orientation.STBD, level)
         self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
-#       self._log.debug('implementing class for starboard motor: {}'.format(type(self._stbd_motor)))
+        self._stbd_pid = self._stbd_motor.get_pid_controller()
+#       self._log.debug('implementing class for stbd motor: {}'.format(type(self._stbd_motor)))
         self._enabled = True # default enabled
         # a dictionary of motor # to last set value
         self._msgIndex = 0
@@ -114,20 +72,54 @@ class Motors():
 
 
     # ..........................................................................
+    def _configure_thunderborg_motors(self, level):
+        '''
+            Import the ThunderBorg library, then configure the Motors.
+        '''
+        self._log.info('configure thunderborg & motors...')
+        global pi
+        try:
+            self._log.info('importing thunderborg...')
+            import lib.ThunderBorg3 as ThunderBorg
+            self._log.info('successfully imported thunderborg.')
+            TB = ThunderBorg.ThunderBorg(level)  # create a new ThunderBorg object
+            TB.Init()                       # set the board up (checks the board is connected)
+            self._log.info('successfully instantiated thunderborg.')
+    
+            if not TB.foundChip:
+                boards = ThunderBorg.ScanForThunderBorg()
+                if len(boards) == 0:
+                    self._log.error('no thunderborg found, check you are attached.')
+                else:
+                    self._log.error('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
+                    for board in boards:
+                        self._log.info('board {:02x} {:d}'.format(board, board))
+                    self._log.error('if you need to change the I²C address change the setup line so it is correct, e.g. TB.i2cAddress = {:0x}'.format(boards[0]))
+                sys.exit(1)
+            TB.SetLedShowBattery(True)
+            return TB
+    
+        except Exception as e:
+            self._log.error('unable to import thunderborg: {}'.format(e))
+            traceback.print_exc(file=sys.stdout)
+            sys.exit(1)
+    
+
+    # ..........................................................................
     def _set_max_power_ratio(self):
         pass
         # initialise ThunderBorg ...........................
-        print('motors            :' + Fore.CYAN + ' INFO  : getting battery reading...' + Style.RESET_ALL)
+        self._log.info('getting battery reading...')
         # get battery voltage to determine max motor power
         # could be: Makita 12V or 18V power tool battery, or 12-20V line supply
         voltage_in = self._tb.GetBatteryReading()
         if voltage_in is None:
             raise OSError('cannot continue: cannot read battery voltage.')
-        print('motors            :' + Fore.CYAN + ' INFO  : voltage in:  {:>5.2f}V'.format(voltage_in) + Style.RESET_ALL)
+        self._log.info('voltage in:  {:>5.2f}V'.format(voltage_in))
 #       voltage_in = 20.5
         # maximum motor voltage
         voltage_out = 9.0
-        print('motors            :' + Fore.CYAN + ' INFO  : voltage out: {:>5.2f}V'.format(voltage_out) + Style.RESET_ALL)
+        self._log.info('voltage out: {:>5.2f}V'.format(voltage_out))
         if voltage_in < voltage_out:
             raise OSError('cannot continue: battery voltage too low ({:>5.2f}V).'.format(voltage_in))
         # Setup the power limits
@@ -136,8 +128,8 @@ class Motors():
         else:
             self._max_power_ratio = voltage_out / float(voltage_in)
         # convert float to ratio format
-        print('motors            :' + Fore.CYAN + ' INFO  : battery level: {:>5.2f}V; motor voltage: {:>5.2f}V; maximum power ratio: {}'.format(voltage_in, voltage_out, \
-                str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')) + Style.RESET_ALL)
+        self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V;'.format( voltage_in, voltage_out) + Fore.CYAN + Style.BRIGHT \
+                + ' maximum power ratio: {}'.format(str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
 
 
     # ..........................................................................
@@ -186,7 +178,7 @@ class Motors():
 #   FULL_SPEED          = 80.0
 #   EMERGENCY_SPEED     = 100.0
 #   MAXIMUM             = 100.000001
-        self._log.warning('SPEED {:5.2f} compared to port: {:>5.2f}; starboard: {:>5.2f}'.format(speed.value, self._port_motor.get_current_power_level(), \
+        self._log.warning('SPEED {:5.2f} compared to port: {:>5.2f}; stbd: {:>5.2f}'.format(speed.value, self._port_motor.get_current_power_level(), \
                 self._stbd_motor.get_current_power_level()) )
         return ( self._port_motor.get_current_power_level() > speed.value ) or ( self._stbd_motor.get_current_power_level() > speed.value )
 
@@ -289,6 +281,30 @@ class Motors():
         self._port_motor.stop()
         self._stbd_motor.stop()
         self._log.info('stopped.')
+        return True
+
+
+    # ..........................................................................
+    def slow_down(self, orientation):
+        '''
+            Slows both motors one step in the Velocity enumeration.
+        '''
+        if not self.is_in_motion():
+            self._log.warning('not moving: can\'t slow down.')
+        else:
+            self._log.info('slowing...')
+            _port_velocity = self._port_motor.get_velocity()
+            _slowed_port_velocity = Velocity.get_slower_than(_port_velocity).value
+            self._log.info(Fore.RED   + 'slowing port motor from {:>5.2f} to {:>5.2f}...'.format(_port_velocity, _slowed_port_velocity))
+            _stbd_velocity = self._stbd_motor.get_velocity()
+            _slowed_stbd_velocity = Velocity.get_slower_than(_stbd_velocity).value
+            self._log.info(Fore.GREEN + 'slowing stbd motor from {:>5.2f} to {:>5.2f}...'.format(_stbd_velocity, _slowed_stbd_velocity))
+
+            _forward_steps_per_rotation = 494
+            _rotations = 2
+            _steps = -1 #_forward_steps_per_rotation * _rotations
+            self.change_velocity(_slowed_port_velocity, _slowed_stbd_velocity, SlewRate.FAST, _steps)
+            self._log.info('slowed.')
         return True
 
 
@@ -406,9 +422,9 @@ class Motors():
 
 
     # ..........................................................................
-    def change_velocity(self, port_velocity, starboard_velocity, slew_rate, steps):
+    def change_velocity(self, port_velocity, stbd_velocity, slew_rate, steps):
         '''
-            Slews both motors to the designated velocities at a the provided slew rate.
+            Slews both motors to the designated velocities at the provided slew rate.
 
             If steps is greater than zero it provides a step limit on the motors.
         '''
@@ -417,9 +433,9 @@ class Motors():
         if not self._enabled:
             self._log.info('cannot change velocity: motors disabled.')
             return
-        self._log.info('change ahead quickly to velocities; port: {:>5.2f}; stbd: {:>5.2f}.'.format(port_velocity, starboard_velocity))
+        self._log.info('change ahead quickly to velocities; port: {:>5.2f}; stbd: {:>5.2f}.'.format(port_velocity, stbd_velocity))
         _tp = Thread(target=self._accelerate_to_velocity, args=(port_velocity, slew_rate, steps, Orientation.PORT))
-        _ts = Thread(target=self._accelerate_to_velocity, args=(starboard_velocity, slew_rate, steps, Orientation.STBD))
+        _ts = Thread(target=self._accelerate_to_velocity, args=(stbd_velocity, slew_rate, steps, Orientation.STBD))
         _tp.start()
         _ts.start()
         _tp.join()
@@ -607,7 +623,7 @@ class Motors():
 
 
     # ..........................................................................
-    def turnAhead(self, port_speed, stbd_speed):
+    def turn_ahead(self, port_speed, stbd_speed):
         '''
             Moves ahead in an arc by setting different speeds. 0 <= port_speed,starboard_speed <= 100
 
@@ -625,7 +641,7 @@ class Motors():
 
 
     # ..........................................................................
-    def turnAstern(self, port_speed, stbd_speed):
+    def turn_astern(self, port_speed, stbd_speed):
         '''
             Moves astern in an arc by setting different speeds. 0 <= port_speed,starboard_speed <= 100
 
@@ -694,7 +710,7 @@ class Motors():
 
 
     # ..........................................................................
-    def spinPort(self, speed):
+    def spin_port(self, speed):
         '''
             Halts, then sets motors to turn counter-clockwise at speed. 0 <= speed <= 100
         '''
@@ -702,13 +718,13 @@ class Motors():
             self._log.info('cannot spin to port: motors disabled.')
             return
         self._log.info('spinning to port at speed {:6.3f}...'.format(speed))
-        self.stepSpin(Orientation.PORT, speed, -1)
+        self.step_spin(Orientation.PORT, speed, -1, False)
         self._log.info('spun to port.')
         return True
 
 
     # ..........................................................................
-    def spinStarboard(self, speed):
+    def spin_starboard(self, speed):
         '''
             Halts, then sets motors to turn clockwise at speed. 0 <= speed <= 100
         '''
@@ -716,13 +732,13 @@ class Motors():
             self._log.info('cannot spin to starboard: motors disabled.')
             return
         self._log.info('spinning to starboard at speed {:6.3f}...'.format(speed))
-        self.stepSpin(Orientation.STBD, speed, -1)
+        self.step_spin(Orientation.STBD, speed, -1, False)
         self._log.info('spun to starboard.')
         return True
 
 
     # ..........................................................................
-    def stepSpin(self, orientation, speed, steps):
+    def step_spin(self, orientation, speed, steps, halt_first):
         '''
             Halts, then spins to port (counter-clockwise) or starboard (clockwise)
             at the specified speed and steps, then stops.
@@ -730,7 +746,8 @@ class Motors():
         if not self._enabled:
             self._log.info('cannot step spin to port: motors disabled.')
             return
-        self.halt()
+        if halt_first:
+            self.halt()
 
         _slew_rate = SlewRate.NORMAL
         if orientation is Orientation.PORT:

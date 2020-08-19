@@ -5,10 +5,10 @@
 # YAML configuration for Robot Operating System (ROS) ..........................
 
 flask:
-    enabled: false                               # start flask web server?
+    enabled: False                               # start flask web server?
 
 pi:
-    disable_leds: false                          # disable and re-enable Pi LEDs during operation?
+    disable_leds: False                          # disable and re-enable Pi LEDs during operation?
     led_0_path:   '/sys/class/leds/led0/brightness'
     led_1_path:   '/sys/class/leds/led1/brightness'
     sudo_name:    'sudo'
@@ -16,30 +16,48 @@ pi:
 rosd:
     switch_pin: 14                               # the GPIO pin connected to the 'enable' toggle switch
     led_pin: 27                                  # the GPIO pin connected to the status LED
-
+    application: gamepad                         # the application to start via daemon ('ros' or 'gamepad')
 ros:
-    wait_for_button_press: false                 # robot waits in standby mode until red button is pressed
-    enable_self_shutdown: false                  # enables the robot to shut itself down (not good during demos)
-    enable_player: false                         # enables sound player (disable if no hardware support)
-    main_loop_delay_ms:    100                   # main os loop (doesn't have effect on performance)
+    wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
+    enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
+    enable_player: False                         # enables sound player (disable if no hardware support)
+    main_loop_delay_ms:    5000                  # main os loop (doesn't have effect on performance)
+    arbitrator:
+        loop_delay_sec: 0.01                     # arbitrator loop delay (sec)
+        ballistic_loop_delay_sec: 0.2            # loop delay for ballistic tasks (sec)
     battery:
-        enable_messaging:   True                 # if true we enable low battery messages to be sent
+        enable_messaging:   True                 # if True we enable low battery messages to be sent
         five_volt_a_channel:   2                 # AD channel for power supply A
         five_volt_b_channel:   1                 # AD channel for power supply B
         battery_channel:       0                 # AD channel for raw battery voltage
         raw_battery_threshold: 17.74             # raw and 5v regulator thresholds set from known measurements:
         low_5v_threshold:      4.75              # really 4.82v
         settle_count:          3                 # how many times should we sample before accepting a first value?
+    video:
+        enable_streaming: True                   # if True, stream video to a localhost HTTP server
+        ctrl_lights: True                        # if True, permit video to control Matrix11x7 lights
+        convert_mp4: True                        # if True, convert h264 source to mp4
+        annotate: True                           # if True, include annotation on video
+        title: 'NZPRG - KR01'                            # the title portion of the video annotation
+        quality: -1                              # video quality: -1 for default; values between 1 (high) - 40 (low), typical between 20-25.
+        remove_h264: False                       # if True, remove h264 video source after converting to mp4
+        port: 8001                               # server port for streaming video
+        width: 800                               # video width
+        height: 320                              # video height
+        framerate: 30                            # video framerate
+        lux_threshold: 14                        # lux threshold for night mode
+        dirname: 'videos'                        # the name of the output directory
+        basename: 'vid'                          # the base name for output files
     lidar:
         min_angle: -40.0                         # minimum scan angle (clearance of bumper)
         max_angle:  40.0                         # maximum scan angle (clearance of bumper)
-        play_sound: False                        # if true, play 'ping' sound during scanning
+        play_sound: False                        # if True, play 'ping' sound during scanning
         degree_step: 5.0                         # resolution of scan
         step_delay_sec: 0.10                     # how long to linger at each degree step to permit a reading
 #       tof_range: 'medium'                      # ToF range: performance, long, medium or short
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
         reverse_movement: True                   # reverses the servo movement in case hardware is backwards
-        double_sweep: True                       # if true sweeps in both directions
+        double_sweep: False                      # if True sweeps in both directions
         servo_number: 1                          # use this servo
     wall_follower:
         port_angle: -90.0                        # port-facing scan angle
@@ -83,6 +101,13 @@ ros:
 #       port_side_pin:      5                    # pin connected to port side infrared
 #       stbd_side_pin:     12                    # pin connected to starboard side infrared
 #       use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
+    gamepad:
+        enabled: True
+        device_path: '/dev/input/event6'         # the path to the bluetooth gamepad on the pi
+        loop_delay: 0.01                         # main loop delay
+    gamepad_demo:
+        enable_ifs: True                         # if True, enable IntegratedFrontSensor
+        loop_delay_ms: 20                        # the intended loop delay in ms (limit on message queue)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22
@@ -120,11 +145,18 @@ ros:
         channel:       1                         # SMBus channel
         loop_delay_sec: 0.05                     # the loop delay for the integrated front sensor
         # the analog sensor value used as event trigger thresholds:
-        port_side_trigger_distance: 70.0         # port side analog IR sensor
-        port_trigger_distance:      90.0         # port analog IR sensor
-        center_trigger_distance:    60.0         # center analog IR sensor
-        stbd_trigger_distance:      90.0         # starboard analog IR sensor
-        stbd_side_trigger_distance: 70.0         # starboard side analog IR sensor
+        port_side_trigger_distance:     70.0     # port side analog IR sensor
+        port_trigger_distance:          90.0     # port analog IR sensor
+        center_trigger_distance:        60.0     # center analog IR sensor
+        stbd_trigger_distance:          90.0     # starboard analog IR sensor
+        stbd_side_trigger_distance:     70.0     # starboard side analog IR sensor
+        # long distance:
+        port_side_trigger_distance_far: 60.0     # port side analog IR sensor (far)
+        port_trigger_distance_far:      55.0     # port analog IR sensor (far)
+        center_trigger_distance_far:    50.0     # center analog IR sensor (far)
+        stbd_trigger_distance_far:      55.0     # starboard analog IR sensor (far)
+        stbd_side_trigger_distance_far: 60.0     # starboard side analog IR sensor (far)
+
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel

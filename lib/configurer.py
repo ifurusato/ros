@@ -9,16 +9,10 @@ from fractions import Fraction
 from colorama import init, Fore, Style
 init()
 
-pi = None
-
 try:
     import pigpio
-    pi = pigpio.pi()
-    print('import            :' + Fore.CYAN + ' INFO  : successfully imported pigpio.' + Style.RESET_ALL)
-except Exception:
-#except ModuleNotFoundError:
-    print('import            :' + Fore.RED + ' ERROR : failed to import pigpio, operating without Pi.' + Style.RESET_ALL)
-
+except ImportError:
+    sys.exit("This script requires the pigpio module\nInstall with: sudo apt install python3-pigpio")
 try:
     import numpy
 except ImportError:
@@ -251,10 +245,8 @@ class Configurer():
             Import the ThunderBorg library, then configure the Motors.
         '''
         self._log.info('configure thunderborg & motors...')
-        global pi
         try:
             self._log.info('importing ThunderBorg...')
-#           sys.path.append('/home/pi/thunderborg')
             import lib.ThunderBorg3 as ThunderBorg
             self._log.info('successfully imported ThunderBorg.')
             TB = ThunderBorg.ThunderBorg()  # create a new ThunderBorg object
@@ -304,8 +296,10 @@ class Configurer():
         # now import motors
         from lib.motors import Motors
         try:
+            self._log.info('getting raspberry pi...')
+            _pi = pigpio.pi()
             self._log.info('configuring motors...')
-            self._ros._motors = Motors(self._ros._config, TB, pi, Level.INFO)
+            self._ros._motors = Motors(self._ros._config, TB, _pi, Level.INFO)
             self._ros._motors.get_motor(Orientation.PORT).set_max_power_ratio(_max_power_ratio)
             self._ros._motors.get_motor(Orientation.STBD).set_max_power_ratio(_max_power_ratio)
         except OSError as oe:
