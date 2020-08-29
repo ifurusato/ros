@@ -35,7 +35,8 @@ from lib.message import Message
 class BNO055:
     '''
         Reads from a BNO055 9DoF sensor. In order for this to be used by a
-        Raspberry Pi you must slow your I2C bus down to around 10kHz.
+        Raspberry Pi you must in theory slow your I2C bus down to around
+        10kHz, though I've not done this and things still seem to work.
 
         Note that this has been calibrated based on the orientation of the
         BNO055 board as installed on the KR01 robot, with the dot on the
@@ -52,7 +53,7 @@ class BNO055:
                                     Aft
 
         If you mount the chip in a different orientation you will likely
-        need to multiple one or more of the axis by -1.0.
+        need to multiply one or more of the axis by -1.0.
     '''
 
     # permitted error between Euler and Quaternion (in degrees) to allow setting value
