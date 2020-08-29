@@ -300,8 +300,8 @@ class ROS(AbstractTask):
         # begin main loop ..............................
 
         self._log.info('starting battery check thread...')
-        self._ble = BatteryLevelIndicator(Level.INFO)
-        self._ble.enable()
+        self._bat_lev = BatteryLevelIndicator(Level.INFO)
+        self._bat_lev.enable()
 
         self._log.info('starting button thread...')
         self._button.start()
@@ -412,8 +412,8 @@ class ROS(AbstractTask):
                 self._motors.close()
             if self._ifs:
                 self._ifs.close() 
-            if self._ble:
-                self._ble.disable()
+            if self._bat_lev:
+                self._bat_lev.disable()
 
             # close features
             for feature in self._features:
@@ -473,7 +473,6 @@ def print_help():
     print('usage: ros.py [-h (help) | -n (do not start web server)]')
 
 # main .........................................................................
-
 def main(argv):
 
     signal.signal(signal.SIGINT, signal_handler)

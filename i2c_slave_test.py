@@ -9,9 +9,10 @@
 # created:  2020-04-30
 # modified: 2020-05-24
 #
-# This tests the hardware configuration determined by the config.yaml file.
-# This is generally the configuration of the integrated Front Bumper, which
-# includes five analog infrared sensors (A0-A4) and three bumpers (pins 9-11).
+#  This tests the hardware configuration determined by the config.yaml file.
+#  This is generally the configuration of the Integrated Front Sensor, which
+#  uses an Arduino in an I²C master-slave configuration for input from five
+#  analog infrared sensors (A0-A4) and three bumper switches (pins 9-11).
 #
 
 from lib.logger import Level

@@ -9,11 +9,11 @@
 # created:  2020-04-30
 # modified: 2020-05-04
 #
-# This version uses smbus2 instead of pigpio.
+#  This version uses smbus2 instead of pigpio.
 #
 #   % sudo pip3 install smbus2
 #
-# smbus2 notes from pololu: https://www.pololu.com/docs/0J73/15.9
+#  smbus2 notes from pololu: https://www.pololu.com/docs/0J73/15.9
 #
 
 import sys, time, traceback, itertools, threading

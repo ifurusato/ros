@@ -15,16 +15,16 @@ import time, sys, traceback
 try:
     import pigpio
 except ImportError:
-    sys.exit("This script requires the pigpio module\nInstall with: sudo apt install python3-pigpio")
+    sys.exit("This script requires the pigpio module.\nInstall with: sudo apt install python3-pigpio")
 
 from threading import Thread
 from fractions import Fraction
 from colorama import init, Fore, Style
 init()
 
-from .logger import Logger, Level
-from .event import Event
-from .enums import Direction, SlewRate, Velocity, Orientation
+from lib.logger import Logger, Level
+from lib.event import Event
+from lib.enums import Direction, SlewRate, Velocity, Orientation
 
 try:
     from .motor import Motor
@@ -33,7 +33,6 @@ except Exception:
     traceback.print_exc(file=sys.stdout)
     print('import            :' + Fore.RED + ' ERROR : failed to import Motor, exiting...' + Style.RESET_ALL)
     sys.exit(1)
-
 
 # ..............................................................................
 class Motors():
@@ -70,7 +69,6 @@ class Motors():
         self._last_set_power = { 0:0, 1:0 }
         self._log.info('motors ready.')
 
-
     # ..........................................................................
     def _configure_thunderborg_motors(self, level):
         '''
@@ -103,8 +101,15 @@ class Motors():
             self._log.error('unable to import thunderborg: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
             sys.exit(1)
-    
 
+    # ..........................................................................
+    def set_led_show_battery(self, enable):
+        self._tb.SetLedShowBattery(enable)
+
+    # ..........................................................................
+    def set_led_color(self, color):
+        self._tb.SetLed1(color.red/255.0, color.green/255.0, color.blue/255.0)
+    
     # ..........................................................................
     def _set_max_power_ratio(self):
         pass
@@ -131,7 +136,6 @@ class Motors():
         self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V;'.format( voltage_in, voltage_out) + Fore.CYAN + Style.BRIGHT \
                 + ' maximum power ratio: {}'.format(str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
 
-
     # ..........................................................................
     def get_motor(self, orientation):
         if orientation is Orientation.PORT:
@@ -139,12 +143,9 @@ class Motors():
         else:
             return self._stbd_motor
 
-
     # ..........................................................................
     def enable(self):
         self._enabled = True
-
-
     # ..........................................................................
     def disable(self):
         '''
@@ -157,14 +158,12 @@ class Motors():
             self.halt()
         self._log.info('motors disabled.')
 
-
     # ..........................................................................
     def is_in_motion(self):
         '''
             Returns true if either motor is moving.
         '''
         return self._port_motor.is_in_motion() or self._stbd_motor.is_in_motion()
-
 
     # ..........................................................................
     def is_faster_than(self, speed):
@@ -182,14 +181,12 @@ class Motors():
                 self._stbd_motor.get_current_power_level()) )
         return ( self._port_motor.get_current_power_level() > speed.value ) or ( self._stbd_motor.get_current_power_level() > speed.value )
 
-
     # ..........................................................................
     def get_steps(self):
         '''
             Returns the port and starboard motor step count.
         '''
         return [ self._port_motor.get_steps() , self._stbd_motor.get_steps() ]
-
 
     # ..........................................................................
     def get_current_power_level(self, orientation):
@@ -201,7 +198,6 @@ class Motors():
         else:
             return self._stbd_motor.get_current_power_level()
 
-
     # ..........................................................................
     def close(self):
         '''
@@ -212,7 +208,6 @@ class Motors():
         self._port_motor.close()
         self._stbd_motor.close()
         self._log.debug('closed.')
-
 
 # Stopping Behaviours ....................................................................
 

@@ -14,7 +14,7 @@ import time, threading
 #import RPi.GPIO as GPIO
 #from .import_gpio import *
 import lib.import_gpio
-from .logger import Level, Logger
+from lib.logger import Level, Logger
 
 # ..............................................................................
 class Status():

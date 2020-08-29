@@ -5,26 +5,28 @@
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
 #
+# author:   Murray Altheim
+# created:  2020-08-22
+# modified: 2020-08-22
+#
+#  Testing rotation based on compass orientation. Currently unfinished.
+#
 
-# Import library functions we need
-import os, sys, signal, time, traceback
+import os, sys, signal, time, traceback, itertools
 from threading import Thread
 from fractions import Fraction
 from colorama import init, Fore, Style
 init()
 
-try:
-    import numpy
-except ImportError:
-    exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
-
 from lib.devnull import DevNull
 from lib.enums import Rotation, Direction, Speed, Velocity, SlewRate, Orientation
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
+from lib.queue import MessageQueue
 from lib.motor import Motor
 from lib.motors import Motors
-from lib.filewriter import FileWriter
+from lib.indicator import Indicator
+from lib.compass import Compass
 
 _port_motor = None
 _stbd_motor = None
@@ -76,23 +78,20 @@ def _spin(motors, rotation, f_is_enabled):
 #       self.print_current_power_levels()
     print('complete: motors spin {}.'.format(rotation))
 
-def is_calibrated_trigger():
-    time.sleep(5.0)
-    return True
+
+# ..............................................................................
+def has_heading(compass, expected_heading):
+    '''
+        Returns true if the current compass heading is within an error range of the expected value.
+    '''
+    err = 1.0
+    if ( expected_heading - err ) < compass.get_heading() < ( expected_heading + err ):
+        return True
+    return False
+
 
 # ..............................................................................
 def main():
-    '''
-         494 encoder steps per rotation (maybe 493)
-         218mm wheel circumference
-         1 wheel rotation = 218mm
-         2262 steps per meter
-         2262 steps per second = 1 m/sec
-         2262 steps per second = 100 cm/sec
-
-         Notes:
-         1 rotation = 218mm = 493 steps
-    '''
     try:
 
 #       signal.signal(signal.SIGINT, signal_handler)
@@ -104,50 +103,40 @@ def main():
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
+        
+        _queue = MessageQueue(Level.INFO)
+        _indicator = Indicator(Level.INFO)
+        _compass = Compass(_config, _queue, _indicator, Level.INFO)
+        _compass.enable()
+
+        print(Fore.CYAN + Style.BRIGHT + 'wave robot in the air until calibrated.' + Style.RESET_ALL)
+        while not _compass.is_calibrated():
+            time.sleep(0.33)
+
+        print(Fore.CYAN + Style.BRIGHT + 'CALIBRATED.      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ' + Style.RESET_ALL)
+        time.sleep(5.0)
 
         _motors = Motors(_config, None, None, Level.INFO)
-        # disable port motor ............................
-        _port_motor = _motors.get_motor(Orientation.PORT)
-        _port_motor.set_motor_power(0.0)
+#       _port_motor = _motors.get_motor(Orientation.PORT)
+#       _stbd_motor = _motors.get_motor(Orientation.STBD)
 
-        _stbd_motor = _motors.get_motor(Orientation.STBD)
+        _heading = 0.0 # due south
+        _spin(_motors, Rotation.CLOCKWISE, lambda: not has_heading(_compass, _heading) ) 
 
-        _spin(_motors, Rotation.CLOCKWISE, lambda: not is_calibrated_trigger() ) 
-
-#       _pid = _stbd_motor.get_pid_controller()
-
-#       _filewriter = FileWriter(_config, 'pid', Level.INFO)
-#       _pid.set_filewriter(_filewriter)
-
-#       _rotations = 5
-#       _forward_steps = _forward_steps_per_rotation * _rotations
-#       print(Fore.YELLOW + Style.BRIGHT + 'starting forward motor test for steps: {:d}.'.format(_forward_steps) + Style.RESET_ALL)
-#       _pid.step_to(Velocity.TWO_THIRDS, Direction.FORWARD, SlewRate.SLOW, _forward_steps)
-
-#       _rotations = 3
-#       _forward_steps = _forward_steps_per_rotation * _rotations
-#       _pid.step_to(Velocity.HALF, Direction.FORWARD, SlewRate.SLOW, _forward_steps)
-
-#       _pid.close_filewriter()
-#       _stbd_motor.brake()
-#       _stbd_motor.close()
-
-
-        print(Fore.YELLOW + Style.BRIGHT + 'A. motor test complete; intended: {:d}; actual steps: {}.'.format(_forward_steps, _stbd_motor.get_steps()) + Style.RESET_ALL)
+        print(Fore.CYAN + Style.BRIGHT + 'test complete.' + Style.RESET_ALL)
 
     except KeyboardInterrupt:
-        print(Fore.YELLOW + Style.BRIGHT + 'B. motor test complete; intended: {:d}; actual steps: {}.'.format(_forward_steps, _stbd_motor.get_steps()) + Style.RESET_ALL)
         _stbd_motor.halt()
         quit()
     except Exception as e:
-        print(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e))
+        print(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e) + Style.RESET_ALL)
         traceback.print_exc(file=sys.stdout)
     finally:
-        print(Fore.YELLOW + Style.BRIGHT + 'C. finally.')
-#       _stbd_motor.halt()
+        print(Fore.YELLOW + Style.BRIGHT + 'C. finally.' + Style.RESET_ALL)
 
+
+# ..............................................................................
 if __name__== "__main__":
     main()
-
 
 #EOF

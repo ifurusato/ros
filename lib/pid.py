@@ -31,7 +31,6 @@ from lib.slewlimiter import SlewLimiter
 # ..............................................................................
 class PID():
     '''
-
         A PID controller seeks to keep some input variable close to a desired
         setpoint by adjusting an output. The way in which it does this can be
         'tuned' by adjusting three parameters (P,I,D).
@@ -53,7 +52,6 @@ class PID():
         self._stats_queue = None
         self._filewriter_closed = False
 
-
         # PID configuration ..........................................
         cfg = config['ros'].get('motors').get('pid')
         self._enable_slew = cfg.get('enable_slew')
@@ -74,9 +72,7 @@ class PID():
         self._sample_time_ms = cfg.get('sample_time_ms') # default sample time is 20ms
         self._sample_time_s = self._sample_time_ms / 1000
         self._last_time = self._millis() - self._sample_time_ms
-
         self._log.info('ready.')
-
 
     # ..............................................................................
     def set_filewriter(self, filewriter):
@@ -92,11 +88,9 @@ class PID():
             self._filewriter.enable(self._stats_queue)
             self._log.info('filewriter enabled.')
 
-
     # ..........................................................................
     def get_tuning(self):
         return [ self._kp, self._ki, self._kd ]
-
 
     # ..........................................................................
     def get_tuning_info(self):
@@ -112,7 +106,6 @@ class PID():
                  '{:6.4f} ({})'.format(self._ki, _en_i),\
                  '{:6.4f} ({})'.format(self._kd, _en_d) ]
 
-
     # ..........................................................................
     def set_tuning(self, p, i, d):
         '''
@@ -123,9 +116,8 @@ class PID():
         self._kd = d
         self._log.info('set PID tuning; P={:>5.2f}; I={:>5.2f}; D={:>5.2f}.'.format(self._kp, self._ki, self._kd))
 
-
     # ..........................................................................
-    def step_to(self, target_velocity, direction, slew_rate, steps):
+    def step_to(self, target_velocity, direction, slew_rate, steps, f_is_enabled):
         '''
             Performs the PID calculation during a loop, returning once the
             number of steps have been reached.
@@ -136,9 +128,6 @@ class PID():
             true in practice, until we tune these values).
         '''
         _current_steps = self._motor.get_steps() # current steps
-        self._direction = direction
-        if direction is Direction.REVERSE:
-            pass # TODO
 
         if type(target_velocity) is Velocity:
             _target_velocity = target_velocity.value
@@ -150,12 +139,17 @@ class PID():
         self._start_time = time.time()
         _is_accelerating = (self._motor.get_velocity() < _target_velocity)
 
+        self._direction = direction
+        if direction is Direction.REVERSE:
+            _target_velocity = -1.0 * _target_velocity
+
         if self._enable_slew:
             if not self._slewlimiter.is_enabled():
                 self._slewlimiter.enable()
                 self._slewlimiter.start()
 
-        while self._motor.get_steps() < _step_limit:
+        while f_is_enabled() and (( direction is Direction.FORWARD and self._motor.get_steps() < _step_limit ) or \
+              ( direction is Direction.REVERSE and self._motor.get_steps() > _step_limit )):
             if self._enable_slew:
                 _slewed_target_velocity = self._slewlimiter.slew(self._motor.get_velocity(), _target_velocity)
                 _changed = self._compute(_slewed_target_velocity)
@@ -182,7 +176,6 @@ class PID():
         if self._enable_slew: # if not a repeat call
             self._slewlimiter.reset(0.0)
         self._motor.reset_interrupt()
-
 
     # ..........................................................................
     def _compute(self, target_velocity):
@@ -277,7 +270,6 @@ class PID():
             self._last_time = _now
             return _changed
 
-
     # ..........................................................................
     @staticmethod
     def equals_zero(value):
@@ -287,18 +279,15 @@ class PID():
 #       return value == 0.0
         return numpy.isclose(value, 0.0, rtol=0.02, atol=0.0)
 
-
     # ..........................................................................
     def enable(self):
         self._log.info('{} enabled.'.format(self._orientation))
         pass
 
-
     # ..........................................................................
     def disable(self):
         self._log.info('{} disabled.'.format(self._orientation))
         pass
-
 
     # ..........................................................................
     def close_filewriter(self):
@@ -308,7 +297,6 @@ class PID():
                 _tuning = self.get_tuning_info()
                 self._filewriter.write_gnuplot_settings(_tuning)
                 self._filewriter.disable()
-
 
     # ..........................................................................
     def close(self):

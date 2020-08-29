@@ -42,12 +42,20 @@ ros:
         quality: -1                              # video quality: -1 for default; values between 1 (high) - 40 (low), typical between 20-25.
         remove_h264: False                       # if True, remove h264 video source after converting to mp4
         port: 8001                               # server port for streaming video
-        width: 800                               # video width
-        height: 320                              # video height
+#       width: 1600                              # video width
+#       height: 400                              # video height
+        width: 1280                              # video width
+        height: 720                              # video height
         framerate: 30                            # video framerate
         lux_threshold: 14                        # lux threshold for night mode
         dirname: 'videos'                        # the name of the output directory
         basename: 'vid'                          # the base name for output files
+    bno055:
+        quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
+        loop_delay_sec: 0.1                      # sensor loop delay (seconds)
+        i2c_device: 1                            # I2C device bus number, equivalent to '/dev/i2c-1'
+    accelerometer:
+        jitter_limit: 0.1                        # how much jitter is permitted whilst considered at rest
     lidar:
         min_angle: -40.0                         # minimum scan angle (clearance of bumper)
         max_angle:  40.0                         # maximum scan angle (clearance of bumper)
@@ -106,7 +114,7 @@ ros:
         device_path: '/dev/input/event6'         # the path to the bluetooth gamepad on the pi
         loop_delay: 0.01                         # main loop delay
     gamepad_demo:
-        enable_ifs: True                         # if True, enable IntegratedFrontSensor
+        enable_ifs: False                        # if True, enable IntegratedFrontSensor
         loop_delay_ms: 20                        # the intended loop delay in ms (limit on message queue)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
@@ -140,10 +148,28 @@ ros:
         default_filename_prefix: 'motors'        # output directory name
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
+    io_expander:
+        port_side_ir_pin:  10                    # pin connected to port side infrared
+        port_ir_pin:        8                    # pin connected to port infrared
+        center_ir_pin:     11                    # pin connected to center infrared
+        stbd_ir_pin:        7                    # pin connected to starboard infrared
+        stbd_side_ir_pin:   9                    # pin connected to starboard side infrared
+        port_bmp_pin:       6                    # pin connected to port bumper
+        center_bmp_pin:     3                    # pin connected to center bumper
+        stbd_bmp_pin:       5                    # pin connected to starboard bumper
     integrated_front_sensor:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel
         loop_delay_sec: 0.05                     # the loop delay for the integrated front sensor
+        # hardware pin assignments:
+        port_side_ir_pin:   1                    # pin connected to port side infrared
+        port_ir_pin:        2                    # pin connected to port infrared
+        center_ir_pin:      3                    # pin connected to center infrared
+        stbd_ir_pin:        4                    # pin connected to starboard infrared
+        stbd_side_ir_pin:   5                    # pin connected to starboard side infrared
+        port_bmp_pin:       9                    # pin connected to port bumper
+        center_bmp_pin:    10                    # pin connected to center bumper
+        stbd_bmp_pin:      11                    # pin connected to starboard bumper
         # the analog sensor value used as event trigger thresholds:
         port_side_trigger_distance:     70.0     # port side analog IR sensor
         port_trigger_distance:          90.0     # port analog IR sensor
@@ -151,11 +177,11 @@ ros:
         stbd_trigger_distance:          90.0     # starboard analog IR sensor
         stbd_side_trigger_distance:     70.0     # starboard side analog IR sensor
         # long distance:
-        port_side_trigger_distance_far: 60.0     # port side analog IR sensor (far)
-        port_trigger_distance_far:      55.0     # port analog IR sensor (far)
-        center_trigger_distance_far:    50.0     # center analog IR sensor (far)
-        stbd_trigger_distance_far:      55.0     # starboard analog IR sensor (far)
-        stbd_side_trigger_distance_far: 60.0     # starboard side analog IR sensor (far)
+        port_side_trigger_distance_far: 65.0     # port side analog IR sensor (far)
+        port_trigger_distance_far:      60.0     # port analog IR sensor (far)
+        center_trigger_distance_far:    60.0     # center analog IR sensor (far)
+        stbd_trigger_distance_far:      60.0     # starboard analog IR sensor (far)
+        stbd_side_trigger_distance_far: 65.0     # starboard side analog IR sensor (far)
 
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS

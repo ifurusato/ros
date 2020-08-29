@@ -249,7 +249,7 @@ class Configurer():
             self._log.info('importing ThunderBorg...')
             import lib.ThunderBorg3 as ThunderBorg
             self._log.info('successfully imported ThunderBorg.')
-            TB = ThunderBorg.ThunderBorg()  # create a new ThunderBorg object
+            TB = ThunderBorg.ThunderBorg(Level.INFO)  # create a new ThunderBorg object
             TB.Init()                       # set the board up (checks the board is connected)
             self._log.info('successfully instantiated ThunderBorg.')
 
@@ -329,14 +329,12 @@ class Configurer():
 #       _switch = Switch(Level.INFO)
 #       self._ros.add_feature(_switch)
 
-
     # ..........................................................................
     def configure_battery_check(self):
         self._log.info('configure battery check...')
         from lib.batterycheck import BatteryCheck
         _battery_check = BatteryCheck(self._ros._config, self._ros.get_message_queue(), Level.INFO)
         self._ros.add_feature(_battery_check)
-
 
     # ..........................................................................
     def configure_rgbmatrix(self):
@@ -347,15 +345,12 @@ class Configurer():
         self._ros._rgbmatrix = RgbMatrix(Level.INFO)
         self._ros.add_feature(self._ros._rgbmatrix) # FIXME this is added twice
 
-
     # ..........................................................................
     def configure_bno055(self):
         self._log.info('configure bno055...')
         from lib.bno055 import BNO055
         self._log.info('configuring BNO055 9DoF sensor...')
         self._ros._bno055 = BNO055(self._ros.get_message_queue(), Level.INFO)
-
-
 
     # ..........................................................................
     def summation():

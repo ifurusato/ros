@@ -13,7 +13,7 @@
 # device to control the KR01.
 #
 
-import sys, traceback
+import sys, time, traceback
 from colorama import init, Fore, Style
 init()
 
@@ -23,6 +23,11 @@ from lib.gamepad_demo import GamepadDemo
 try:
     _gamepad_demo = GamepadDemo(Level.INFO)
     _gamepad_demo.enable()
+
+    while _gamepad_demo.is_enabled():
+        time.sleep(1.0)
+    _gamepad_demo.close()
+
 except KeyboardInterrupt:
     print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
     sys.exit(0)

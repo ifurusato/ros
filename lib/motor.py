@@ -668,7 +668,7 @@ class Motor():
             This takes into account the maximum power to be supplied to the
             motor based on the battery and motor voltages.
 
-            If steps > 0 then run tuntil the number of steps has been reached.
+            If steps > 0 then run until the number of steps has been reached.
         '''
         self._interrupt = False
         _current_power_level = self.get_current_power_level()
@@ -698,6 +698,61 @@ class Motor():
             driving_power_level = float( step_power * self._max_power_ratio )
             self.set_motor_power(driving_power_level)
             if self._interrupt:
+                break
+            time.sleep(self._accel_loop_delay_sec)
+
+        # be sure we're powered off
+        if speed == 0.0 and abs(driving_power_level) > 0.00001:
+            self._log.warning('non-zero power level: {:7.5f}v; stopping completely...'.format(driving_power_level))
+            if self._orientation is Orientation.PORT:
+                self._tb.SetMotor1(0.0)
+            else:
+                self._tb.SetMotor2(0.0)
+
+        self._log.debug('accelerate complete.')
+        return
+
+
+    # ..........................................................................
+    def accelerate_while(self, speed, direction, slew_rate, f_is_enabled):
+        '''
+            Slews the motor to the designated speed. -100 <= 0 <= speed <= 100.
+
+            This takes into account the maximum power to be supplied to the
+            motor based on the battery and motor voltages.
+
+            This runs while the provided function returns True, then exits.
+        '''
+        self._interrupt = False
+        _current_power_level = self.get_current_power_level()
+        if _current_power_level is None:
+            raise RuntimeError('cannot continue: unable to read current power from motor.')
+        self._log.info('current power: {:>5.2f} max power ratio: {:>5.2f}...'.format(_current_power_level, self._max_power_ratio))
+        _current_power_level = _current_power_level * ( 1.0 / self._max_power_ratio )
+
+        # accelerate to desired speed
+        _desired_div_100 = float(speed / 100)
+        if direction is Direction.REVERSE:
+            _desired_div_100 = -1 * _desired_div_100
+        self._log.info('accelerating from {:>5.2f} to {:>5.2f}...'.format(_current_power_level, _desired_div_100))
+
+        if _current_power_level == _desired_div_100: # no change
+            self._log.warning('already at acceleration power of {:>5.2f}, exiting.'.format(_current_power_level) )
+            return
+        elif _current_power_level < _desired_div_100: # moving ahead
+            _slew_rate_ratio = slew_rate.ratio
+            overstep = 0.001
+        else: # moving astern
+            _slew_rate_ratio = -1.0 * slew_rate.ratio
+            overstep = -0.001
+
+#       self._log.warning(Style.BRIGHT + 'LOOP from {:>5.2f} to limit: {:>5.2f} with slew: {:>5.2f}'.format(_current_power_level, (_desired_div_100 + overstep), _slew_rate_ratio))
+
+        driving_power_level = 0.0
+        for step_power in numpy.arange(_current_power_level, (_desired_div_100 + overstep), _slew_rate_ratio):
+            driving_power_level = float( step_power * self._max_power_ratio )
+            self.set_motor_power(driving_power_level)
+            if self._interrupt or not f_is_enabled:
                 break
             time.sleep(self._accel_loop_delay_sec)
 

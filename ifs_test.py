@@ -29,7 +29,6 @@ from lib.queue import MessageQueue
 from lib.ifs import IntegratedFrontSensor
 from lib.indicator import Indicator
 
-
 # ..............................................................................
 
 _ifs = None
@@ -44,10 +43,10 @@ def main():
         _config = _loader.configure(filename)
 
         _queue = MessageQueue(Level.INFO)
-
         _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
 
         _indicator = Indicator(Level.INFO)
+#       _indicator.set_heading(180)
         # add indicator as message consumer
         _queue.add_consumer(_indicator)
 

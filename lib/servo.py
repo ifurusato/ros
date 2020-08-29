@@ -50,14 +50,12 @@ class Servo():
         self._closed = False
         self._log.info('ready.')
 
-
     # ..........................................................................
     def get_min_angle(self):
         '''
             Return the configured minimum servo angle.
         '''
         return self._min_angle
-
 
     # ..........................................................................
     def get_max_angle(self):
@@ -66,7 +64,6 @@ class Servo():
         '''
         return self._max_angle
 
-
     # ..........................................................................
     def is_in_range(self, degrees):
         '''
@@ -74,7 +71,6 @@ class Servo():
             minimum and maximum range (inclusive of endpoints) of the servo.
         '''
         return degrees >= self._min_angle and degrees <= self._max_angle
-
 
     # ..........................................................................
     def set_position(self, position):
@@ -103,7 +99,6 @@ class Servo():
         elif self._number == 4:
             self._UB.SetServoPosition4(_value)
 
-
     # ..........................................................................
     def get_position(self, defaultValue):
         '''
@@ -121,7 +116,6 @@ class Servo():
             return defaultValue
         else:
             return ( _position * 90.0 ) + self._center_offset
-
 
     # ..........................................................................
     def get_distance(self, retry_count, useRawDistance):
@@ -165,7 +159,6 @@ class Servo():
             else:
                 return self._UB.GetWithRetry(self._UB.GetDistance4, retry_count)
 
-
     # ..........................................................................
     def sweep(self):
         '''
@@ -201,7 +194,6 @@ class Servo():
             self.close()
             self._log.info('done.')
 
-
     # ..........................................................................
     def get_ultraborg(self):
         '''
@@ -209,12 +201,10 @@ class Servo():
         '''
         return self._UB
 
-
     # ..........................................................................
     def disable(self):
         self._enabled = False
         self._log.info('disabled.')
-
 
     # ..........................................................................
     def reset(self):
@@ -228,7 +218,6 @@ class Servo():
             self._UB.SetServoPosition4(0.0)
         self._log.info('reset position.')
 
-
     # ..........................................................................
     def close(self):
         '''
@@ -241,6 +230,5 @@ class Servo():
             self._closed = True
             self.disable()
             self._log.info('closed.')
-
 
 #EOF

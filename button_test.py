@@ -17,8 +17,7 @@ from lib.config_loader import ConfigLoader
 from lib.queue import MessageQueue
 from lib.logger import Level
 
-# call main ......................................
-
+# call main ....................................................................
 def main():
 
     print('button_test       :' + Fore.CYAN + ' INFO  : starting test...' + Style.RESET_ALL)

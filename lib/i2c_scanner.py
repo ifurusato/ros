@@ -8,6 +8,8 @@
 # created: 2020-02-14
 # author:  altheim
 #
+#  Scans the I²C bus, returning a list of devices.
+#
 # see: https://www.raspberrypi.org/forums/viewtopic.php?t=114401
 # see: https://raspberrypi.stackexchange.com/questions/62612/is-there-anyway-to-scan-i2c-using-pure-python-libraries:q
 #
@@ -20,7 +22,7 @@ init()
 
 class I2CScanner():
     '''
-        Scans the I2C bus returning a list of addresses.
+        Scans the I²C bus, returning a list of devices.
     '''
 
     def __init__(self, level):

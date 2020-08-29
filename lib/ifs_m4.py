@@ -8,142 +8,27 @@
 # author:   altheim
 # created:  2020-01-18
 # modified: 2020-02-06
-#
-# Implements an Integrated Front Sensor using an IO Expander Breakout Garden
-# board. This polls the values of the board's pins, which outputs 0-255 values
-# for analog pins, and a 0 or 1 for digital pins.
+# 
+# An Integrated Front Sensor implemented using an Itsy Bitsy M4 Express (an
+# Arduino compatible) in an I²C slave configuration.
 #
 
-import sys, time, traceback, threading, itertools
+import sys, time, threading, itertools
 import datetime as dt
 from colorama import init, Fore, Style
 init()
 
-import ioexpander as io
+try:
+    from smbus2 import SMBus
+except Exception:
+    sys.exit("This script requires the smbus2 module.\nInstall with: sudo pip3 install smbus2")
 
-from lib.config_loader import ConfigLoader
 from lib.pintype import PinType
 from lib.logger import Logger, Level
 from lib.event import Event
 from lib.message import Message
 
-from lib.indicator import Indicator
-
 CLEAR_SCREEN = '\n'  # no clear screen
-
-# ..............................................................................
-class MockMessageQueue():
-    '''
-        This message queue waits for at least one infrared event of each type.
-    '''
-    def __init__(self, level):
-        super().__init__()
-        self._counter = itertools.count()
-        self._log = Logger("mock queue", Level.INFO)
-        self._log.info('ready.')
-
-    # ......................................................
-    def add(self, message):
-        message.set_number(next(self._counter))
-        self._log.info('added message #{}: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
-        event = message.get_event()
-        if event is Event.INFRARED_PORT_SIDE:
-            self._log.info(Fore.RED + Style.BRIGHT + 'INFRARED_PORT_SIDE: {}'.format(event.description))
-        elif event is Event.INFRARED_PORT:
-            self._log.info(Fore.MAGENTA + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
-        elif event is Event.INFRARED_CNTR:
-            self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
-        elif event is Event.INFRARED_STBD:
-            self._log.info(Fore.CYAN + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
-        elif event is Event.INFRARED_STBD_SIDE:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'INFRARED_PORT: {}'.format(event.description))
-        elif event is Event.BUMPER_PORT:
-            self._log.info(Fore.RED + Style.BRIGHT + 'BUMPER_PORT: {}'.format(event.description))
-        elif event is Event.BUMPER_CNTR:
-            self._log.info(Fore.BLUE + Style.BRIGHT + 'BUMPER_CNTR: {}'.format(event.description))
-        elif event is Event.BUMPER_STBD:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'BUMPER_STBD: {}'.format(event.description))
-        else:
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(event.description))
-
-    # ......................................................
-    def is_complete(self):
-        return not self._events
-
-    # ......................................................
-    def _display_event_list(self):
-        self._log.info('\n' + Fore.BLUE + Style.BRIGHT + '{} events remain in list:'.format(len(self._events)))
-        for e in self._events:
-            self._log.info(Fore.BLUE + Style.BRIGHT + '{}'.format(e.description))
-
-
-# ..............................................................................
-class IoExpander():
-    '''
-        Wraps an IO Expander board as input from an integrated front sensor
-        array of infrareds and bumper switches.
-    '''
-    def __init__(self, config, level):
-        super().__init__()
-        if config is None:
-            raise ValueError('no configuration provided.')
-        _config = config['ros'].get('io_expander')
-        self._log = Logger('ioe', level)
-        # infrared
-        self._port_side_ir_pin = _config.get('port_side_ir_pin') # pin connected to port side infrared
-        self._port_ir_pin      = _config.get('port_ir_pin')      # pin connected to port infrared
-        self._center_ir_pin    = _config.get('center_ir_pin')    # pin connected to center infrared
-        self._stbd_ir_pin      = _config.get('stbd_ir_pin')      # pin connected to starboard infrared
-        self._stbd_side_ir_pin = _config.get('stbd_side_ir_pin') # pin connected to starboard side infrared
-        self._log.info('IR pin assignments: port side: {:d}; port: {:d}; center: {:d}; stbd: {:d}; stbd side: {:d}.'.format(\
-                self._port_side_ir_pin, self._port_ir_pin, self._center_ir_pin, self._stbd_ir_pin, self._stbd_side_ir_pin))
-        # bumpers
-        self._port_bmp_pin     = _config.get('port_bmp_pin')     # pin connected to port bumper
-        self._center_bmp_pin   = _config.get('center_bmp_pin')   # pin connected to center bumper
-        self._stbd_bmp_pin     = _config.get('stbd_bmp_pin')     # pin connected to starboard bumper
-        self._log.info('BMP pin assignments: port: {:d}; center: {:d}; stbd: {:d}.'.format(\
-                self._port_ir_pin, self._center_ir_pin, self._stbd_ir_pin ))
-
-        # configure board
-        self._ioe = io.IOE(i2c_addr=0x18)
-        self.board = self._ioe # TEMP
-        self._ioe.set_adc_vref(3.3)  # input voltage of IO Expander, this is 3.3 on Breakout Garden
-        # analog infrared sensors
-        self._ioe.set_mode(self._port_side_ir_pin, io.ADC)
-        self._ioe.set_mode(self._port_ir_pin, io.ADC)
-        self._ioe.set_mode(self._center_ir_pin, io.ADC)
-        self._ioe.set_mode(self._stbd_ir_pin, io.ADC)
-        self._ioe.set_mode(self._stbd_side_ir_pin, io.ADC)
-        # digital bumpers
-        self._ioe.set_mode(self._port_bmp_pin, io.PIN_MODE_PU)
-        self._ioe.set_mode(self._center_bmp_pin, io.PIN_MODE_PU)
-        self._ioe.set_mode(self._stbd_bmp_pin, io.PIN_MODE_PU)
-        self._log.info('ready.')
-
-    def get_port_side_ir_value(self):
-        return int(round(self._ioe.input(self._port_side_ir_pin ) * 100.0))
-
-    def get_port_ir_value(self):
-        return int(round(self._ioe.input(self._port_ir_pin) * 100.0))
-
-    def get_center_ir_value(self):
-        return int(round(self._ioe.input(self._center_ir_pin) * 100.0))
-
-    def get_stbd_ir_value(self):
-        return int(round(self._ioe.input(self._stbd_ir_pin) * 100.0))
-
-    def get_stbd_side_ir_value(self):
-        return int(round(self._ioe.input(self._stbd_side_ir_pin) * 100.0))
-
-    def get_port_bmp_value(self):
-        return self._ioe.input(self._port_bmp_pin) == 0
-
-    def get_center_bmp_value(self):
-        return self._ioe.input(self._center_bmp_pin) == 0
-
-    def get_stbd_bmp_value(self):
-        return self._ioe.input(self._stbd_bmp_pin) == 0
-
 
 # ..............................................................................
 class IntegratedFrontSensor():
@@ -173,16 +58,6 @@ class IntegratedFrontSensor():
         self._log = Logger("front-sensor", level)
         self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel                    = self._config.get('channel')
-        self._ignore_duplicates = False # TODO set from config
-        # hardware pin assignments
-        self._port_side_ir_pin           = self._config.get('port_side_ir_pin')
-        self._port_ir_pin                = self._config.get('port_ir_pin')
-        self._center_ir_pin              = self._config.get('center_ir_pin')
-        self._stbd_ir_pin                = self._config.get('stbd_ir_pin')
-        self._stbd_side_ir_pin           = self._config.get('stbd_side_ir_pin')
-        self._port_bmp_pin               = self._config.get('port_bmp_pin')
-        self._center_bmp_pin             = self._config.get('center_bmp_pin')
-        self._stbd_bmp_pin               = self._config.get('stbd_bmp_pin')
         # short distance:
         self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
         self._port_trigger_distance      = self._config.get('port_trigger_distance')
@@ -206,14 +81,13 @@ class IntegratedFrontSensor():
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
         self._counter = itertools.count()
-        self._last_event = None
         self._thread  = None
         self._enabled = False
         self._suppressed = False
         self._closing = False
         self._closed  = False
-        self._ioe = IoExpander(config, Level.INFO)
         self._log.info('ready.')
+
 
     # ..........................................................................
     def _callback(self, pin, pin_type, value):
@@ -232,56 +106,52 @@ class IntegratedFrontSensor():
             return
 #       self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
         _message = None
+       
         # NOTE: the shorter range infrared triggers preclude the longer range triggers 
-        if pin == self._port_side_ir_pin:
+        if pin == 1:
             if value > self._port_side_trigger_distance:
                 _message = Message(Event.INFRARED_PORT_SIDE)
             elif value > self._port_side_trigger_distance_far:
                 _message = Message(Event.INFRARED_PORT_SIDE)
-        elif pin == self._port_ir_pin:
+        elif pin == 2:
             if value > self._port_trigger_distance:
                 _message = Message(Event.INFRARED_PORT)
             elif value > self._port_trigger_distance_far:
                 _message = Message(Event.INFRARED_PORT_FAR)
-        elif pin == self._center_ir_pin:
+        elif pin == 3:
             if value > self._center_trigger_distance:
                 _message = Message(Event.INFRARED_CNTR)
             elif value > self._center_trigger_distance_far:
                 _message = Message(Event.INFRARED_CNTR_FAR)
-        elif pin == self._stbd_ir_pin:
+        elif pin == 4:
             if value > self._stbd_trigger_distance:
                 _message = Message(Event.INFRARED_STBD)
             elif value > self._stbd_trigger_distance_far:
                 _message = Message(Event.INFRARED_STBD_FAR)
-        elif pin == 5: #self._stbd_side_ir_pin:
+        elif pin == 5:
             if value > self._stbd_side_trigger_distance:
                 _message = Message(Event.INFRARED_STBD_SIDE)
             elif value > self._stbd_side_trigger_distance_far:
                 _message = Message(Event.INFRARED_STBD_SIDE_FAR)
-        elif pin == self._port_bmp_pin:
+        elif pin == 9:
             if value == 1:
                 _message = Message(Event.BUMPER_PORT)
-        elif pin == self._center_bmp_pin:
+        elif pin == 10:
             if value == 1:
                 _message = Message(Event.BUMPER_CNTR)
-        elif pin == self._stbd_bmp_pin:
+        elif pin == 11:
             if value == 1:
                 _message = Message(Event.BUMPER_STBD)
         if _message is not None:
             _message.set_value(value)
-            _event = _message.get_event()
-            if not self._ignore_duplicates or _event != self._last_event:
-                self._log.info(Fore.CYAN + Style.BRIGHT + 'adding new message for event {}'.format(_event.description))
-                self._queue.add(_message)
-            else:
-                self._log.info(Fore.CYAN + Style.DIM    + 'ignoring message for event {}'.format(_event.description))
-                self._queue.add(_message) # FIXME remove this
-            self._last_event = _event
+            self._queue.add(_message)
+
 
     # ..........................................................................
     def suppress(self, state):
         self._log.info('suppress {}.'.format(state))
         self._suppressed = state
+
 
     # ..........................................................................
     def enable(self):
@@ -295,6 +165,7 @@ class IntegratedFrontSensor():
         else:
             self._log.warning('cannot enable integrated front sensor: already closed.')
 
+
     # ..........................................................................
     def in_loop(self):
         '''
@@ -302,12 +173,14 @@ class IntegratedFrontSensor():
         '''
         return self._thread != None and self._thread.is_alive()
 
+
     # ..........................................................................
     def _front_sensor_loop(self):
         self._log.info('starting event loop...\n')
 
         while self._enabled:
             _count = next(self._counter)
+#           print(CLEAR_SCREEN)
 
             _start_time = dt.datetime.now()
 
@@ -371,6 +244,7 @@ class IntegratedFrontSensor():
         # we never get here if using 'while True:'
         self._log.info('exited event loop.')
 
+
     # ..........................................................................
     def start_front_sensor_loop(self):
         '''
@@ -389,34 +263,71 @@ class IntegratedFrontSensor():
         else:
             self._log.warning('cannot enable: already closed.')
 
+
+    # ..............................................................................
+    def read_i2c_data(self):
+        '''
+            Read a byte from the I²C device at the specified handle, returning the value.
+
+            ## Examples:
+            int.from_bytes(b'\x00\x01', "big")        # 1
+            int.from_bytes(b'\x00\x01', "little")     # 256
+        '''
+        with SMBus(self._channel) as bus:
+            _byte = bus.read_byte_data(self._device_id, 0)
+            time.sleep(0.01)
+        return _byte
+
+
+    # ..........................................................................
+    def write_i2c_data(self, data):
+        '''
+            Write a byte to the I²C device at the specified handle.
+        '''
+        with SMBus(self._channel) as bus:
+            bus.write_byte(self._device_id, data)
+            time.sleep(0.01)
+
+    def _get_pin_for_event(self, event):
+        '''
+            Return the hardwired pin corresponding to the Event type.
+        '''
+        if event is Event.INFRARED_PORT_SIDE or event is Event.INFRARED_PORT_SIDE_FAR:
+            return 1
+        elif event is Event.INFRARED_PORT or event is Event.INFRARED_PORT_FAR:
+            return 2
+        elif event is Event.INFRARED_CNTR or event is Event.INFRARED_CNTR_FAR:
+            return 3
+        elif event is Event.INFRARED_STBD or event is Event.INFRARED_STBD_FAR:
+            return 4
+        elif event is Event.INFRARED_STBD_SIDE or event is Event.INFRARED_STBD_SIDE_FAR:
+            return 5
+        elif event is Event.BUMPER_PORT:
+            return 9
+        elif event is Event.BUMPER_CNTR:
+            return 10
+        elif event is Event.BUMPER_STBD:
+            return 11
+        else:
+            raise Exception('unexpected event type.')
+
     # ..........................................................................
     def get_input_for_event_type(self, event):
         '''
-            Return the current value of the pin corresponding to the Event type.
+            Sends a message to the pin, returning the result as a byte.
         '''
-        if event is Event.INFRARED_PORT_SIDE or event is Event.INFRARED_PORT_SIDE_FAR:
-            return self._ioe.get_port_side_ir_value() 
-        elif event is Event.INFRARED_PORT or event is Event.INFRARED_PORT_FAR:
-            return self._ioe.get_port_ir_value()      
-        elif event is Event.INFRARED_CNTR or event is Event.INFRARED_CNTR_FAR:
-            return self._ioe.get_center_ir_value()    
-        elif event is Event.INFRARED_STBD or event is Event.INFRARED_STBD_FAR:
-            return self._ioe.get_stbd_ir_value()      
-        elif event is Event.INFRARED_STBD_SIDE or event is Event.INFRARED_STBD_SIDE_FAR:
-            return self._ioe.get_stbd_side_ir_value() 
-        elif event is Event.BUMPER_PORT:
-            return self._ioe.get_port_bmp_value()     
-        elif event is Event.BUMPER_CNTR:
-            return self._ioe.get_center_bmp_value()   
-        elif event is Event.BUMPER_STBD:
-            return self._ioe.get_stbd_bmp_value()     
-        else:
-            raise Exception('unexpected event type.')
+        _pin = self._get_pin_for_event(event)
+        self.write_i2c_data(_pin)
+        _received_data  = self.read_i2c_data()
+        self._log.debug('received response from pin {:d} of {:08b}.'.format(_pin, _received_data))
+        return _received_data
+
 
     # ..........................................................................
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
+
 
     # ..........................................................................
     def close(self):
@@ -443,85 +354,5 @@ class IntegratedFrontSensor():
         else:
             self._log.debug('already closed.')
 
-
-## main .........................................................................
-#def main(argv):
-#
-#    try:
-#
-#        # read YAML configuration
-#        _loader = ConfigLoader(Level.INFO)
-#        filename = 'config.yaml'
-#        _config = _loader.configure(filename)
-#
-#        _queue = MockMessageQueue(Level.INFO)
-#
-#        _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
-#        _board = _ioe.board
-##       sys.exit(0)
-#
-##       _indicator = Indicator(Level.INFO)
-##       # add indicator as message consumer
-##       _queue.add_consumer(_indicator)
-#
-#        _max_value = 0
-#
-#        # start...
-#        while True:
-#
-#            _start_time = dt.datetime.now()
-#
-#            _port_side_ir_value = _ioe.get_port_side_ir_value()
-#            _port_ir_value      = _ioe.get_port_ir_value()
-#            _center_ir_value    = _ioe.get_center_ir_value()
-#            _stbd_ir_value      = _ioe.get_stbd_ir_value()
-#            _stbd_side_ir_value = _ioe.get_stbd_side_ir_value()
-#            _port_bmp_value     = _ioe.get_port_bmp_value()
-#            _center_bmp_value   = _ioe.get_center_bmp_value()
-#            _stbd_bmp_value     = _ioe.get_stbd_bmp_value()
-#
-##           _port_side_ir_value = _board.input(_ioe._port_side_ir_pin )
-##           _max_value = max(_max_value, _port_side_ir_value)
-##           _port_ir_value      = _board.input(_ioe._port_ir_pin)
-##           _max_value = max(_max_value, _port_ir_value)
-##           _center_ir_value    = _board.input(_ioe._center_ir_pin)
-##           _max_value = max(_max_value, _center_ir_value)
-##           _stbd_ir_value      = _board.input(_ioe._stbd_ir_pin)
-##           _max_value = max(_max_value, _stbd_ir_value)
-##           _stbd_side_ir_value = _board.input(_ioe._stbd_side_ir_pin)
-##           _max_value = max(_max_value, _stbd_side_ir_value)
-##           _port_bmp_value     = _board.input(_ioe._port_bmp_pin) == 0
-##           _max_value = max(_max_value, _port_bmp_value)
-##           _center_bmp_value   = _board.input(_ioe._center_bmp_pin) == 0
-##           _max_value = max(_max_value, _center_bmp_value)
-##           _stbd_bmp_value     = _board.input(_ioe._stbd_bmp_pin) == 0
-##           _max_value = max(_max_value, _stbd_bmp_value)
-#
-#            _delta = dt.datetime.now() - _start_time
-#            _elapsed_ms = int(_delta.total_seconds() * 1000)
-#
-#            print(Fore.RED       + 'PSIR: {:d}; '.format(_port_side_ir_value) \
-#                  + Fore.MAGENTA + 'PIR: {:d}; '.format(_port_ir_value) \
-#                  + Fore.BLUE    + 'CIR: {:d}; '.format(_center_ir_value) \
-#                  + Fore.CYAN    + 'SIR: {:d}; '.format(_stbd_ir_value) \
-#                  + Fore.GREEN   + 'SSIR: {:d} '.format(_stbd_side_ir_value) \
-#                  + Fore.MAGENTA + 'PB: {}; '.format(_port_bmp_value) \
-#                  + Fore.BLUE    + 'CB: {}; '.format(_center_bmp_value) \
-#                  + Fore.CYAN    + 'SB: {}; '.format(_stbd_bmp_value) \
-#                  + Fore.BLACK   + 'max: {:>5.2f}; '.format(_max_value) \
-#                  + Fore.WHITE   + '{:>5.2f}ms elapsed.'.format(_elapsed_ms) + Style.RESET_ALL)
-#
-##           time.sleep(1.0 / 30)
-#
-#
-#    except KeyboardInterrupt:
-#        print(Fore.CYAN + Style.BRIGHT + 'caught Ctrl-C; exiting...')
-#        
-#    except Exception:
-#        print(Fore.RED + Style.BRIGHT + 'error starting IoExpander: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-#
-## call main ....................................................................
-#if __name__== "__main__":
-#    main(sys.argv[1:])
 
 #EOF

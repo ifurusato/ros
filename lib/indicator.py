@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import time
+import time, colorsys
 from colorama import init, Fore, Style
 init()
 
@@ -17,7 +17,7 @@ class Indicator():
 
                DS  DA  DA  DA  DP
 
-               DS  --  --  --  DP
+               DS  CH  CH  CH  DP
 
                DS  DF  DF  DF  DP
 
@@ -30,6 +30,7 @@ class Indicator():
          DP = direction to port
          DA = direction aft
          DS = direction to starboard
+         CH = compass heading
          DF = direction forward
          BS = starboard bumper
          BC = center bumper
@@ -112,20 +113,48 @@ class Indicator():
             pass
         self.clear()
 
-
-
     # ..........................................................................
     def clear(self):
         self.set_color(Color.BLACK)
 
-
     # ..........................................................................
     def set_color(self, color):
-        for y in range(self._height):
-            for x in range(self._width):
-                self._rgbmatrix5x5.set_pixel(x, y, color.red, color.green, color.blue)
+#       for y in range(self._height):
+#           for x in range(self._width):
+#               self._rgbmatrix5x5.set_pixel(x, y, color.red, color.green, color.blue)
+        self._rgbmatrix5x5.set_all(color.red, color.green, color.blue)
         self._rgbmatrix5x5.show()
 
+    # ..........................................................................
+    def set_heading(self, hue):
+        '''
+            Converts a hue value into an RGB value and displays it on the heading portion of the pixels.
+
+            The hue value should be in degrees from 0-360, as colors on a color wheel.
+        '''
+        _offset = 0
+        if hue == -1: # no heading
+            r, g, b = [ Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue ]
+            self._log.info(Fore.WHITE + Style.DIM + 'no heading; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
+        elif hue == -2:
+            r, g, b = [ Color.VERY_DARK_GREY.red, Color.VERY_DARK_GREY.green, Color.VERY_DARK_GREY.blue ]
+            self._log.info(Fore.WHITE + Style.NORMAL + 'uncalibrated; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
+        else:
+            h = ((hue + _offset) % 360) / 360.0
+            r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(h, 1.0, 1.0)]
+            self._log.info(Fore.GREEN + Style.NORMAL + 'hue: {}/{:>5.2f}; rgb: {}/{}/{}'.format(hue, h, r, g, b))
+#       self._rgbmatrix5x5.set_all(r, g, b)
+        self._rgbmatrix5x5.set_pixel(0, 0, r, g, b)
+        self._rgbmatrix5x5.set_pixel(0, 1, r, g, b)
+        self._rgbmatrix5x5.set_pixel(0, 2, r, g, b)
+        self._rgbmatrix5x5.set_pixel(0, 3, r, g, b)
+        self._rgbmatrix5x5.set_pixel(0, 4, r, g, b)
+        self._rgbmatrix5x5.set_pixel(1, 0, r, g, b)
+        self._rgbmatrix5x5.set_pixel(1, 1, r, g, b)
+        self._rgbmatrix5x5.set_pixel(1, 2, r, g, b)
+        self._rgbmatrix5x5.set_pixel(1, 3, r, g, b)
+        self._rgbmatrix5x5.set_pixel(1, 4, r, g, b)
+        self._rgbmatrix5x5.show()
 
     # ..........................................................................
     def set_direction_fwd(self, enable):
@@ -135,7 +164,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(2, 3, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_direction_port(self, enable):
         _color = Color.RED if enable else Color.BLACK
@@ -143,7 +171,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(1, 4, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.set_pixel(2, 4, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
     # ..........................................................................
     def set_direction_aft(self, enable):
@@ -153,7 +180,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(0, 3, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_direction_stbd(self, enable):
         _color = Color.GREEN if enable else Color.BLACK
@@ -161,7 +187,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(1, 0, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.set_pixel(2, 0, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
     # ..........................................................................
     def set_ir_sensor_port_side(self, enable, far):
@@ -175,7 +200,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(4, 4, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_ir_sensor_port(self, enable, far):
         if enable:
@@ -187,7 +211,6 @@ class Indicator():
             _color = Color.BLACK
         self._rgbmatrix5x5.set_pixel(4, 3, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
     # ..........................................................................
     def set_ir_sensor_center(self, enable, far):
@@ -201,7 +224,6 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(4, 2, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_ir_sensor_stbd(self, enable, far):
         if enable:
@@ -213,7 +235,6 @@ class Indicator():
             _color = Color.BLACK
         self._rgbmatrix5x5.set_pixel(4, 1, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
     # ..........................................................................
     def set_ir_sensor_stbd_side(self, enable, far):
@@ -227,13 +248,11 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(4, 0, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_bumper_port(self, enable):
         _color = Color.RED if enable else Color.BLACK
         self._rgbmatrix5x5.set_pixel(3, 3, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
     # ..........................................................................
     def set_bumper_center(self, enable):
@@ -241,12 +260,10 @@ class Indicator():
         self._rgbmatrix5x5.set_pixel(3, 2, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def set_bumper_stbd(self, enable):
         _color = Color.GREEN if enable else Color.BLACK
         self._rgbmatrix5x5.set_pixel(3, 1, _color.red, _color.green, _color.blue)
         self._rgbmatrix5x5.show()
-
 
 #EOF

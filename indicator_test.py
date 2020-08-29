@@ -31,6 +31,12 @@ def main(argv):
         _indicator = Indicator(Level.INFO)
         _sleep_sec = 0.2
 
+        for hue in range(360):
+            _indicator.set_heading(hue)
+#           time.sleep(0.01)
+  
+        sys.exit(0)
+
         _log.info(Fore.CYAN + 'DIR FWD' + Style.RESET_ALL)
         _indicator.set_direction_fwd(True)
         time.sleep(_sleep_sec)

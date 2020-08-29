@@ -162,7 +162,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 
 # ..............................................................................
 class Video():
-    def __init__(self, config, lux, level):
+    def __init__(self, config, lux, matrix11x7_available, level):
         super().__init__()
         global video_width, video_height, annotation_title
         self._log = Logger('video', level)
@@ -175,8 +175,7 @@ class Video():
         self._port        = _config.get('port')
         self._lux_threshold = _config.get('lux_threshold')
         self._counter = itertools.count()
-        self._port_light = Matrix(Orientation.PORT, Level.INFO)
-        self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
+
         # camera configuration
         self._ctrl_lights = _config.get('ctrl_lights')
         self._width       = _config.get('width')
@@ -197,6 +196,17 @@ class Video():
         self._filename = None
         self._thread   = None
         self._killer   = None
+       
+        # lighting configuration
+        if matrix11x7_available and self._ctrl_lights:
+            self._port_light = Matrix(Orientation.PORT, Level.INFO)
+            self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
+            self._log.info('camera lighting available.')
+        else:
+            self._port_light = None
+            self._stbd_light = None
+            self._log.info('no camera lighting available.')
+
         if self._enable_streaming:
             self._log.info('ready: streaming on port {:d}'.format(self._port))
         else:
@@ -329,12 +339,13 @@ class Video():
 
     # ..........................................................................
     def set_lights(self, on):
-        if on:
-            self._port_light.light()
-            self._stbd_light.light()
-        else:
-            self._port_light.clear()
-            self._stbd_light.clear()
+        if self._port_light and self._stbd_light:
+            if on:
+                self._port_light.light()
+                self._stbd_light.light()
+            else:
+                self._port_light.clear()
+                self._stbd_light.clear()
 
 
     # ..........................................................................
@@ -391,7 +402,8 @@ class Video():
         if os.path.exists(self._filename):
             self._log.info('converting file {} to mp4...'.format(self._filename))
             _mp4_filename = Path(self._filename).stem + ".mp4"
-            os.system('ffmpeg -loglevel panic -hide_banner -r 24 -i ' + self._filename + ' -vcodec copy ' + _mp4_filename )
+            os.system('ffmpeg -loglevel panic -hide_banner -r {:d} -i {:s} -vcodec copy {:s}'.format(\
+                    self._framerate, self._filename, _mp4_filename))
             self._log.info('mp4 conversion complete.')
             if self._remove_h264:
                 os.remove(self._filename)

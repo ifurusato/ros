@@ -63,7 +63,6 @@ class Color(Enum):
 
 
 # ..............................................................................
-
 class BatteryLevelIndicator():
     '''
         Battery level indicator for a Makita power tool battery, with typical readings:
@@ -77,7 +76,7 @@ class BatteryLevelIndicator():
     def __init__(self, level):
         super().__init__()
         self._log = Logger("batlev", Level.INFO)
-        TB = ThunderBorg.ThunderBorg()
+        TB = ThunderBorg.ThunderBorg(Level.INFO)
         TB.Init()
         if not TB.foundChip:
             boards = ThunderBorg.ScanForThunderBorg()
@@ -90,7 +89,6 @@ class BatteryLevelIndicator():
         self._thread = None
         self._loop_delay_sec = 15.0
         self._log.info('ready.')
-
 
     # ................................................................
     def _battery_loop(self):
@@ -111,7 +109,6 @@ class BatteryLevelIndicator():
                     self._log.info(Fore.CYAN + 'main battery: {:>5.2f}V'.format(_voltage))
             self._tb.SetLed1( _color.red, _color.green, _color.blue )
             time.sleep(self._loop_delay_sec) 
-         
 
     # ................................................................
     def is_enabled(self):
@@ -157,7 +154,6 @@ class BatteryLevelIndicator():
         else:
             return Color.RED
     
-
 # main .........................................................................
 
 _ble = None

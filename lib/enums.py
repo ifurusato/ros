@@ -45,30 +45,31 @@ class Direction(Enum):
 
 # ..............................................................................
 class Color(Enum):
-    WHITE         = (  1, 255.0, 255.0, 255.0)
-    LIGHT_GREY    = (  2, 192.0, 192.0, 192.0)
-    GREY          = (  3, 128.0, 128.0, 128.0)
-    DARK_GREY     = (  4, 64.0, 64.0, 64.0)
-    BLACK         = (  5, 0.0, 0.0, 0.0)
-    LIGHT_RED     = (  6, 255.0, 128.0, 128.0)
-    RED           = (  7, 255.0, 0.0, 0.0)
-    DARK_RED      = (  8, 128.0, 0.0, 0.0)
-    LIGHT_GREEN   = (  9, 128.0, 255.0, 128.0)
-    GREEN         = ( 10, 0.0, 255.0, 0.0)
-    DARK_GREEN    = ( 11, 0.0, 128.0, 0.0)
-    LIGHT_BLUE    = ( 12, 128.0, 128.0, 255.0)
-    BLUE          = ( 13, 0.0, 0.0, 255.0)
-    DARK_BLUE     = ( 14, 0.0, 0.0, 128.0)
-    LIGHT_CYAN    = ( 15, 128.0, 255.0, 255.0)
-    CYAN          = ( 16, 0.0, 255.0, 255.0)
-    DARK_CYAN     = ( 17, 0.0, 128.0, 128.0)
-    LIGHT_MAGENTA = ( 18, 255.0, 128.0, 255.0)
-    MAGENTA       = ( 19, 255.0, 0.0, 255.0)
-    DARK_MAGENTA  = ( 20, 128.0, 0.0, 128.0)
-    LIGHT_YELLOW  = ( 21, 255.0, 255.0, 128.0)
-    PURPLE        = ( 22, 77.0, 26.0, 177.0)
-    YELLOW        = ( 23, 255.0, 255.0, 0.0)
-    DARK_YELLOW   = ( 24, 128.0, 128.0, 0.0)
+    WHITE          = (  1, 255.0, 255.0, 255.0)
+    LIGHT_GREY     = (  2, 192.0, 192.0, 192.0)
+    GREY           = (  3, 128.0, 128.0, 128.0)
+    DARK_GREY      = (  4, 64.0, 64.0, 64.0)
+    VERY_DARK_GREY = (  4, 32.0, 32.0, 32.0)
+    BLACK          = (  5, 0.0, 0.0, 0.0)
+    LIGHT_RED      = (  6, 255.0, 128.0, 128.0)
+    RED            = (  7, 255.0, 0.0, 0.0)
+    DARK_RED       = (  8, 128.0, 0.0, 0.0)
+    LIGHT_GREEN    = (  9, 128.0, 255.0, 128.0)
+    GREEN          = ( 10, 0.0, 255.0, 0.0)
+    DARK_GREEN     = ( 11, 0.0, 128.0, 0.0)
+    LIGHT_BLUE     = ( 12, 128.0, 128.0, 255.0)
+    BLUE           = ( 13, 0.0, 0.0, 255.0)
+    DARK_BLUE      = ( 14, 0.0, 0.0, 128.0)
+    LIGHT_CYAN     = ( 15, 128.0, 255.0, 255.0)
+    CYAN           = ( 16, 0.0, 255.0, 255.0)
+    DARK_CYAN      = ( 17, 0.0, 128.0, 128.0)
+    LIGHT_MAGENTA  = ( 18, 255.0, 128.0, 255.0)
+    MAGENTA        = ( 19, 255.0, 0.0, 255.0)
+    DARK_MAGENTA   = ( 20, 128.0, 0.0, 128.0)
+    LIGHT_YELLOW   = ( 21, 255.0, 255.0, 128.0)
+    PURPLE         = ( 22, 77.0, 26.0, 177.0)
+    YELLOW         = ( 23, 255.0, 255.0, 0.0)
+    DARK_YELLOW    = ( 24, 128.0, 128.0, 0.0)
 
     # ignore the first param since it's already set by __new__
     def __init__(self, num, red, green, blue):
@@ -88,6 +89,10 @@ class Color(Enum):
     def blue(self):
         return self._blue
 
+# ..............................................................................
+class Rotation(Enum):
+    COUNTER_CLOCKWISE = 0
+    CLOCKWISE         = 1
 
 # ..............................................................................
 class Speed(Enum): # deprecated
@@ -95,6 +100,7 @@ class Speed(Enum): # deprecated
     DEAD_SLOW     = 20.0
     SLOW          = 30.0
     HALF          = 50.0
+    TWO_THIRDS    = 66.0
     THREE_QUARTER = 75.0
     FULL          = 90.0
     EMERGENCY     = 100.0

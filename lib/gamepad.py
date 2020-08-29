@@ -247,24 +247,24 @@ class Gamepad():
         if self._closing:
             self._log.info('already closing.')
             return
-        if not self._closed:
-            self._closing = True
-            self._enabled = False # assumed already done
-            self._log.info('closing gamepad...')
-#           try:
-#               if self._thread is not None:
-#                   self._thread.join(timeout=1.0)
-#                   self._log.info('gamepad thread joined.')
-#               else:
-#                   self._log.warning('gamepad thread was already joined!')
-#               self._thread = None
-#           except Exception as e:
-#               self._log.error('error closing gamepad: {}/{}'.format(e, traceback.format_exc()))
-            # anything?
-            self._closed = True
-            self._log.info('closed.')
-        else:
+        if self._closed:
             self._log.debug('already closed.')
+            return
+        self._closing = True
+        self._enabled = False # assumed already done
+        self._log.info('closing gamepad...')
+#       try:
+#           if self._thread is not None:
+#               self._thread.join(timeout=1.0)
+#               self._log.info('gamepad thread joined.')
+#           else:
+#               self._log.warning('gamepad thread was already joined!')
+#           self._thread = None
+#       except Exception as e:
+#           self._log.error('error closing gamepad: {}/{}'.format(e, traceback.format_exc()))
+        # anything?
+        self._closed = True
+        self._log.info('closed.')
 
     # ..........................................................................
     def _handleEvent(self, event):
