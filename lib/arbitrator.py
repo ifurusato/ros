@@ -5,32 +5,20 @@
 # Please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
-# created:  2020-02-21
+# created:  2020-01-02
 # modified: 2020-03-26
 #
-
-#        1         2         3         4         5         6         7         8         9         C
-#234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-'''
-    Arbitrator: polls the message queue for the highest priority message. 
-
-    If the new message's event is a higher priority event than that of the Action
-    currently executing, the current Action is closed and the new Action is executed.
-
-    created:  2020-01-02
-    modified: 2020-02-26
-    author:   altheim
-'''
+#  Arbitrator: polls the message queue for the highest priority message. 
+#
+#  If the new message's event is a higher priority event than that of the Action
+#  currently executing, the current Action is closed and the new Action is executed.
+#
 
 import time, threading, itertools
 import datetime as dt
-from colorama import init, Fore, Style
-init()
 
-from .logger import Logger 
-from .event import Event
-from .enums import ActionState
-
+from lib.logger import Logger 
+from lib.event import Event
 
 # ..............................................................................
 class Arbitrator(threading.Thread):
@@ -53,8 +41,8 @@ class Arbitrator(threading.Thread):
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('arbitrator')
         self._idle_loop_count = 0
-        self._loop_delay_sec = self._config.get('loop_delay_sec')
-        self._ballistic_loop_delay_sec = self._config.get('ballistic_loop_delay_sec')
+        self._loop_delay_sec            = self._config.get('loop_delay_sec')
+        self._ballistic_loop_delay_sec  = self._config.get('ballistic_loop_delay_sec')
         self._queue = queue
         self._controller = controller
         self._tasks = []
@@ -65,24 +53,20 @@ class Arbitrator(threading.Thread):
         self._counter = itertools.count()
         self._log.debug('ready.')
 
-
     # ..........................................................................
     def set_suppressed(self, suppressed):
         self._suppressed = suppressed
         self._log.info('suppressed: {}'.format(suppressed))
-
 
     # ..........................................................................
     def enable(self):
         self._log.info('enabled.')
         self._is_enabled = True
 
-
     # ..........................................................................
     def disable(self):
         self._log.info('disabled.')
         self._is_enabled = False
-
 
     # ..........................................................................
     def run(self):
@@ -130,11 +114,11 @@ class Arbitrator(threading.Thread):
                             self._log.info('{:06d} : idle.'.format(self._loop_count))
                     else: # after being idle for a long time, dim the message
                         if ( self._loop_count % 500 ) == 0:
-                            self._log.info(Style.DIM + '{:06d} : idle...'.format(self._loop_count))
+                            self._log.info('{:06d} : idle...'.format(self._loop_count))
             time.sleep(self._loop_delay_sec)
             _delta = dt.datetime.now() - _start_time
             _elapsed_ms = int(_delta.total_seconds() * 1000)
-            self._log.info(Fore.MAGENTA + Style.BRIGHT + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM)
+            self._log.info('elapsed: {}ms'.format(_elapsed_ms))
 
         self._log.info('loop end.')
 
@@ -157,9 +141,7 @@ class Arbitrator(threading.Thread):
             self._log.critical('interrupting with new event {} (ballistic? {})...'.format(_new_event.name, _new_event.is_ballistic))
             message.interrupt()
             self._motors.interrupt()
-
         # ...
-
 
     # ..........................................................................
     def accept_highest_priority_message(self, message):
@@ -203,7 +185,6 @@ class Arbitrator(threading.Thread):
             self._log.info('acting upon accepted highest priority message #{}: {}'.format(message.get_number(), message.get_description()))
             self._controller.act(_current_message, self._action_complete_callback)
 
-
     # ..........................................................................
     def _action_complete_callback(self, message, current_power):
         '''
@@ -227,12 +208,10 @@ class Arbitrator(threading.Thread):
         else:
             self._log.critical('cannot complete callback: no current message.')
 
-
     # ..........................................................................
     def add_task(self,task):
         self._tasks.append(task)
         task.start()
-
 
     # ..........................................................................
     def close(self):
@@ -255,6 +234,5 @@ class Arbitrator(threading.Thread):
             self._log.info('no tasks to close.')
         self._closed = False
         self._log.info('closed.')
-
 
 #EOF

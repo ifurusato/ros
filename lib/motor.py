@@ -7,7 +7,7 @@
 #
 # author:   Murray Altheim
 # created:  2020-01-18
-# modified: 2020-04-15
+# modified: 2020-08-30
 #
 
 import time
@@ -24,7 +24,6 @@ from lib.devnull import DevNull
 from lib.enums import SlewRate, Direction, Orientation, Speed
 from lib.rotary_encoder import Decoder
 from lib.pid import PID
-
 
 # ..............................................................................
 class Motor():
@@ -109,9 +108,7 @@ class Motor():
 
         # create and configure PID controller ..............
         self._pid = PID(config, self, level)
-
         self._log.info('ready.')
-
 
     # ..............................................................................
     def get_pid_controller(self):
@@ -120,26 +117,21 @@ class Motor():
         '''
         return self._pid
 
-
     # ..............................................................................
     def get_velocity(self):
         return self._velocity
-
 
     # ..............................................................................
     def get_steps(self):
         return self._steps
 
-
     # ..............................................................................
     def set_max_power_ratio(self, max_power_ratio):
         self._max_power_ratio = max_power_ratio
 
-
     # ..............................................................................
     def get_max_power_ratio(self):
         return self._max_power_ratio
-
 
     # ..............................................................................
     def configure_encoder(self, orientation):
@@ -153,7 +145,6 @@ class Motor():
             raise ValueError("unrecognised value for orientation.")
         self._decoder = Decoder(self._pi, ROTARY_ENCODER_A, ROTARY_ENCODER_B, self.callback_step_count)
         self._log.info('configured {} rotary encoder on pin {} and {}.'.format(orientation.name, ROTARY_ENCODER_A, ROTARY_ENCODER_B))
-
 
     # ..............................................................................
     def callback_step_count(self, pulse):
@@ -179,7 +170,6 @@ class Motor():
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
 
-
     # ..............................................................................
     def cruise():
         '''
@@ -187,18 +177,15 @@ class Motor():
         '''
         pass # TODO
 
-
     # ..........................................................................
     def enable(self):
         self._log.info('enabled.')
         pass
 
-
     # ..........................................................................
     def disable(self):
         self._log.info('disabled.')
         pass
-
 
     # ..........................................................................
     def close(self):
@@ -207,14 +194,12 @@ class Motor():
         self._log.info('max velocity: {:>5.2f}; max power: {:>5.2f}; max adjusted power: {:>5.2f}.'.format(self._max_velocity, self._max_power, self._max_driving_power))
         self._log.info('closed.')
 
-
     # ..........................................................................
     def interrupt(self):
         '''
             Interrupt any loops by setting the _interrupt flag.
         '''
         self._interrupt = True
-
 
     # ..........................................................................
     def reset_interrupt(self):
@@ -223,14 +208,12 @@ class Motor():
         '''
         self._interrupt = False
 
-
     # ..........................................................................
     def is_interrupted(self):
         '''
             Return the value of the _interrupt flag.
         '''
         return self._interrupt
-
 
     # ..........................................................................
     @staticmethod
@@ -247,7 +230,6 @@ class Motor():
         else:
             print('motor             :' + Fore.YELLOW + ' WARN  : cannot cancel motors: no thunderborg available.' + Style.RESET_ALL)
 
-
 #   Motor Functions ............................................................
 
     # ..........................................................................
@@ -262,7 +244,6 @@ class Motor():
             self._tb.SetMotor2(0.0)
         pass
 
-
     # ..........................................................................
     def halt(self):
         '''
@@ -272,7 +253,6 @@ class Motor():
         # set slew slow, then decelerate to zero
         self.accelerate(0.0, SlewRate.FAST, -1)
         self._log.debug('halted.')
-
 
     # ..........................................................................
     def brake(self):
@@ -284,7 +264,6 @@ class Motor():
         self.accelerate(0.0, SlewRate.SLOWER, -1)
         self._log.debug('braked.')
 
-
     # ..........................................................................
     def ahead(self, speed):
         '''
@@ -294,7 +273,6 @@ class Motor():
         self._log.info('ahead to speed of {}...'.format(speed))
         self.accelerate(speed, SlewRate.NORMAL, -1)
         self._log.debug('ahead complete.')
-
 
     # ..........................................................................
     def stepAhead(self, speed, steps):
@@ -306,7 +284,6 @@ class Motor():
 #       self._log.debug('step ahead complete.')
         pass
 
-
     # ..........................................................................
     def astern(self, speed):
         '''
@@ -316,7 +293,6 @@ class Motor():
         self._log.info('astern at speed of {}...'.format(speed))
         self.accelerate(-1.0 * speed, SlewRate.NORMAL, -1)
         self._log.debug('astern complete.')
-
 
     # ..........................................................................
     def stepAstern(self, speed, steps):
@@ -328,14 +304,12 @@ class Motor():
         self._log.debug('step astern complete.')
         pass
 
-
     # ..........................................................................
     def is_in_motion(self):
         '''
             Returns true if the motor is moving.
         '''
         return self.get_current_power_level() > 0.0
-
 
     # ..........................................................................
     def accelerate_to_velocity(self, velocity, slew_rate, steps):
@@ -363,11 +337,11 @@ class Motor():
 
         self._log.info(Fore.BLUE + Style.BRIGHT + 'accelerated to velocity {:>5.2f} at power: {:>5.2f}. '.format(velocity, self.get_current_power_level()))
 
-
     # ..........................................................................
     def _accelerate_to_velocity(self, velocity, slew_rate, step_limit):
         _current_power_level = self.get_current_power_level() * ( 1.0 / self._max_power_ratio )
-        self._log.info(Fore.BLUE + Style.BRIGHT + '_accelerate_to_velocity {:>5.2f} @ slew rate: {:>5.2f}; current power: {:>5.2f}; step limit: {:+d}'.format(velocity, slew_rate.ratio, _current_power_level, step_limit))
+        self._log.info(Fore.BLUE + Style.BRIGHT + '_accelerate_to_velocity {:>5.2f} @ slew rate: {:>5.2f}; current power: {:>5.2f}; step limit: {:+d}'.format(\
+                velocity, slew_rate.ratio, _current_power_level, step_limit))
         if self._velocity < velocity: # if current velocity is less than requested, speed up
             # note that steps count down when going in reverse
             self._log.info('NEED TO SPEED UP TO velocity {:>5.2f}/{:>5.2f}.'.format(self._velocity, velocity))
@@ -404,7 +378,6 @@ class Motor():
                 time.sleep(0.1)
 #               self._log.info(Fore.CYAN + 'WHILE velocity {:>5.2f} < {:>5.2f}: current power level: {:>5.2f}.'.format(self._velocity,velocity, _current_power_level))
 
-
     # ..........................................................................
     def maintain_velocity(self, velocity, step_limit):
         '''
@@ -433,7 +406,6 @@ class Motor():
                     break
             time.sleep(0.05)
         self._interrupt = False
-
 
     # ..........................................................................
     def ahead_for_steps(self, speed, steps):
@@ -485,7 +457,6 @@ class Motor():
                         break
                     time.sleep(0.01)
 
-
         else:
             _step_limit = _current_steps - steps + _braking_range
             while self._steps > _step_limit:
@@ -507,7 +478,6 @@ class Motor():
         self.stop()
         self._interrupt = False
 
-
     # ..........................................................................
     def step_to(self, steps):
         '''
@@ -520,13 +490,12 @@ class Motor():
         elif not self.is_in_motion():
             self._log.warning('can\'t advance to step: we\re not moving.')
             return
-        elif self._velocity == 0.0: 
+        elif self._velocity == 0.0:
             self._log.warning('can\'t advance to step: we have no velocity.')
             return
         elif steps < self._steps:
             self._log.warning('can\'t advance to step: we\re already past the point.')
             return
- 
         orient = Fore.RED if self._orientation is Orientation.PORT else Fore.GREEN
 
         # maintain velocity until within braking range
@@ -564,7 +533,6 @@ class Motor():
 
         self._log.info( orient + 'FINISHED BRAKING from step {:+d}.'.format(self._steps))
 
-
 #       braking_power_level = _current_power_level * 0.5
 #       if self._orientation is Orientation.PORT:
 #           self._tb.SetMotor1(braking_power_level)
@@ -577,14 +545,13 @@ class Motor():
         # now halt entirely
         self.halt()
         self._log.info('BREAK FROM STEP TO loop at step {:+d}.'.format(self._steps))
-      
 
     # ..........................................................................
     def set_motor_power(self, power_level):
         '''
-            Sets the power level to a number between 0.0 and 1.0, with the 
+            Sets the power level to a number between 0.0 and 1.0, with the
             actual limits set both by the _max_driving_power limit and by
-            the _max_power_ratio, which alters the value to match the 
+            the _max_power_ratio, which alters the value to match the
             power/motor voltage ratio.
         '''
         # safety checks ..........................
@@ -607,12 +574,12 @@ class Motor():
         _driving_power = float(power_level * self._max_power_ratio)
         self._max_power = max(power_level, self._max_power)
         self._max_driving_power = max(abs(_driving_power), self._max_driving_power)
-        self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL + '\tcurrent power: {:>5.2f}; driving power: {:>5.2f}.'.format(_current_power, _driving_power))
+        self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL \
+                + '\tcurrent power: {:>5.2f}; driving power: {:>5.2f}.'.format(_current_power, _driving_power))
         if self._orientation is Orientation.PORT:
             self._tb.SetMotor1(_driving_power)
         else:
             self._tb.SetMotor2(_driving_power)
-
 
     # ..........................................................................
     def accelerate_to_zero(self, slew_rate):
@@ -647,7 +614,6 @@ class Motor():
 
         time.sleep(2)
         self._log.info(Fore.BLUE + 'BREAK LOOP (accelerate to zero) at power: {:>5.2f}. '.format(self.get_current_power_level()))
-
         time.sleep(2)
 
         # be sure we're entirely powered off
@@ -656,9 +622,7 @@ class Motor():
                 self._tb.SetMotor1(0.0)
             else:
                 self._tb.SetMotor2(0.0)
-
         time.sleep(2)
-
 
     # ..........................................................................
     def accelerate(self, speed, slew_rate, steps):
@@ -711,7 +675,6 @@ class Motor():
 
         self._log.debug('accelerate complete.')
         return
-
 
     # ..........................................................................
     def accelerate_while(self, speed, direction, slew_rate, f_is_enabled):
@@ -767,7 +730,21 @@ class Motor():
         self._log.debug('accelerate complete.')
         return
 
+    # ..........................................................................
+    def get_orientation(self):
+        '''
+            Returns the orientation of this motor.
+        '''
+        return self._orientation
 
+    # ..........................................................................
+    def is_stopped(self):
+        '''
+            Returns true if the motor is entirely stopped.
+        '''
+        return ( self.get_current_power_level() == 0.0 )
+
+    # ..........................................................................
     '''
         These two methods store the last set value of each motor.
         This is actually set from z_motor.
@@ -782,16 +759,7 @@ class Motor():
 #           self._log.debug('set_last_set_power({},{:6.1f})'.format(orientation, self._last_set_power[1]))
             pass
 
-
-    # ..........................................................................
-    def get_orientation(self):
-        '''
-            Returns the orientation of this motor.
-        '''
-        return self._orientation
-
-
-    # ..........................................................................
+    # ................................
     def get_current_power_level(self):
         '''
             Makes a best attempt at getting the power level value from the motors.
@@ -812,14 +780,5 @@ class Motor():
             return 0.0
         else:
             return value
-
-
-    # ..........................................................................
-    def is_stopped(self):
-        '''
-            Returns true if the motor is entirely stopped.
-        '''
-        return ( self.get_current_power_level() == 0.0 )
-
 
 #EOF

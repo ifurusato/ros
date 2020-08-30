@@ -22,7 +22,6 @@ except ImportError:
 from lib.tof import TimeOfFlight, Range
 from lib.servo import Servo
 from lib.logger import Logger, Level
-from lib.player import Sound, Player
 
 # ..............................................................................
 class Lidar():
@@ -34,14 +33,12 @@ class Lidar():
 
         The 'reverse_movement' parameter is used in case the servo movement is backwards.
     '''
-    def __init__(self, config, player, level):
+    def __init__(self, config, level):
         self._log = Logger('lidar', Level.INFO)
         self._config = config
         if self._config:
             self._log.info('configuration provided.')
             _config = self._config['ros'].get('lidar')
-            self._play_sound = ( player is not None ) and _config.get('play_sound')
-            self._log.info('enable play sound: {}'.format(self._play_sound))
             self._reverse_movement = _config.get('reverse_movement')
             self._double_sweep = _config.get('double_sweep')
             self._min_angle = _config.get('min_angle')
@@ -53,7 +50,6 @@ class Lidar():
             _servo_number = _config.get('servo_number')  
         else:
             self._log.warning('no configuration provided.')
-            self._play_sound = False
             self._log.info('play sound disabled.')
             self._reverse_movement = False
             self._double_sweep = False
@@ -68,7 +64,6 @@ class Lidar():
             _servo_number = 1
 
         self._log.info('scan range of {} from {:>4.1f}° to {:>4.1f}° with step of {:>4.1f}°'.format(_range, self._min_angle, self._max_angle, self._degree_step))
-        self._player = player
         self._servo = Servo(self._config, _servo_number, level)
         self._tof = TimeOfFlight(_range, Level.WARN)
         self._error_range = 0.067
@@ -110,8 +105,6 @@ class Lidar():
             _angle_at_min = 0.0
             _max_mm = 0
             _angle_at_max = 0.0
-            if self._play_sound:
-                self._player.repeat(Sound.PING, 3, 0.1)
 
             self._set_servo_position(self._min_angle)
             time.sleep(0.3)
@@ -169,8 +162,6 @@ class Lidar():
                         _angle_at_max = degrees
                     time.sleep(self._step_delay_sec)
 
-            if self._play_sound:
-                self._player.stop()
             time.sleep(0.1)
 #           self._log.info('complete.')
             elapsed = time.time() - start

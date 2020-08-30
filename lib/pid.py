@@ -205,7 +205,8 @@ class PID():
                     self._motor.set_motor_power(0.0)
                     self._log.info(Fore.WHITE + Style.BRIGHT + '[{:02d}]+ NO ERROR, currently at zero velocity.'.format(self._loop_count))
                 else:
-                    self._log.info(Fore.WHITE + Style.BRIGHT + '[{:02d}]+ no error, currently at target velocity:  {:+06.2f}; at power: {:+5.3f}'.format(self._loop_count, _current_velocity, _current_power))
+                    self._log.info(Fore.WHITE + Style.BRIGHT + '[{:02d}]+ no error, currently at target velocity:  {:+06.2f}; at power: {:+5.3f}'.format(\
+                            self._loop_count, _current_velocity, _current_power))
                 # remember some variables for next time ........................
                 self._last_error = 0.0
                 _changed = False
@@ -222,14 +223,15 @@ class PID():
                 # I: Integral ..................................................
                 if self._enable_i:
                     _i_diff = self._ki * self._sum_errors if self._enable_i else 0.0
-                    self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'I diff: {:45.4f}'.format(_i_diff) + Style.NORMAL + ' = self._ki: {:>5.4f} * _sum_errors: {:>5.4f}.'.format(self._ki, self._sum_errors))
+                    self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'I diff: {:45.4f}'.format(_i_diff) + Style.NORMAL \
+                            + ' = self._ki: {:>5.4f} * _sum_errors: {:>5.4f}.'.format(self._ki, self._sum_errors))
                 else:
                     _i_diff = 0.0
 
                 # D: Derivative ................................................
                 if self._enable_d:
                     _d_diff = self._kd * self._last_error if self._enable_d else 0.0
-                    self._log.debug(Fore.YELLOW              + 'D diff: {:>5.4f}'.format(_d_diff) + Style.NORMAL + ' = self._kd: {:>5.4f} * _last_error: {:>5.4f}.'.format(self._kd, self._last_error))
+                    self._log.debug(Fore.YELLOW + 'D diff: {:>5.4f}'.format(_d_diff) + Style.NORMAL + ' = self._kd: {:>5.4f} * _last_error: {:>5.4f}.'.format(self._kd, self._last_error))
                 else:
                     _d_diff = 0.0
 
@@ -243,14 +245,17 @@ class PID():
                 # set motor power ..............................................
                 _power_level = _current_power + _clipped_output
                 if abs(_output) <= 0.0005: # we're pretty close to the right value
-                    self._log.debug(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
-                            + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
+                    self._log.debug(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+                            + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+                            _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
                 elif _output >= 0: # we're going too slow
-                    self._log.debug(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
-                            + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
+                    self._log.debug(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+                            + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+                            _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
                 else:              # we're going too fast
-                    self._log.debug(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level)\
-                            + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(_current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
+                    self._log.debug(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+                            + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+                            _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
 
                 self._motor.set_motor_power(_power_level)
 

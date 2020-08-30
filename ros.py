@@ -27,16 +27,26 @@ from lib.message import Message
 from lib.abstract_task import AbstractTask 
 from lib.fsm import FiniteStateMachine
 from lib.queue import MessageQueue
-from lib.config_loader import ConfigLoader
-from lib.configurer import Configurer
 from lib.arbitrator import Arbitrator
 from lib.controller import Controller
+from lib.i2c_scanner import I2CScanner
+from lib.config_loader import ConfigLoader
 from lib.batlevel import BatteryLevelIndicator
 from lib.indicator import Indicator
 from lib.gamepad import Gamepad
 
+# standard features:
+from lib.motor_configurer import MotorConfigurer
+from lib.ifs import IntegratedFrontSensor
+from lib.switch import Switch
+from lib.button import Button
+from lib.batterycheck import BatteryCheck
+from lib.lidar import Lidar
+from lib.matrix import Matrix
+from lib.rgbmatrix import RgbMatrix, DisplayType
+from lib.bno055 import BNO055
+
 #from lib.player import Player
-#from lib.lidar import Lidar
 #from lib.rgbmatrix import RgbMatrix
 
 # GPIO Setup .....................................
@@ -98,17 +108,160 @@ class ROS(AbstractTask):
         self._arbitrator    = None
         self._controller    = None
         self._gamepad       = None
+        self._features = []
 #       self._flask_wrapper = None
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         self._config = _loader.configure(filename)
         self._gamepad_enabled = self._config['ros'].get('gamepad').get('enabled')
-        # import available features
-        self._features = []
-        _configurer = Configurer(self, Level.INFO)
-        _configurer.scan()
         self._log.info('initialised.')
+        self._configure()
+
+    # ..........................................................................
+    def _configure(self):
+        '''
+            Configures ROS based on both KR01 standard hardware as well as
+            optional features, the latter based on devices showing up (by 
+            address) on the I²C bus. Optional devices are only enabled at
+            startup time via registration of their feature availability.
+        '''
+        scanner = I2CScanner(Level.WARN)
+        self._addresses = scanner.getAddresses()
+        hexAddresses = scanner.getHexAddresses()
+        self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, hexAddresses)))
+        for i in range(len(self._addresses)):
+            self._log.info(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
+
+        self._log.info('configure default features...')
+        # standard devices ...........................................
+        self._log.info('configuring integrated front sensors...')
+        self._ifs = IntegratedFrontSensor(self._config, self._queue, Level.INFO)
+        self._log.info('configure ht0740 switch...')
+        self._switch = Switch(Level.INFO)
+        # since we're using the HT0740 Switch, turn it on to enable sensors that rely upon its power 
+#       self._switch.enable()
+        self._switch.on()
+        self._log.info('configuring button...')
+        self._button = Button(self._config, self.get_message_queue(), self._mutex)
+        self._log.info('configure battery check...')
+        _battery_check = BatteryCheck(self._config, self.get_message_queue(), Level.INFO)
+        self.add_feature(_battery_check)
+
+        ultraborg_available = ( 0x36 in self._addresses )
+        if ultraborg_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- UltraBorg available at 0x36.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no UltraBorg available at 0x36.' + Style.RESET_ALL)
+        self._set_feature_available('ultraborg', ultraborg_available)
+
+        thunderborg_available = ( 0x15 in self._addresses )
+        if thunderborg_available: # then configure motors
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ThunderBorg available at 0x15' + Style.RESET_ALL)
+            _motor_configurer = MotorConfigurer(self, self._config, Level.INFO)
+            self._motors = _motor_configurer.configure()
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available at 0x15.' + Style.RESET_ALL)
+        self._set_feature_available('thunderborg', thunderborg_available)
+
+        # optional devices ...........................................
+        # the 5x5 RGB Matrix is at 0x74 for port, 0x77 for starboard
+        rgbmatrix5x5_stbd_available = ( 0x74 in self._addresses )
+        if rgbmatrix5x5_stbd_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x74.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x74.' + Style.RESET_ALL)
+        self._set_feature_available('rgbmatrix5x5_stbd', rgbmatrix5x5_stbd_available)
+        rgbmatrix5x5_port_available = ( 0x77 in self._addresses )
+        if rgbmatrix5x5_port_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- RGB Matrix available at 0x77.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no RGB Matrix available at 0x77.' + Style.RESET_ALL)
+        self._set_feature_available('rgbmatrix5x5_port', rgbmatrix5x5_port_available)
+
+        if rgbmatrix5x5_stbd_available or rgbmatrix5x5_port_available:
+            self._log.info('configure rgbmatrix...')
+            self._rgbmatrix = RgbMatrix(Level.INFO)
+            self.add_feature(self._rgbmatrix) # FIXME this is added twice
+
+        # ............................................
+        # the 11x7 LED matrix is at 0x75 for starboard, 0x77 for port. The latter
+        # conflicts with the RGB LED matrix, so both cannot be used simultaneously.
+        matrix11x7_stbd_available = ( 0x75 in self._addresses )
+        if matrix11x7_stbd_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no 11x7 Matrix LEDs available at 0x75.' + Style.RESET_ALL)
+        self._set_feature_available('matrix11x7_stbd', matrix11x7_stbd_available)
+
+        # device availability ........................................
+
+        bno055_available = ( 0x28 in self._addresses )
+        if bno055_available:
+            self._log.info('configuring BNO055 9DoF sensor...')
+            self._bno055 = BNO055(self._config, self.get_message_queue(), Level.INFO)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + 'no BNO055 orientation sensor available at 0x28.' + Style.RESET_ALL)
+        self._set_feature_available('bno055', bno055_available)
+
+        # NOTE: the default address for the ICM20948 is 0x68, but this conflicts with the PiJuice
+        icm20948_available = ( 0x69 in self._addresses )
+        if icm20948_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + 'ICM20948 available at 0x69.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + 'no ICM20948 available at 0x69.' + Style.RESET_ALL)
+        self._set_feature_available('icm20948', icm20948_available)
+
+        lsm303d_available = ( 0x1D in self._addresses )
+        if lsm303d_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + 'LSM303D available at 0x1D.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + 'no LSM303D available at 0x1D.' + Style.RESET_ALL)
+        self._set_feature_available('lsm303d', lsm303d_available)
+    
+        vl53l1x_available = ( 0x29 in self._addresses )
+        if vl53l1x_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + 'VL53L1X available at 0x29.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + 'no VL53L1X available at 0x29.' + Style.RESET_ALL)
+        self._set_feature_available('vl53l1x', vl53l1x_available)
+
+        as7262_available = ( 0x49 in self._addresses )
+        if as7262_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + '-- AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no AS7262 Spectrometer available at 0x49.' + Style.RESET_ALL)
+        self._set_feature_available('as7262', as7262_available)
+
+        pijuice_available = ( 0x68 in self._addresses )
+        if pijuice_available:
+            self._log.debug(Fore.CYAN + Style.BRIGHT + 'PiJuice hat available at 0x68.' + Style.RESET_ALL)
+        else:
+            self._log.debug(Fore.RED + Style.BRIGHT + 'no PiJuice hat available at 0x68.' + Style.RESET_ALL)
+        self._set_feature_available('pijuice', pijuice_available)
+
+        self._log.info('configured.')
+
+
+    # ..........................................................................
+    def summation():
+        '''
+            Displays unaccounted I2C addresses. This is currently non-functional,
+            as we don't remove a device from the list when its address is found.
+        '''
+        self._log.info(Fore.YELLOW + '-- unaccounted for self._addresses:')
+        for i in range(len(self._addresses)):
+            hexAddr = self._addrDict.get(self._addresses[i])
+            self._log.info(Fore.YELLOW + Style.BRIGHT + '-- address: {}'.format(hexAddr) + Style.RESET_ALL)
+
+
+    # ..........................................................................
+    def _set_feature_available(self, name, value):
+        '''
+            Sets a feature's availability to the boolean value.
+        '''
+        self._log.debug(Fore.BLUE + Style.BRIGHT + '-- set feature available. name: \'{}\' value: \'{}\'.'.format(name, value))
+        self.set_property('features', name, value)
 
 
     # ..........................................................................
@@ -261,14 +414,14 @@ class ROS(AbstractTask):
 
 #       i2c_slave_address = config['ros'].get('i2c_master').get('device_id') # i2c hex address of I2C slave device
 
-#       vl53l1x_available = False # self.get_property('features', 'vl53l1x')
-#       ultraborg_available = False # self.get_property('features', 'ultraborg')
-#       if vl53l1x_available and ultraborg_available:
-#           self._log.critical('starting scanner tool...')
-#           self._lidar = Lidar(self._config, self._player, Level.INFO)
-#           self._lidar.enable()
-#       else:
-#           self._log.critical('scanner tool does not have necessary dependencies.')
+        vl53l1x_available = True # self.get_property('features', 'vl53l1x')
+        ultraborg_available = True # self.get_property('features', 'ultraborg')
+        if vl53l1x_available and ultraborg_available:
+            self._log.critical('starting scanner tool...')
+            self._lidar = Lidar(self._config, Level.INFO)
+            self._lidar.enable()
+        else:
+            self._log.critical('lidar scanner tool does not have necessary dependencies.')
         
 #       self._ifs = IntegratedFrontSensor(self._config, self._queue, Level.INFO)
     

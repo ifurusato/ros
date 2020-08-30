@@ -27,8 +27,7 @@ from lib.gamepad import Gamepad
 from lib.behaviours import Behaviours
 from lib.roam import RoamBehaviour
 
-step_value = 5.0
-
+# ..............................................................................
 class Controller():
     '''
         Responds to Events. Simple tasks are handled within this script, more

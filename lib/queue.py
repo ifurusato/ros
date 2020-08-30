@@ -22,7 +22,6 @@ from .event import Event
 from .enums import ActionState
 from .logger import Logger, Level
 
-
 # ..............................................................................
 class MessageQueue():
     '''

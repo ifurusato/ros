@@ -7,20 +7,19 @@
 #
 # author:   Murray Altheim
 # created:  2020-01-18
-# modified: 2020-03-26
+# modified: 2020-08-30
 #
 
 import time, sys, traceback
+from threading import Thread
+from fractions import Fraction
+from colorama import init, Fore, Style
+init()
 
 try:
     import pigpio
 except ImportError:
     sys.exit("This script requires the pigpio module.\nInstall with: sudo apt install python3-pigpio")
-
-from threading import Thread
-from fractions import Fraction
-from colorama import init, Fore, Style
-init()
 
 from lib.logger import Logger, Level
 from lib.event import Event
@@ -39,22 +38,17 @@ class Motors():
     '''
         A dual motor controller with encoders.
     '''
-    def __init__(self, config, tb, pi, level):
+    def __init__(self, config, tb, level):
         super().__init__()
         self._log = Logger('motors', level)
         self._log.info('initialising motors...')
-        if pi is None:
-            pi = pigpio.pi()
-            if pi is None:
-                raise Exception('unable to configure pigpio.')
-        self._pi = pi
         if tb is None:
             tb = self._configure_thunderborg_motors(level)
             if tb is None:
                 raise Exception('unable to configure thunderborg.')
         self._tb = tb
         self._set_max_power_ratio()
-
+        self._pi = pigpio.pi()
         self._port_motor = Motor(config, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
         self._port_pid = self._port_motor.get_pid_controller()
@@ -83,7 +77,7 @@ class Motors():
             TB = ThunderBorg.ThunderBorg(level)  # create a new ThunderBorg object
             TB.Init()                       # set the board up (checks the board is connected)
             self._log.info('successfully instantiated thunderborg.')
-    
+
             if not TB.foundChip:
                 boards = ThunderBorg.ScanForThunderBorg()
                 if len(boards) == 0:
@@ -96,7 +90,7 @@ class Motors():
                 sys.exit(1)
             TB.SetLedShowBattery(True)
             return TB
-    
+
         except Exception as e:
             self._log.error('unable to import thunderborg: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
@@ -109,7 +103,7 @@ class Motors():
     # ..........................................................................
     def set_led_color(self, color):
         self._tb.SetLed1(color.red/255.0, color.green/255.0, color.blue/255.0)
-    
+
     # ..........................................................................
     def _set_max_power_ratio(self):
         pass
@@ -219,7 +213,6 @@ class Motors():
         self._port_motor.interrupt()
         self._stbd_motor.interrupt()
 
-
     # ..........................................................................
     def halt(self):
         '''
@@ -241,7 +234,6 @@ class Motors():
         self._log.info('halted.')
         return True
 
-
     # ..........................................................................
     def brake(self):
         '''
@@ -262,7 +254,6 @@ class Motors():
         self._log.info('braked.')
         return True
 
-
     # ..........................................................................
     def stop(self):
         '''
@@ -277,7 +268,6 @@ class Motors():
         self._stbd_motor.stop()
         self._log.info('stopped.')
         return True
-
 
     # ..........................................................................
     def slow_down(self, orientation):
@@ -302,14 +292,12 @@ class Motors():
             self._log.info('slowed.')
         return True
 
-
     # ..........................................................................
     def is_stopped(self):
         return self._port_motor.is_stopped() and self._stbd_motor.is_stopped()
 
 
 # Synchronisation Support ................................................................
-
 
     # ..........................................................................
     def processStop(self, event, orientation):
@@ -338,7 +326,6 @@ class Motors():
                 self._stbd_motor.stop()
         self.print_current_power_levels()
 
-
     # ..........................................................................
     def get_current_power_levels(self):
         '''
@@ -348,7 +335,6 @@ class Motors():
         _stbd_power = self._stbd_motor.get_current_power_level()
         return [ _port_power, _stbd_power ]
 
-
     # ..........................................................................
     def print_current_power_levels(self):
         '''
@@ -356,7 +342,6 @@ class Motors():
         '''
         self._msgIndex += 1
         self._log.info('{}:\tcurrent power:\t{:6.1f}\t{:6.1f}'.format(self._msgIndex, self._last_set_power[0], self._last_set_power[1]))
-
 
     # ..........................................................................
     def accelerate(self, speed, slew_rate, steps, orientation):
@@ -375,7 +360,6 @@ class Motors():
             self._log.info('starting starboard motor with {:>5.2f} speed for {:d} steps...'.format(speed, steps))
             self._stbd_motor.accelerate(speed, slew_rate, steps)
         self._log.debug('accelerated.')
-
 
 # Straight Movement Behaviours ...........................................................
 
@@ -398,7 +382,6 @@ class Motors():
         self._log.info('motors slow to zero complete.')
         return True
 
-
     # ..........................................................................
     def _accelerate_to_zero(self, slew_rate, orientation):
         '''
@@ -414,7 +397,6 @@ class Motors():
             self._log.debug('slowing starboard motor to a stop...')
             self._stbd_motor.accelerate_to_zero(slew_rate)
         self._log.debug('accelerated.')
-
 
     # ..........................................................................
     def change_velocity(self, port_velocity, stbd_velocity, slew_rate, steps):
@@ -439,7 +421,6 @@ class Motors():
         self._log.info('motors change velocity complete.')
         return True
 
-
     # ..........................................................................
     def _accelerate_to_velocity(self, velocity, slew_rate, steps, orientation):
         '''
@@ -456,7 +437,6 @@ class Motors():
             self._log.debug('starting starboard motor with {:>5.2f} velocity...'.format(velocity))
             self._stbd_motor.accelerate_to_velocity(velocity, slew_rate, steps)
         self._log.debug('accelerated.')
-
 
     # ..........................................................................
     def step_to(self, steps):
@@ -478,7 +458,6 @@ class Motors():
         self._log.info('motors step to complete.')
         return True
 
-
     # ..........................................................................
     def _step_to(self, steps, orientation):
         '''
@@ -493,9 +472,7 @@ class Motors():
             self._log.info('advancing starboard motor to {:d} steps...'.format(steps))
             self._stbd_motor.step_to(steps)
 
-
     # =======================================================================================================
-
 
     # ..........................................................................
     def ahead(self, speed):
@@ -509,7 +486,6 @@ class Motors():
         self.step(speed, speed, -1, -1)
         self._log.info('motors ahead complete.')
         return True
-
 
     # ..........................................................................
     def ahead_for_steps(self, port_speed, stbd_speed, port_steps, stbd_steps):
@@ -536,7 +512,6 @@ class Motors():
             self._log.info('cannot move ahead: motors disabled.')
             return False
 
-
     # ..........................................................................
     def change_speed(self, speed):
         '''
@@ -557,11 +532,10 @@ class Motors():
         self._log.info('motors change speed complete.')
         return True
 
-
     # ..........................................................................
     def astern(self, speed):
         '''
-            Slews both motors astern at Speed, using the enum. 
+            Slews both motors astern at Speed, using the enum.
 
             The value of the enum is: 0 <= speed <= 100.
         '''
@@ -585,7 +559,6 @@ class Motors():
         self._log.critical('motors astern complete.')
         return True
 
-
     # ..........................................................................
     def stepAstern(self, speed, steps):
         '''
@@ -598,7 +571,6 @@ class Motors():
         self.step(-1.0 * speed, -1.0 * speed, steps, steps)
         self._log.info('motors step astern complete.')
         return True
-
 
     # ..........................................................................
     def stepAhead(self, speed, steps):
@@ -613,9 +585,7 @@ class Motors():
         self._log.info('motors step ahead complete.')
         return True
 
-
 # Turning Behaviours .....................................................................
-
 
     # ..........................................................................
     def turn_ahead(self, port_speed, stbd_speed):
@@ -634,7 +604,6 @@ class Motors():
         self._log.info('turned ahead.')
         return True
 
-
     # ..........................................................................
     def turn_astern(self, port_speed, stbd_speed):
         '''
@@ -651,7 +620,6 @@ class Motors():
         self.step(-1.0 * abs(port_speed), -1.0 * abs(stbd_speed), -1, -1)
         self._log.info('turned astern.')
         return True
-
 
     # ..........................................................................
     def stepTurnAstern(self, port_speed, stbd_speed, port_steps, stbd_steps):
@@ -671,11 +639,10 @@ class Motors():
         self._log.info('step turned astern.')
         return True
 
-
     # ..........................................................................
     def step(self, port_speed, stbd_speed, port_steps, stbd_steps):
         '''
-            Moves ahead or backward using the designated port and starboard speeds, going the number 
+            Moves ahead or backward using the designated port and starboard speeds, going the number
             of port and starboard steps before stopping. If a step argument is -1 no step limit is set.
 
             If the speeds are equal the robot will move ahead or astern in a straight line.
@@ -703,7 +670,6 @@ class Motors():
 
 # Spinning Behaviours ....................................................................
 
-
     # ..........................................................................
     def spin_port(self, speed):
         '''
@@ -717,7 +683,6 @@ class Motors():
         self._log.info('spun to port.')
         return True
 
-
     # ..........................................................................
     def spin_starboard(self, speed):
         '''
@@ -730,7 +695,6 @@ class Motors():
         self.step_spin(Orientation.STBD, speed, -1, False)
         self._log.info('spun to starboard.')
         return True
-
 
     # ..........................................................................
     def step_spin(self, orientation, speed, steps, halt_first):
@@ -767,8 +731,7 @@ class Motors():
             self._log.info('step spun to starboard.')
         return True
 
-
-
+    # ..........................................................................
     @staticmethod
     def cancel():
         print('cancelling motors...')
