@@ -47,7 +47,7 @@ class Indicator():
     def __init__(self, level):
         self._log = Logger("indicator", level)
         self._rgbmatrix5x5 = RGBMatrix5x5(address=0x74)
-        self._log.info('rgbmatrix at 0x74.')
+        self._log.debug('rgbmatrix at 0x74.')
         self._rgbmatrix5x5.set_brightness(0.8)
         self._rgbmatrix5x5.set_clear_on_exit()
         self._height = self._rgbmatrix5x5.height
@@ -135,14 +135,14 @@ class Indicator():
         _offset = 0
         if hue == -1: # no heading
             r, g, b = [ Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue ]
-            self._log.info(Fore.WHITE + Style.DIM + 'no heading; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
+            self._log.debug(Fore.WHITE + Style.DIM + 'no heading; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
         elif hue == -2:
             r, g, b = [ Color.VERY_DARK_GREY.red, Color.VERY_DARK_GREY.green, Color.VERY_DARK_GREY.blue ]
-            self._log.info(Fore.WHITE + Style.NORMAL + 'uncalibrated; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
+            self._log.debug(Fore.WHITE + Style.NORMAL + 'uncalibrated; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
         else:
             h = ((hue + _offset) % 360) / 360.0
             r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(h, 1.0, 1.0)]
-            self._log.info(Fore.GREEN + Style.NORMAL + 'hue: {}/{:>5.2f}; rgb: {}/{}/{}'.format(hue, h, r, g, b))
+            self._log.debug(Fore.GREEN + Style.NORMAL + 'hue: {}/{:>5.2f}; rgb: {}/{}/{}'.format(hue, h, r, g, b))
 #       self._rgbmatrix5x5.set_all(r, g, b)
         self._rgbmatrix5x5.set_pixel(0, 0, r, g, b)
         self._rgbmatrix5x5.set_pixel(0, 1, r, g, b)

@@ -42,14 +42,17 @@ ros:
         quality: -1                              # video quality: -1 for default; values between 1 (high) - 40 (low), typical between 20-25.
         remove_h264: False                       # if True, remove h264 video source after converting to mp4
         port: 8001                               # server port for streaming video
-#       width: 1600                              # video width
-#       height: 400                              # video height
-        width: 1280                              # video width
-        height: 720                              # video height
+        width: 1600                              # video width
+        height: 512                              # video height
+#       width: 1280                              # video width
+#       height: 720                              # video height
         framerate: 30                            # video framerate
         lux_threshold: 14                        # lux threshold for night mode
         dirname: 'videos'                        # the name of the output directory
         basename: 'vid'                          # the base name for output files
+    nxp9dof:
+        quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
+        loop_delay_sec: 0.1                      # sensor loop delay (seconds)
     bno055:
         quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)

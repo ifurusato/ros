@@ -37,10 +37,16 @@ class Compass():
         self._indicator = indicator
         self._enabled   = False
         self._thread    = None
+        self._message = 'heading: uncalibrated'
         self._bno055 = BNO055(config, queue, Level.INFO)
         _config = config['ros'].get('compass')
+        self._has_been_calibrated = False
         # any config?
         self._log.info('ready.')
+
+    # ..........................................................................
+    def get_heading_message(self):
+        return self._message
 
     # ..........................................................................
     def get_heading(self):
@@ -48,7 +54,10 @@ class Compass():
 
     # ..........................................................................
     def is_calibrated(self):
-        return self._bno055.is_calibrated()
+        _calibrated = self._bno055.is_calibrated()
+        if _calibrated:
+            self._has_been_calibrated = True
+        return _calibrated
 
     # ..........................................................................
     def enable(self):
@@ -71,16 +80,24 @@ class Compass():
         while self._enabled:
             heading = self._bno055.get_heading()
             if heading is None:
-                self._log.info(Fore.RED  + Style.NORMAL + '> heading: none')
+                self._message = 'heading: uncalibrated'
+                self._log.debug(Fore.RED  + Style.NORMAL      + self._message)
 #               self._indicator.set_color(Color.BLACK)
                 self._indicator.set_heading(-1)
             elif self.is_calibrated():
-                self._log.info(Fore.MAGENTA + Style.BRIGHT + '> heading: {:5.2f}°'.format(heading))
+                self._message = 'heading: {:5.2f} (calibrated)'.format(heading)
+                self._log.debug(Fore.MAGENTA + Style.BRIGHT   + 'heading: {:5.2f}°'.format(heading))
                 self._indicator.set_heading(heading)
             else:
-                self._log.info(Fore.CYAN + Style.NORMAL + '> heading: {:5.2f}°'.format(heading))
-#               self._indicator.set_color(Color.VERY_DARK_GREY)
-                self._indicator.set_heading(-2)
+                # if we've ever been calibrated we'll accept a heading
+                if self._has_been_calibrated:
+                    self._message = 'heading: {:5.2f} (previously calibrated)'.format(heading)
+                    self._log.debug(Fore.CYAN + Style.NORMAL  + 'heading: {:5.2f}°'.format(heading))
+                    self._indicator.set_heading(heading)
+                else:
+                    self._message = 'heading: {:5.2f} (uncalibrated)'.format(heading)
+                    self._log.debug(Fore.BLACK + Style.NORMAL + 'heading: {:5.2f}°'.format(heading))
+                    self._indicator.set_heading(-2)
             time.sleep(0.05)
 
     # ..........................................................................

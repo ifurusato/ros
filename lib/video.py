@@ -213,10 +213,17 @@ class Video():
             self._log.info('ready: save to file only, no streaming.')
 
     # ..........................................................................
+    def set_compass(self, compass):
+        global g_compass
+        g_compass = compass # used by annotation
+        self._compass = compass
+
+    # ..........................................................................
     @staticmethod
     def get_annotation():
-        global annotation_title
-        return '{} {}'.format(annotation_title, dt.now(tzlocal.get_localzone()).strftime('%Y-%m-%d %H:%M:%S %Z'))
+        global annotation_title, g_compass
+        _heading = g_compass.get_heading_message() if g_compass is not None else ''
+        return '{} {} {}'.format(annotation_title, dt.now(tzlocal.get_localzone()).strftime('%Y-%m-%d %H:%M:%S %Z'), _heading)
 
     # ..........................................................................
     def is_night_mode(self):
@@ -301,6 +308,7 @@ class Video():
     # ..........................................................................
     def set_night_mode(self, camera, enabled):
         # NOTE: setting 'iso' overrides exposure mode
+        _compass_calibrated = True if self._compass and self._compass.is_calibrated() else False
         if enabled:
             self._log.debug('night mode.')
 #           camera.exposure_mode = 'nightpreview'
@@ -324,7 +332,10 @@ class Video():
             camera.iso = 800
             camera.led = False
             camera.annotate_foreground = Color.from_string('#ffdada')
-            camera.annotate_background = Color.from_string('#440000')
+            if _compass_calibrated:
+                camera.annotate_background = Color.from_string('#440000')
+            else:
+                camera.annotate_background = Color.from_string('#440088')
             if self._ctrl_lights:
                 self.set_lights(True)
         else:
@@ -333,7 +344,10 @@ class Video():
 #           camera.exposure_mode = 'off'
             camera.led = True
             camera.annotate_foreground = Color.from_string('#111111')
-            camera.annotate_background = Color.from_string('#ffffff')
+            if _compass_calibrated:
+                camera.annotate_background = Color.from_string('#ffffff')
+            else:
+                camera.annotate_background = Color.from_string('#ffff00')
             if self._ctrl_lights:
                 self.set_lights(False)
 
