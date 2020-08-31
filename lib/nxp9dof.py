@@ -366,7 +366,7 @@ class NXP9DoF:
 #               8. Temperature (1Hz) Ambient temperature in degrees celsius ................................................................
 #               self._log.info('    ' + Fore.MAGENTA + Style.BRIGHT + 'temperature: {} degrees C'.format(self._fxos.temperature))
 
-                rate.sleep()
+                rate.wait()
 
 #               time.sleep(self._loop_delay_sec)
             else:
