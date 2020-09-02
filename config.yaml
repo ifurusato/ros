@@ -57,6 +57,9 @@ ros:
         quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
         i2c_device: 1                            # I2C device bus number, equivalent to '/dev/i2c-1'
+        pitch_trim:   0.00                       # trim adjustment on pitch
+        roll_trim:    0.00                       # trim adjustment on roll
+        heading_trim: 0.00                       # trim adjustment on heading
     accelerometer:
         jitter_limit: 0.1                        # how much jitter is permitted whilst considered at rest
     lidar:

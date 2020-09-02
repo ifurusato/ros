@@ -78,25 +78,31 @@ class Compass():
     # ..........................................................................
     def _indicate(self):
         while self._enabled:
-            heading = self._bno055.get_heading()
-            if heading is None:
+            _pitch   = self._bno055.get_pitch()
+            if _pitch is None:
+                _pitch = 0.0
+            _roll    = self._bno055.get_roll()
+            if _roll is None:
+                _roll = 0.0
+            _heading = self._bno055.get_heading()
+            if _heading is None:
                 self._message = 'heading: uncalibrated'
                 self._log.debug(Fore.RED  + Style.NORMAL      + self._message)
 #               self._indicator.set_color(Color.BLACK)
                 self._indicator.set_heading(-1)
             elif self.is_calibrated():
-                self._message = 'heading: {:5.2f} (calibrated)'.format(heading)
-                self._log.debug(Fore.MAGENTA + Style.BRIGHT   + 'heading: {:5.2f}°'.format(heading))
-                self._indicator.set_heading(heading)
+                self._message = 'heading: {:5.2f} (calibrated)'.format(_heading)
+                self._log.info(Fore.MAGENTA + Style.BRIGHT   + 'heading: {:5.2f}° (cal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
+                self._indicator.set_heading(_heading)
             else:
                 # if we've ever been calibrated we'll accept a heading
                 if self._has_been_calibrated:
-                    self._message = 'heading: {:5.2f} (previously calibrated)'.format(heading)
-                    self._log.debug(Fore.CYAN + Style.NORMAL  + 'heading: {:5.2f}°'.format(heading))
-                    self._indicator.set_heading(heading)
+                    self._message = 'heading: {:5.2f} (previously calibrated)'.format(_heading)
+                    self._log.info(Fore.CYAN + Style.BRIGHT  + 'heading: {:5.2f}° (prev cal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
+                    self._indicator.set_heading(_heading)
                 else:
-                    self._message = 'heading: {:5.2f} (uncalibrated)'.format(heading)
-                    self._log.debug(Fore.BLACK + Style.NORMAL + 'heading: {:5.2f}°'.format(heading))
+                    self._message = 'heading: {:5.2f} (uncalibrated)'.format(_heading)
+                    self._log.info(Fore.BLUE + Style.NORMAL  + 'heading: {:5.2f}° (uncal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
                     self._indicator.set_heading(-2)
             time.sleep(0.05)
 

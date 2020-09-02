@@ -105,9 +105,9 @@ class NXP():
             a, m, g = self._imu.get()
             _roll, _pitch, _heading = self._imu.getOrientation(a, m)
             # make easier to read even if completely wrong:
-#           _roll = _roll * 100.0
-#           _pitch = _pitch * 100.0
-#           _heading = _heading * 100.0
+            _roll = _roll * 100.0
+            _pitch = _pitch * 100.0
+            _heading = _heading * 100.0
             self._log.info(Fore.MAGENTA + 'pitch: {:>6.4f}\troll: {:>6.4f}\theading: {:>6.4f}°'.format(_pitch, _roll, _heading) + Style.RESET_ALL)
             time.sleep(0.50)
     

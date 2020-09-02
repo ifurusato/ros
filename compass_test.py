@@ -43,7 +43,6 @@ def main():
 
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
-
         _config = _loader.configure(filename)
         _queue = MessageQueue(Level.INFO)
         _indicator = Indicator(Level.INFO)
@@ -54,7 +53,7 @@ def main():
         print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
         while True:
             _count = next(_counter)
-            _log.info(Fore.BLACK  + Style.NORMAL + '{:d}... '.format(_count))
+#           _log.info(Fore.BLACK  + Style.NORMAL + '{:d}... '.format(_count))
             time.sleep(1.0)
     
     except KeyboardInterrupt:
