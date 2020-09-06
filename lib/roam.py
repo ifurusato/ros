@@ -11,7 +11,8 @@ from threading import Thread
 from colorama import init, Fore, Style
 init()
 
-from lib.enums import SlewRate, Direction, Orientation
+from lib.enums import Direction, Orientation
+from lib.slew import SlewRate
 from lib.logger import Level, Logger
 from lib.motors import Motor
 

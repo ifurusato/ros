@@ -21,7 +21,7 @@ from lib.devnull import DevNull
 from lib.logger import Level, Logger
 from lib.queue import MessageQueue
 from lib.indicator import Indicator
-from lib.compass import Compass
+from lib.nxp9dof import NXP9DoF
 
 # exception handler ........................................................
 def signal_handler(signal, frame):
@@ -32,8 +32,8 @@ def signal_handler(signal, frame):
 
 # ..............................................................................
 
-_log = Logger("compass-test", Level.INFO)
-_compass = None
+_log = Logger("nxp9dof-test", Level.INFO)
+_nxp9dof = None
 
 def main():
 
@@ -43,23 +43,22 @@ def main():
 
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
+
         _config = _loader.configure(filename)
         _queue = MessageQueue(Level.INFO)
-        _indicator = Indicator(Level.INFO)
-        _compass = Compass(_config, _queue, _indicator, Level.INFO)
-        _compass.enable()
+#       _indicator = Indicator(Level.INFO)
+        _nxp9dof = NXP9DoF(_config, _queue, Level.INFO)
+        _nxp9dof.imu_enable()
 
         _counter = itertools.count()
-        print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
         while True:
             _count = next(_counter)
-            _heading = _compass.get_heading()
-#           _log.info(Fore.CYAN + Style.BRIGHT + '{:d}: {:>5.2f}; calibrated? {}'.format(_count, _heading[1], _heading[0]))
-            time.sleep(1.0)
+            _log.info(Fore.BLACK  + Style.DIM + '{:d}... '.format(_count))
+            time.sleep(5.0)
     
     except KeyboardInterrupt:
-        if _compass is not None:
-            _compass.close()
+        if _nxp9dof is not None:
+            _nxp9dof.close()
         _log.info('done.')
         sys.exit(0)
 

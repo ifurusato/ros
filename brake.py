@@ -23,7 +23,7 @@ try:
     filename = 'config.yaml'
     _config = _loader.configure(filename)
 
-    _motors = Motors(_config, None, None, Level.INFO)
+    _motors = Motors(_config, None, Level.INFO)
     _motors.brake()
 
 except KeyboardInterrupt:

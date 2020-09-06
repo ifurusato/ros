@@ -19,12 +19,14 @@ init()
 
 from lib.logger import Level, Logger
 from lib.enums import Color
-from lib.bno055 import BNO055
+from lib.bno055_v3 import Calibration, BNO055
 
 # ..............................................................................
 class Compass():
     '''
-        A simplifying wrapper around a BNO055 used as a compass.
+        A simplifying wrapper around a BNO055 used as a compass. This reads
+        the heading and ignores pitch and roll, assuming the robot is on 
+        flat ground.
 
         It must be first enabled to function.
     '''
@@ -37,27 +39,11 @@ class Compass():
         self._indicator = indicator
         self._enabled   = False
         self._thread    = None
-        self._message = 'heading: uncalibrated'
         self._bno055 = BNO055(config, queue, Level.INFO)
         _config = config['ros'].get('compass')
         self._has_been_calibrated = False
         # any config?
         self._log.info('ready.')
-
-    # ..........................................................................
-    def get_heading_message(self):
-        return self._message
-
-    # ..........................................................................
-    def get_heading(self):
-        return self._bno055.get_heading()
-
-    # ..........................................................................
-    def is_calibrated(self):
-        _calibrated = self._bno055.is_calibrated()
-        if _calibrated:
-            self._has_been_calibrated = True
-        return _calibrated
 
     # ..........................................................................
     def enable(self):
@@ -68,42 +54,45 @@ class Compass():
         self._log.info('enabled.')
 
     # ..........................................................................
-    def disable(self):
+    def get_heading(self):
         '''
-            Used to halt the Indicator loop.
+            Returns a tuple containing a Calibration enum indicating the state
+            of the sensor calibration followed by the heading value. If the 
+            result ever indicates the sensor is calibrated, this sets a flag.
         '''
-        self._enabled = False
-        self._log.info('disabled.')
+        _tuple = self._bno055.get_heading()
+        _calibration = _tuple[0]
+        if _calibration.calibrated:
+            self._has_been_calibrated = True
+        return _tuple
 
     # ..........................................................................
     def _indicate(self):
+        '''
+            The thread method that reads the heading from the BNO055 and 
+            sends the value to the Indicator for display.
+        '''
         while self._enabled:
-            _pitch   = self._bno055.get_pitch()
-            if _pitch is None:
-                _pitch = 0.0
-            _roll    = self._bno055.get_roll()
-            if _roll is None:
-                _roll = 0.0
-            _heading = self._bno055.get_heading()
-            if _heading is None:
-                self._message = 'heading: uncalibrated'
-                self._log.debug(Fore.RED  + Style.NORMAL      + self._message)
-#               self._indicator.set_color(Color.BLACK)
+            _result = self.get_heading()
+            _calibration = _result[0]
+            _heading = _result[1]
+
+            if _calibration is Calibration.NEVER:
+                self._log.info(Fore.BLACK + Style.NORMAL   + 'heading: {:5.2f}° (never);'.format(_heading))
                 self._indicator.set_heading(-1)
-            elif self.is_calibrated():
-                self._message = 'heading: {:5.2f} (calibrated)'.format(_heading)
-                self._log.info(Fore.MAGENTA + Style.BRIGHT   + 'heading: {:5.2f}° (cal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
+
+            elif _calibration is Calibration.LOST:
+                self._log.info(Fore.CYAN + Style.NORMAL    + 'heading: {:5.2f}° (lost);'.format(_heading))
+                self._indicator.set_heading(_heading) # last value read
+
+            elif _calibration is Calibration.CALIBRATED:
+                self._log.info(Fore.MAGENTA + Style.NORMAL + 'heading: {:5.2f}° (calibrated);'.format(_heading))
                 self._indicator.set_heading(_heading)
-            else:
-                # if we've ever been calibrated we'll accept a heading
-                if self._has_been_calibrated:
-                    self._message = 'heading: {:5.2f} (previously calibrated)'.format(_heading)
-                    self._log.info(Fore.CYAN + Style.BRIGHT  + 'heading: {:5.2f}° (prev cal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
-                    self._indicator.set_heading(_heading)
-                else:
-                    self._message = 'heading: {:5.2f} (uncalibrated)'.format(_heading)
-                    self._log.info(Fore.BLUE + Style.NORMAL  + 'heading: {:5.2f}° (uncal);'.format(_heading) + Fore.CYAN + '\tpitch: {:5.2f};\troll: {:5.2f}'.format(_pitch, _roll))
-                    self._indicator.set_heading(-2)
+
+            elif _calibration is Calibration.TRUSTED:
+                self._log.info(Fore.MAGENTA + Style.BRIGHT + 'heading: {:5.2f}° (trusted);'.format(_heading))
+                self._indicator.set_heading(_heading)
+
             time.sleep(0.05)
 
     # ..........................................................................
@@ -128,7 +117,20 @@ class Compass():
             self._log.warning('no indicator available.')
 
     # ..........................................................................
+    def disable(self):
+        '''
+            Used to halt the Indicator loop.
+        '''
+        self._bno055.disable()
+        self._enabled = False
+        self._log.info('disabled.')
+
+    # ..........................................................................
     def close(self):
-        return self._bno055.close()
+        if self._enabled:
+            self.disable()
+        self._bno055.close()
+        self._log.info('closed.')
+
 
 #EOF

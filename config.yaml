@@ -60,6 +60,7 @@ ros:
         pitch_trim:   0.00                       # trim adjustment on pitch
         roll_trim:    0.00                       # trim adjustment on roll
         heading_trim: 0.00                       # trim adjustment on heading
+        sample_rate: 20                          # sample rate in Hz
     accelerometer:
         jitter_limit: 0.1                        # how much jitter is permitted whilst considered at rest
     lidar:
@@ -120,7 +121,8 @@ ros:
         device_path: '/dev/input/event6'         # the path to the bluetooth gamepad on the pi
         loop_delay: 0.01                         # main loop delay
     gamepad_demo:
-        enable_ifs: False                        # if True, enable IntegratedFrontSensor
+        enable_compass: False                    # if True, enable Compass
+        enable_ifs: True                         # if True, enable IntegratedFrontSensor
         loop_delay_ms: 20                        # the intended loop delay in ms (limit on message queue)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
@@ -135,7 +137,7 @@ ros:
         max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid:
-            enable_slew:    False
+            enable_slew:    True
             enable_p:       True
             enable_i:       False
             enable_d:       True
@@ -143,9 +145,8 @@ ros:
             ki:             0.0010
             kd:             0.00010
             clip_limit:     0.8         # negative and positive power limit
-            sample_time_ms: 20
+            sample_freq_hz: 20
     slew:
-        rate_limit: 0.0025      # value change permitted per millisecond
         minimum_output: 0.00    # lower limit of permitted output values
         maximum_output: 100.00  # upper limit of permitted output values
     filewriter:

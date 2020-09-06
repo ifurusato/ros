@@ -131,7 +131,7 @@ class ROS(AbstractTask):
         hexAddresses = scanner.getHexAddresses()
         self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, hexAddresses)))
         for i in range(len(self._addresses)):
-            self._log.info(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
+            self._log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
 
         self._log.info('configure default features...')
         # standard devices ...........................................
@@ -423,8 +423,6 @@ class ROS(AbstractTask):
         else:
             self._log.critical('lidar scanner tool does not have necessary dependencies.')
         
-#       self._ifs = IntegratedFrontSensor(self._config, self._queue, Level.INFO)
-    
         # wait to stabilise features?
 
         # configure the Controller and Arbitrator
@@ -468,7 +466,7 @@ class ROS(AbstractTask):
         # add indicator as message consumer
         self._queue.add_consumer(self._indicator)
 
-        self._log.info('enabling integrated front sensor...')
+        self._log.info(Fore.MAGENTA + 'enabling integrated front sensor...')
         self._ifs.enable() 
 #       self._log.info('starting info thread...')
 #       self._info.start()
@@ -490,7 +488,7 @@ class ROS(AbstractTask):
 #           highest priority message to send on to the controller. So the timing
 #           of this loop is inconsequential; it exists solely as a keep-alive.
             _main_loop_count += 1
-            self._log.info(Fore.BLACK + Style.DIM + '[{:d}] main loop...'.format(_main_loop_count))
+            self._log.debug(Fore.BLACK + Style.DIM + '[{:d}] main loop...'.format(_main_loop_count))
             time.sleep(_loop_delay_sec)
             # end application loop .........................
     

@@ -18,7 +18,8 @@ init()
 from lib.import_gpio import *
 from lib.event import Event
 from lib.status import Status
-from lib.enums import Speed, Direction, Velocity, SlewRate, Color, Orientation
+from lib.enums import Speed, Direction, Velocity, Color, Orientation
+from lib.slew import SlewRate
 from lib.motors import Motors
 from lib.logger import Logger, Level
 from lib.gamepad import Gamepad
@@ -59,14 +60,14 @@ class Controller():
     # ..........................................................................
     def set_standby(self, is_standby):
         if is_standby:
-            self._log.info(Fore.RED + 'standby.')
+            self._log.info('standby.')
             self._status.blink(True)
             self._motors.disable()
 #           self._switch.off()
             self._ifs.disable()
             self._standby = True
         else:
-            self._log.info(Fore.GREEN + 'active (standby off).')
+            self._log.info('active (standby off).')
             self._status.blink(False)
             self._motors.enable()
 #           self._switch.on()
@@ -400,6 +401,6 @@ class Controller():
 
         _delta = dt.datetime.now() - _start_time
         _elapsed_ms = int(_delta.total_seconds() * 1000)
-        self._log.info(Fore.MAGENTA + Style.DIM + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM )
+        self._log.debug(Fore.MAGENTA + Style.DIM + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM )
 
 #EOF

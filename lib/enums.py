@@ -147,38 +147,6 @@ class Velocity(Enum):
         else:
             return Velocity.FULL
 
-
-# ..............................................................................
-class SlewRate(Enum): #       tested to 50.0 velocity:
-    EXTREMELY_SLOW   = ( 0.3, 0.0034, 0.16 ) # 5.1 sec
-    VERY_SLOW        = ( 1,   0.01,   0.22 ) # 3.1 sec
-    SLOWER           = ( 2.5, 0.03,   0.38 ) # 1.7 sec
-    SLOW             = ( 2,   0.05,   0.48 ) # 1.3 sec
-    NORMAL           = ( 3,   0.08,   0.58 ) # 1.0 sec
-    FAST             = ( 4,   0.20,   0.68 ) # 0.6 sec
-    VERY_FAST        = ( 5,   0.4,    0.90 ) # 0.5 sec
-
-    def __new__(cls, *args, **kwds):
-        obj = object.__new__(cls)
-        obj._value_ = args[0]
-        return obj
-
-    # ignore the first param since it's already set by __new__
-    def __init__(self, num, ratio, pid):
-        self._ratio = ratio
-        self._pid = pid
-
-    # this makes sure the ratio is read-only
-    @property
-    def ratio(self):
-        return self._ratio
-
-    # this makes sure the ratio is read-only
-    @property
-    def pid(self):
-        return self._pid
-
-
 # ..............................................................................
 class Heading(Enum):
     NORTH        = 0

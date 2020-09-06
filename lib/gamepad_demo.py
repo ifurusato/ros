@@ -267,8 +267,9 @@ class GamepadDemo():
         filename     = 'config.yaml'
         _config      = _loader.configure(filename)
         self._config = _config['ros'].get('gamepad_demo')
-        self._enable_ifs = self._config.get('enable_ifs')
-        self._loop_delay_ms = self._config.get('loop_delay_ms')
+        self._enable_ifs      = self._config.get('enable_ifs')
+        self._loop_delay_ms   = self._config.get('loop_delay_ms')
+        self._enable_compass  = self._config.get('enable_compass')
         self._motors = Motors(_config, None, Level.INFO)
         self._motor_controller = SimpleMotorController(self._motors, Level.INFO)
         # i2c scanner, let's us know if certain devices are available
@@ -293,8 +294,9 @@ class GamepadDemo():
         self._video     = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
         self._queue     = MockMessageQueue(self._motor_controller, self._video, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
         self._indicator = Indicator(Level.INFO)
-        self._compass   = Compass(_config, self._queue, self._indicator, Level.INFO)
-        self._video.set_compass(self._compass)
+        if self._enable_compass:
+            self._compass = Compass(_config, self._queue, self._indicator, Level.INFO)
+            self._video.set_compass(self._compass)
 
         if self._enable_ifs:
             self._log.info('integrated front sensor enabled.')
@@ -320,7 +322,8 @@ class GamepadDemo():
         self._log.info('enabling...')
         self._queue.enable()
         self._gamepad.enable()
-        self._compass.enable()
+        if self._enable_compass:
+            self._compass.enable()
         self._bat_lev.enable()
         if self._enable_ifs:
             self._ifs.enable()
@@ -337,7 +340,8 @@ class GamepadDemo():
             return
         self._log.info('disabling...')
         self._bat_lev.disable()
-        self._compass.enable()
+        if self._enable_compass:
+            self._compass.disable()
         if self._enable_ifs:
             self._ifs.disable()
         self._motors.disable()

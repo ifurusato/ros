@@ -37,7 +37,7 @@ class Servo():
             self._center_offset = 0.0
         self._log.info('center offset: {:>3.1f}'.format(self._center_offset))
 
-        self._UB = UltraBorg()         # create a new UltraBorg object
+        self._UB = UltraBorg(level)    # create a new UltraBorg object
         self._UB.Init()                # initialise the board (checks it is connected)
         # settings .......................................................................
         self._min_angle = -90.1        # Smallest position to use (n/90)

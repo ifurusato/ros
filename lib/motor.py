@@ -21,7 +21,8 @@ except ImportError:
 
 from lib.logger import Level, Logger
 from lib.devnull import DevNull
-from lib.enums import SlewRate, Direction, Orientation, Speed
+from lib.enums import Direction, Orientation, Speed
+from lib.slew import SlewRate
 from lib.rotary_encoder import Decoder
 from lib.pid import PID
 

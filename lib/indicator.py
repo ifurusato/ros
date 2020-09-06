@@ -133,10 +133,7 @@ class Indicator():
             The hue value should be in degrees from 0-360, as colors on a color wheel.
         '''
         _offset = 0
-        if hue == -1: # no heading
-            r, g, b = [ Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue ]
-            self._log.debug(Fore.WHITE + Style.DIM + 'no heading; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
-        elif hue == -2:
+        if hue < 0:
             r, g, b = [ Color.VERY_DARK_GREY.red, Color.VERY_DARK_GREY.green, Color.VERY_DARK_GREY.blue ]
             self._log.debug(Fore.WHITE + Style.NORMAL + 'uncalibrated; hue {}: rgb: {}/{}/{}'.format(hue, r, g, b))
         else:

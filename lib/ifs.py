@@ -170,7 +170,7 @@ class IntegratedFrontSensor():
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('integrated_front_sensor')
         self._queue = queue
-        self._log = Logger("front-sensor", level)
+        self._log = Logger("ifs", level)
         self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel                    = self._config.get('channel')
         self._ignore_duplicates = False # TODO set from config
@@ -271,7 +271,7 @@ class IntegratedFrontSensor():
             _message.set_value(value)
             _event = _message.get_event()
             if not self._ignore_duplicates or _event != self._last_event:
-                self._log.info(Fore.CYAN + Style.BRIGHT + 'adding new message for event {}'.format(_event.description))
+                self._log.debug(Fore.CYAN + Style.BRIGHT + 'adding new message for event {}'.format(_event.description))
                 self._queue.add(_message)
             else:
                 self._log.info(Fore.CYAN + Style.DIM    + 'ignoring message for event {}'.format(_event.description))
@@ -285,15 +285,18 @@ class IntegratedFrontSensor():
 
     # ..........................................................................
     def enable(self):
-        if not self._closed:
-            self._log.info('enabled integrated front sensor.')
-            self._enabled = True
-            if not self.in_loop():
-                self.start_front_sensor_loop()
+        if self._enabled:
+            if not self._closed:
+                self._log.info('enabled integrated front sensor.')
+                self._enabled = True
+                if not self.in_loop():
+                    self.start_front_sensor_loop()
+                else:
+                    self._log.error('cannot start integrated front sensor: already in loop.')
             else:
-                self._log.error('cannot start integrated front sensor.')
+                self._log.warning('cannot enable integrated front sensor: already closed.')
         else:
-            self._log.warning('cannot enable integrated front sensor: already closed.')
+            self._log.warning('already enabled integrated front sensor.')
 
     # ..........................................................................
     def in_loop(self):
@@ -324,7 +327,7 @@ class IntegratedFrontSensor():
             _elapsed_ms = int(_delta.total_seconds() * 1000) 
             # typically 173ms from ItsyBitsy, 85ms from Pimoroni IO Expander
 
-            self._log.info( Fore.WHITE + '[{:04d}] elapsed: {:d}ms'.format(_count, _elapsed_ms))
+            self._log.debug( Fore.WHITE + '[{:04d}] elapsed: {:d}ms'.format(_count, _elapsed_ms))
 
             # pin 1: analog infrared sensor ................
             self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 1) + ( Fore.RED if ( _port_side_data > 100.0 ) else Fore.YELLOW ) \

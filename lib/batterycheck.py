@@ -90,17 +90,14 @@ class BatteryCheck(Feature):
         self._thread = None
         self._log.info('ready.')
 
-
     # ..........................................................................
     def name(self):
         return 'BatteryCheck'
-
 
     # ..........................................................................
     def set_loop_delay_sec(self, delay_sec):
         self._loop_delay_sec = delay_sec 
         self._log.info('set loop delay to: {:>5.2f}'.format(delay_sec))
-
 
     # ..........................................................................
     def set_enable_messaging(self, enable):
@@ -108,39 +105,32 @@ class BatteryCheck(Feature):
             If true we enable low battery messages to be sent.
         '''
         self._enable_messaging = enable
-        if enable:
-            self._log.info(Fore.GREEN + 'enable messaging: {}'.format(self._enable_messaging))
+        if self._enable_messaging:
+            self._log.info('enable battery messaging.')
         else:
-            self._log.info(Fore.RED + 'enable messaging: {}'.format(self._enable_messaging))
-
+            self._log.info('disable battery messaging.')
 
     # ..........................................................................
     def set_raw_battery_threshold(self, threshold):
         self._log.info('set raw battery threshold to {:>5.2f}v'.format(threshold))
         self._raw_battery_threshold = threshold
 
-
     # ..........................................................................
     def set_five_volt_threshold(self, threshold):
         self._log.info('set five volt threshold to {:>5.2f}v'.format(threshold))
         self._five_volt_threshold = threshold
 
-
     # ..........................................................................
     def get_raw_battery_voltage(self):
         return self._battery_voltage
-
 
     # ..........................................................................
     def get_regulator_a_voltage(self):
         return self._regulator_a_voltage
 
-
     # ..........................................................................
     def get_regulator_b_voltage(self):
         return self._regulator_b_voltage
-
-
 
     # ..........................................................................
     def is_ready(self):
@@ -149,7 +139,6 @@ class BatteryCheck(Feature):
             to stabilise its output. This also may be used as a sanity check.
         '''
         return self._is_ready
-
 
     # ..........................................................................
     def _battery_check(self):
@@ -195,7 +184,6 @@ class BatteryCheck(Feature):
 
         self._log.info('battery check ended.')
 
-
     # ..........................................................................
     def enable(self):
         if not self._closed:
@@ -210,7 +198,6 @@ class BatteryCheck(Feature):
         else:
             self._log.warning('cannot enable: already closed.')
 
-
     # ..........................................................................
     def disable(self):
         self._enabled = False
@@ -220,13 +207,11 @@ class BatteryCheck(Feature):
             self._thread = None
         self._log.info('disabled.')
 
-
     # ..........................................................................
     def close(self):
         self.disable()
         self._closed = True
         self._log.info('closed.')
-
 
     # ..........................................................................
     @staticmethod
@@ -238,6 +223,5 @@ class BatteryCheck(Feature):
     @staticmethod
     def remap(x, in_min, in_max, out_min, out_max):
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
 
 #EOF

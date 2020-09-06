@@ -28,8 +28,6 @@ See the website at www.piborg.org/thunderborg for more details
 
 # Import the libraries we need
 import io, fcntl, types, time
-from colorama import init, Fore, Style
-init()
 
 from lib.logger import Level, Logger
 
@@ -89,7 +87,7 @@ The busNumber if supplied is which I²C bus to scan, 0 for Rev 1 boards, 1 for Re
     """
     found = []
     print('Scanning I²C bus #%d' % (busNumber))
-    bus = ThunderBorg()
+    bus = ThunderBorg(Level.INFO)
     for address in range(0x03, 0x78, 1):
         try:
             bus.InitBusOnly(busNumber, address)

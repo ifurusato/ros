@@ -25,7 +25,6 @@ except ImportError:
     print('import            :' + Fore.RED + ' ERROR : failed to import gpiozero Button, using mock...' + Style.RESET_ALL)
     from .mock_gpiozero import Button as GpioButton
 
-
 ms = 50 / 1000 # 50ms loop delay
 
 # ..............................................................................
@@ -65,7 +64,6 @@ class Button(AbstractTask):
         self._value = False
         self._log.debug('ready.')
 
-
     # ......................................................
     def run(self):
         super(AbstractTask, self).run()
@@ -76,7 +74,6 @@ class Button(AbstractTask):
             self.polling = threading.Thread(target=Button.poll, args=[self,])
             self.polling.start()
 
-
     # ......................................................
     def toggle_state(self):
         self._value = not self._value
@@ -86,7 +83,6 @@ class Button(AbstractTask):
         if self._queue:
             self._queue.add(_message)
 
-
     # ......................................................
     def poll(self):
         while self.is_enabled():
@@ -95,24 +91,19 @@ class Button(AbstractTask):
                 self._log.debug('button poll.')
             time.sleep(ms)
 
-
     # ..........................................................................
     def enable(self):
         super().enable()
-
 
     # ..........................................................................
     def disable(self):
         super().disable()
 
-
     # ......................................................
     def get(self):
         return self._value
 
-
     # ......................................................
     def close(self):
         super().close()
-
 

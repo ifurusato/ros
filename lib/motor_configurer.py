@@ -6,8 +6,6 @@
 
 import sys, traceback
 from fractions import Fraction
-from colorama import init, Fore, Style
-init()
 
 from lib.enums import Orientation
 from lib.logger import Logger, Level
@@ -18,7 +16,7 @@ class MotorConfigurer():
         Configures the Thunderborg motor controller. 
     '''
     def __init__(self, ros,  config, level):
-        self._log = Logger("import", level)
+        self._log = Logger("mtrconf", level)
         if config is None:
             raise ValueError('null configuration argument.')
         self._config = config

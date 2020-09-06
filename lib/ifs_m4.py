@@ -55,7 +55,7 @@ class IntegratedFrontSensor():
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('integrated_front_sensor')
         self._queue = queue
-        self._log = Logger("front-sensor", level)
+        self._log = Logger("ifs", level)
         self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         self._channel                    = self._config.get('channel')
         # short distance:

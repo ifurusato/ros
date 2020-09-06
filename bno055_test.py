@@ -16,7 +16,7 @@ from lib.config_loader import ConfigLoader
 from lib.devnull import DevNull
 from lib.logger import Level, Logger
 from lib.queue import MessageQueue
-from lib.bno055 import BNO055
+from lib.bno055_v3 import Calibration, BNO055
 
 # exception handler ........................................................
 
@@ -50,8 +50,11 @@ def main():
 
         # begin ............
 
-        _heading = _bno055.get_heading()
         _bno055.enable()
+
+        _tuple = _bno055.get_heading()
+        _heading = _tuple[1]
+
 #        MAX_COUNT = 25
 #        # try to calibrate the BNO055
 #        if _heading is None:
@@ -86,12 +89,21 @@ def main():
         success = 0
         print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
         while True:
-            _heading = _bno055.get_heading()
+            _tuple = _bno055.get_heading()
+            _calibration = _tuple[0]
+            _heading     = _tuple[1]
             if _heading is None:
-                _log.warning('heading: none')
-            else:
+                _log.warning('heading:\tnone')
+            elif _calibration is Calibration.NEVER:
+                _log.info(Fore.CYAN + 'heading:\t{:>5.4f}° (never)'.format(_heading))
+            elif _calibration is Calibration.LOST:
+                _log.info(Fore.CYAN + Style.BRIGHT + 'heading:\t{:>5.4f}° (lost)'.format(_heading))
+            elif _calibration is Calibration.CALIBRATED:
                 success += 1
-                _log.info(Fore.YELLOW + 'heading: {:>5.4f}°'.format(_heading))
+                _log.info(Fore.MAGENTA + 'heading:\t{:>5.4f}° (calibrated)'.format(_heading))
+            elif _calibration is Calibration.TRUSTED:
+                success += 1
+                _log.info(Fore.MAGENTA + Style.BRIGHT + 'heading:\t{:>5.4f}° (trusted)'.format(_heading))
             time.sleep(0.5)
 #           print(Fore.BLACK + '.' + Style.RESET_ALL)
     

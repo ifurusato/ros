@@ -23,7 +23,8 @@ except ImportError:
 
 from lib.logger import Logger, Level
 from lib.event import Event
-from lib.enums import Direction, SlewRate, Velocity, Orientation
+from lib.enums import Direction, Velocity, Orientation
+from lib.slew import SlewRate
 
 try:
     from .motor import Motor

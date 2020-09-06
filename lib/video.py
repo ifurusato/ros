@@ -222,7 +222,7 @@ class Video():
     @staticmethod
     def get_annotation():
         global annotation_title, g_compass
-        _heading = g_compass.get_heading_message() if g_compass is not None else ''
+        _heading = '' #g_compass.get_heading_message() if g_compass is not None else ''
         return '{} {} {}'.format(annotation_title, dt.now(tzlocal.get_localzone()).strftime('%Y-%m-%d %H:%M:%S %Z'), _heading)
 
     # ..........................................................................
@@ -308,7 +308,7 @@ class Video():
     # ..........................................................................
     def set_night_mode(self, camera, enabled):
         # NOTE: setting 'iso' overrides exposure mode
-        _compass_calibrated = True if self._compass and self._compass.is_calibrated() else False
+        _compass_calibrated = False # True if self._compass and self._compass.is_calibrated() else False
         if enabled:
             self._log.debug('night mode.')
 #           camera.exposure_mode = 'nightpreview'

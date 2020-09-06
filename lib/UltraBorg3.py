@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# coding: latin-1
+# -*- coding: latin-1 -*-
 """
 This module is designed to communicate with the UltraBorg
 
@@ -28,9 +28,10 @@ See the website at www.piborg.org/ultraborg for more details
 
 # Import the libraries we need
 import io, fcntl, types, time
-
 from colorama import init, Fore, Style
 init()
+
+from lib.logger import Level, Logger
 
 # Constant values
 I2C_SLAVE               = 0x0703
@@ -108,7 +109,7 @@ The busNumber if supplied is which I²C bus to scan, 0 for Rev 1 boards, 1 for Re
     """
     found = []
     print('Scanning I²C bus #%d' % (busNumber))
-    bus = UltraBorg()
+    bus = UltraBorg(Level.INFO)
     for address in range(0x03, 0x78, 1):
         try:
             bus.InitBusOnly(busNumber, address)
@@ -157,7 +158,7 @@ Warning, this new I²C address will still be used after resetting the power on th
         else:
             oldAddress = found[0]
     print('Changing I²C address from %02X to %02X (bus #%d)' % (oldAddress, newAddress, busNumber))
-    bus = UltraBorg()
+    bus = UltraBorg(Level.INFO)
     bus.InitBusOnly(busNumber, oldAddress)
     try:
         i2cRecv = bus.RawRead(COMMAND_GET_ID, I2C_MAX_LEN)
@@ -234,6 +235,11 @@ printFunction           Function reference to call when printing text, if None "
     PWM_MIN_4               = PWM_MIN
     PWM_MAX_4               = PWM_MAX
 
+    def __init__(self, level):
+        super().__init__()
+        self._log = Logger('ultraborg', level)
+        self._log.info('ready.')
+
     def RawWrite(self, command, data):
         """
 RawWrite(command, data)
@@ -300,7 +306,7 @@ Print(message)
 Wrapper used by the UltraBorg instance to print messages, will call printFunction if set, print otherwise
         """
         if self.printFunction == None:
-            print(Fore.BLACK + "ultraborg         : INFO  : " + message + Style.RESET_ALL)
+            self._log.info(message)
         else:
             self.printFunction(message)
 

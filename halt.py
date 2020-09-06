@@ -21,7 +21,7 @@ _loader = ConfigLoader(Level.INFO)
 filename = 'config.yaml'
 _config = _loader.configure(filename)
 
-_motors = Motors(_config, None, None, Level.INFO)
+_motors = Motors(_config, None, Level.INFO)
 _motors.halt()
 
 _motors.close()
