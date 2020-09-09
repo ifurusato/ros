@@ -9,11 +9,11 @@
 # created:  2020-04-27
 # modified: 2020-05-21
 #
-# Uses the ThunderBorg RGB LED to indicate the battery level of a Makita 18V 
+# Uses the ThunderBorg RGB LED to indicate the battery level of a Makita 18V
 # Lithium-Ion power tool battery, whose actual top voltage is around 20 volts.
 # This uses a thread, and when it's done reverts the RGB LED back to is original
 # indicator as the input battery voltage of the ThunderBorg. This is generally
-# the same value but this class enumerates the value so that its state is more 
+# the same value but this class enumerates the value so that its state is more
 # obvious.
 #
 
@@ -25,6 +25,101 @@ init()
 
 import lib.ThunderBorg3 as ThunderBorg
 from lib.logger import Logger, Level
+
+# ..............................................................................
+class BatteryLevelIndicator():
+    '''
+        Battery level indicator for a Makita power tool battery, with typical readings:
+
+          # one bar:   16.648v
+          # two bars:  17.385v
+          # four bars: 20.016v
+
+        This has a fixed loop time of 15 seconds.
+
+        No longer used, its functionality has been integrated into the BatteryCheck class.
+    '''
+    def __init__(self, level):
+        super().__init__()
+        self._log = Logger("batlev", Level.INFO)
+        TB = ThunderBorg.ThunderBorg(Level.INFO)
+        TB.Init()
+        if not TB.foundChip:
+            boards = ThunderBorg.ScanForThunderBorg()
+            if len(boards) == 0:
+                raise Exception('no thunderborg found, check you are attached.')
+            else:
+                raise Exception('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
+        self._tb = TB
+        self._enabled = False
+        self._thread = None
+        self._loop_delay_sec = 15.0
+        self._log.info('ready.')
+
+    # ................................................................
+    def _battery_loop(self):
+        self._log.info('starting battery indicator loop...')
+        while self._enabled:
+            _tb_voltage = self._tb.GetBatteryReading()
+            if _tb_voltage is None:
+                _color = Color.MAGENTA # error color
+            else:
+                _color = BatteryLevelIndicator._get_color_for_voltage(_tb_voltage)
+                if _color is Color.RED or _color is Color.ORANGE:
+                    self._log.info(Fore.RED + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.AMBER or _color is Color.YELLOW:
+                    self._log.info(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.GREEN or _color is Color.TURQUOISE:
+                    self._log.info(Fore.GREEN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.CYAN:
+                    self._log.info(Fore.CYAN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+            self._tb.SetLed1( _color.red, _color.green, _color.blue )
+            time.sleep(self._loop_delay_sec)
+
+    # ................................................................
+    def is_enabled(self):
+        return self._enabled
+
+    # ................................................................
+    def enable(self):
+        if self._thread is None:
+            self._tb.SetLedShowBattery(False)
+            self._thread = Thread(target=self._battery_loop, args=( ))
+            self._enabled = True
+            self._thread.start()
+            self._log.info('enabled.')
+        else:
+            self._log.warn('thread already exists: cannot enable.')
+
+    # ................................................................
+    def disable(self):
+        self._enabled = False
+        if self._thread is not None:
+            self._log.info('disabling...')
+            _color = Color.BLACK
+            self._tb.SetLed1( _color.red, _color.green, _color.blue )
+            self._thread.join(timeout=1.0)
+            self._thread = None
+            self._tb.SetLedShowBattery(True)
+        self._log.info('disabled.')
+
+    # ..............................................................................
+    @staticmethod
+    def _get_color_for_voltage(voltage):
+        if ( voltage > 20.0 ):
+            return Color.CYAN
+        elif ( voltage > 19.0 ):
+            return Color.TURQUOISE
+        elif ( voltage > 18.8 ):
+            return Color.GREEN
+        elif ( voltage > 18.0 ):
+            return Color.YELLOW
+        elif ( voltage > 17.0 ):
+            return Color.AMBER
+        elif ( voltage > 16.0 ):
+            return Color.ORANGE
+        else:
+            return Color.RED
 
 # ..............................................................................
 class Color(Enum):
@@ -61,99 +156,6 @@ class Color(Enum):
     def blue(self):
         return self._blue
 
-
-# ..............................................................................
-class BatteryLevelIndicator():
-    '''
-        Battery level indicator for a Makita power tool battery, with typical readings:
-
-          # one bar:   16.648v
-          # two bars:  17.385v
-          # four bars: 20.016v
-
-        This has a fixed loop time of 15 seconds.
-    '''
-    def __init__(self, level):
-        super().__init__()
-        self._log = Logger("batlev", Level.INFO)
-        TB = ThunderBorg.ThunderBorg(Level.INFO)
-        TB.Init()
-        if not TB.foundChip:
-            boards = ThunderBorg.ScanForThunderBorg()
-            if len(boards) == 0:
-                raise Exception('no thunderborg found, check you are attached.')
-            else:
-                raise Exception('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
-        self._tb = TB
-        self._enabled = False
-        self._thread = None
-        self._loop_delay_sec = 15.0
-        self._log.info('ready.')
-
-    # ................................................................
-    def _battery_loop(self):
-        self._log.info('starting battery indicator loop...')
-        while self._enabled:
-            _voltage = self._tb.GetBatteryReading()
-            if _voltage is None:
-                _color = Color.MAGENTA # error color
-            else:
-                _color = self._get_color_for_voltage(_voltage)
-                if _color is Color.RED or _color is Color.ORANGE:
-                    self._log.info(Fore.RED + 'main battery: {:>5.2f}V'.format(_voltage))
-                elif _color is Color.AMBER or _color is Color.YELLOW:
-                    self._log.info(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_voltage))
-                elif _color is Color.GREEN or _color is Color.TURQUOISE:
-                    self._log.info(Fore.GREEN + 'main battery: {:>5.2f}V'.format(_voltage))
-                elif _color is Color.CYAN:
-                    self._log.info(Fore.CYAN + 'main battery: {:>5.2f}V'.format(_voltage))
-            self._tb.SetLed1( _color.red, _color.green, _color.blue )
-            time.sleep(self._loop_delay_sec) 
-
-    # ................................................................
-    def is_enabled(self):
-        return self._enabled
-
-    # ................................................................
-    def enable(self):
-        if self._thread is None:
-            self._tb.SetLedShowBattery(False)
-            self._thread = Thread(target=self._battery_loop, args=( ))
-            self._enabled = True
-            self._thread.start()
-            self._log.info('enabled.')
-        else:
-            self._log.warn('thread already exists: cannot enable.')
-
-    # ................................................................
-    def disable(self):
-        self._enabled = False
-        if self._thread is not None:
-            self._log.info('disabling...')
-            _color = Color.BLACK
-            self._tb.SetLed1( _color.red, _color.green, _color.blue )
-            self._thread.join(timeout=1.0)
-            self._thread = None
-            self._tb.SetLedShowBattery(True)
-        self._log.info('disabled.')
-
-    # ..............................................................................
-    def _get_color_for_voltage(self, voltage):
-        if ( voltage > 20.0 ):
-            return Color.CYAN
-        elif ( voltage > 19.0 ):
-            return Color.TURQUOISE
-        elif ( voltage > 18.8 ):
-            return Color.GREEN
-        elif ( voltage > 18.0 ):
-            return Color.YELLOW
-        elif ( voltage > 17.0 ):
-            return Color.AMBER
-        elif ( voltage > 16.0 ):
-            return Color.ORANGE
-        else:
-            return Color.RED
-    
 # main .........................................................................
 
 _ble = None
@@ -168,9 +170,9 @@ def main(argv):
         while _ble.is_enabled():
             print(Fore.BLACK + Style.DIM + '.' + Style.RESET_ALL)
             time.sleep(10.0)
-        
+
         print(Fore.BLACK + Style.DIM + 'done.' + Style.RESET_ALL)
-        
+
     except KeyboardInterrupt:
         if _ble is not None:
             _ble.disable()

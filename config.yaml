@@ -33,6 +33,11 @@ ros:
         raw_battery_threshold: 17.74             # raw and 5v regulator thresholds set from known measurements:
         low_5v_threshold:      4.75              # really 4.82v
         settle_count:          3                 # how many times should we sample before accepting a first value?
+        loop_delay_sec:       15                 # loop delay (sec)
+    temperature:
+        warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
+        max_threshold:     84.0                  # maximum allowable temperature threshold, exceeding this sends an event (nominal 85°C)
+        loop_delay_sec:    15.0                  # loop delay (sec)
     video:
         enable_streaming: True                   # if True, stream video to a localhost HTTP server
         ctrl_lights: True                        # if True, permit video to control Matrix11x7 lights

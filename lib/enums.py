@@ -54,6 +54,8 @@ class Color(Enum):
     LIGHT_RED      = (  6, 255.0, 128.0, 128.0)
     RED            = (  7, 255.0, 0.0, 0.0)
     DARK_RED       = (  8, 128.0, 0.0, 0.0)
+    ORANGE         = ( 23, 255.0, 128.0, 0.0)
+    YELLOW_GREEN   = (  9, 180.0, 255.0, 0.0)
     LIGHT_GREEN    = (  9, 128.0, 255.0, 128.0)
     GREEN          = ( 10, 0.0, 255.0, 0.0)
     DARK_GREEN     = ( 11, 0.0, 128.0, 0.0)
@@ -68,7 +70,7 @@ class Color(Enum):
     DARK_MAGENTA   = ( 20, 128.0, 0.0, 128.0)
     LIGHT_YELLOW   = ( 21, 255.0, 255.0, 128.0)
     PURPLE         = ( 22, 77.0, 26.0, 177.0)
-    YELLOW         = ( 23, 255.0, 255.0, 0.0)
+    YELLOW         = ( 23, 255.0, 208.0, 0.0)
     DARK_YELLOW    = ( 24, 128.0, 128.0, 0.0)
 
     # ignore the first param since it's already set by __new__

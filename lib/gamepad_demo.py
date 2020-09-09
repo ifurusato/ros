@@ -44,7 +44,7 @@ from lib.compass import Compass
 from lib.video import Video
 from lib.indicator import Indicator
 from lib.ifs import IntegratedFrontSensor
-from lib.batlevel import BatteryLevelIndicator
+from lib.batterycheck import BatteryCheck
 from lib.matrix import Matrix
 
 from lib.motors import Motors
@@ -288,7 +288,7 @@ class GamepadDemo():
         matrix11x7_stbd_available   = ( 0x75 in _addresses ) # used as camera lighting
 
         self._log.info('starting battery check thread...')
-        self._bat_lev = BatteryLevelIndicator(Level.INFO)
+        self._battery_check = BatteryCheck(self._config, self.get_message_queue(), Level.INFO)
 
         self._lux       = Lux(Level.INFO) if ltr559_available else None
         self._video     = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
@@ -324,7 +324,7 @@ class GamepadDemo():
         self._gamepad.enable()
         if self._enable_compass:
             self._compass.enable()
-        self._bat_lev.enable()
+        self._battery_check.enable()
         if self._enable_ifs:
             self._ifs.enable()
 #       while self._queue.is_enabled():
@@ -339,7 +339,7 @@ class GamepadDemo():
             self._log.warning('already disabled.')
             return
         self._log.info('disabling...')
-        self._bat_lev.disable()
+        self._battery_check.disable()
         if self._enable_compass:
             self._compass.disable()
         if self._enable_ifs:

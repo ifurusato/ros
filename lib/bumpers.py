@@ -9,11 +9,11 @@
 from colorama import init, Fore, Style
 init()
 
-from .devnull import DevNull
-from .logger import Level, Logger
-from .event import Event
-from .message import Message
-from .bumper import Bumper
+from lib.devnull import DevNull
+from lib.logger import Level, Logger
+from lib.event import Event
+from lib.message import Message
+from lib.bumper import Bumper
 
 # ..............................................................................
 class Bumpers():

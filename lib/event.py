@@ -32,12 +32,13 @@ class Event(Enum):
     # system events ....................
     BATTERY_LOW            = ( 0, "battery low",              0,     True)
     SHUTDOWN               = ( 1, "shutdown",                 1,     True)
+    HIGH_TEMPERATURE       = ( 2, "high temperature",         1,     False)
     # stopping and halting .............
-    STOP                   = ( 2, "stop",                     2,     True)
-    HALT                   = ( 3, "halt",                     3,     False)
-    BRAKE                  = ( 4, "brake",                    4,     False)
-    BUTTON                 = ( 5, "button",                   5,     False)
-    STANDBY                = ( 6, "standby",                  6,     False)
+    STOP                   = ( 4, "stop",                     2,     True)
+    HALT                   = ( 5, "halt",                     3,     False)
+    BRAKE                  = ( 6, "brake",                    4,     False)
+    BUTTON                 = ( 7, "button",                   5,     False)
+    STANDBY                = ( 8, "standby",                  6,     False)
     # bumper ...........................
     BUMPER_PORT            = ( 10, "bumper port",             10,    True)
     BUMPER_CNTR            = ( 11, "bumper center",           10,    True)

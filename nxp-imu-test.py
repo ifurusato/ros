@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, 
+# the Robot Operating System project and is released under the "Apache Licence,
 # Version 2.0". Please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-23
 # modified: 2020-08-31
 #
-#  Beginnings of a possible replacement for the BNO055 as the source of 
-#  heading information for the Compass class, instead using the Adafruit 
+#  Beginnings of a possible replacement for the BNO055 as the source of
+#  heading information for the Compass class, instead using the Adafruit
 #  Precision NXP 9-DOF Breakout Board - FXOS8700 + FXAS21002, see:
 #
 #      https://www.adafruit.com/product/3463
@@ -63,7 +63,7 @@ class NXP():
         self._log.info('  g: gravity')
         self._log.info('dps: degrees per second')
         self._log.info('')
-    
+
     # ..........................................................................
     def ahrs(self, count):
         self._log.info('')
@@ -84,7 +84,7 @@ class NXP():
         self._log.info('  g: gravity')
         self._log.info('deg: degree')
         self._log.info('')
-    
+
     # ..........................................................................
     def ahrs2(self, print_info):
         if print_info:
@@ -142,7 +142,7 @@ class NXP():
             self._log.info('  g: gravity')
             self._log.info('deg: degree')
             self._log.info('')
-    
+
     # ..........................................................................
     def heading(self, count):
         self._log.info('')
@@ -155,7 +155,7 @@ class NXP():
             _heading = _heading * 100.0
             self._log.info(Fore.MAGENTA + 'pitch: {:>6.4f}\troll: {:>6.4f}\theading: {:>6.4f}°'.format(_pitch, _roll, _heading) + Style.RESET_ALL)
             time.sleep(0.50)
-    
+
 
 # ..............................................................................
 def main():

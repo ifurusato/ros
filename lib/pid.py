@@ -55,22 +55,25 @@ class PID():
         self._filewriter_closed = False
 
         # PID configuration ..........................................
-        cfg = config['ros'].get('motors').get('pid')
-        self._enable_slew = cfg.get('enable_slew')
+     
+        if config is None:
+            raise ValueError('null configuration argument.')
+        _config = config['ros'].get('motors').get('pid')
+        self._enable_slew = _config.get('enable_slew')
         if self._enable_slew:
             self._slewlimiter = SlewLimiter(config, self._orientation, Level.INFO)
 
-        _clip_max = cfg.get('clip_limit')
+        _clip_max = _config.get('clip_limit')
         _clip_min = -1.0 * _clip_max
         self._clip   = lambda n: _clip_min if n <= _clip_min else _clip_max if n >= _clip_max else n
-        self._enable_p = cfg.get('enable_p')
-        self._enable_i = cfg.get('enable_i')
-        self._enable_d = cfg.get('enable_d')
-        _kp = cfg.get('kp')
-        _ki = cfg.get('ki')
-        _kd = cfg.get('kd')
+        self._enable_p = _config.get('enable_p')
+        self._enable_i = _config.get('enable_i')
+        self._enable_d = _config.get('enable_d')
+        _kp = _config.get('kp')
+        _ki = _config.get('ki')
+        _kd = _config.get('kd')
         self.set_tuning(_kp, _ki, _kd)
-        self._rate = Rate(cfg.get('sample_freq_hz')) # default sample rate is 20Hz
+        self._rate = Rate(_config.get('sample_freq_hz')) # default sample rate is 20Hz
         self._log.info('ready.')
 
     # ..............................................................................

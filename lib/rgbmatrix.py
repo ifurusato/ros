@@ -5,28 +5,30 @@ from enum import Enum
 from colorama import init, Fore, Style
 init()
 
-
 try:
     import numpy
 except ImportError:
     sys.exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
+try:
+    import psutil
+except ImportError:
+    sys.exit("This script requires the psutil module\nInstall with: sudo pip3 install psutil")
 
 from lib.logger import Level, Logger
 from lib.feature import Feature
 from lib.enums import Color
 from rgbmatrix5x5 import RGBMatrix5x5
 
-
 # ..............................................................................
 class DisplayType(Enum):
-    RAINBOW = 1
-    BLINKY  = 2
-    SCAN    = 3
-    RANDOM  = 4
-    SWORL   = 5
-    SOLID   = 6
-    DARK    = 7
-
+    BLINKY  = 1
+    CPU     = 2
+    DARK    = 3
+    RAINBOW = 4
+    RANDOM  = 5
+    SCAN    = 6
+    SWORL   = 7
+    SOLID   = 8
 
 # ..............................................................................
 class RgbMatrix(Feature):
@@ -55,31 +57,34 @@ class RgbMatrix(Feature):
         self._closing = False
         self._closed = False
         self._display_type = DisplayType.DARK # default
+        # used by _cpu:
+        self._max_value = 0.0 # TEMP
+        self._buf = numpy.zeros((self._rgbmatrix5x5_STBD._width, self._rgbmatrix5x5_STBD._height))
+        self._colors = [ Color.GREEN, Color.YELLOW_GREEN, Color.YELLOW, Color.ORANGE, Color.RED ]
         self._log.info('ready.')
-
 
     # ..........................................................................
     def name(self):
         return 'RgbMatrix'
 
-
     # ..........................................................................
     def _get_target(self):
-        if self._display_type is DisplayType.RAINBOW:
-            return RgbMatrix._rainbow
-        elif self._display_type is DisplayType.BLINKY:
+        if self._display_type is DisplayType.BLINKY:
             return RgbMatrix._blinky
+        elif self._display_type is DisplayType.CPU:
+            return RgbMatrix._cpu
+        elif self._display_type is DisplayType.DARK:
+            return RgbMatrix._dark
+        elif self._display_type is DisplayType.RAINBOW:
+            return RgbMatrix._rainbow
         elif self._display_type is DisplayType.RANDOM:
             return RgbMatrix._random
         elif self._display_type is DisplayType.SCAN:
             return RgbMatrix._scan
-        elif self._display_type is DisplayType.SWORL:
-            return RgbMatrix._sworl
         elif self._display_type is DisplayType.SOLID:
             return RgbMatrix._solid
-        elif self._display_type is DisplayType.DARK:
-            return RgbMatrix._dark
-
+        elif self._display_type is DisplayType.SWORL:
+            return RgbMatrix._sworl
 
     # ..........................................................................
     def enable(self):
@@ -97,18 +102,15 @@ class RgbMatrix(Feature):
         else:
             self._log.warning('cannot enable: already closed.')
 
-
     # ..........................................................................
     def clear(self):
         self._clear(self._rgbmatrix5x5_PORT)
         self._clear(self._rgbmatrix5x5_STBD)
 
-
     # ..........................................................................
     def is_disabled(self):
         global enabled
         return not enabled
-
 
     # ..........................................................................
     def disable(self):
@@ -127,6 +129,90 @@ class RgbMatrix(Feature):
             self._thread_STBD = None
         self._log.debug('disabled.')
 
+    # ..........................................................................
+    def _cpu(self, rgbmatrix5x5):
+        '''
+            A port of the CPU example from the Matrix 11x7. 
+
+            For some reasoon the output needs to be rotated 90 degrees to work properly.
+        '''
+        self._log.info('starting cpu...')
+        i = 0
+        cpu_values = [0] * self._width
+        while enabled:
+            try:
+                cpu_values.pop(0)
+                cpu_values.append(psutil.cpu_percent())
+
+#               # display cpu_values and max (turns out to be 50.0)
+#               for i in range(0, len(cpu_values)-1):
+#                   self._max_value = max(self._max_value, cpu_values[i])
+#               self._log.info(Fore.BLUE + 'cpu_values: {}, {}, {}, {}, {}; '.format(cpu_values[0], cpu_values[1], cpu_values[2], cpu_values[3], cpu_values[4]) \
+#                       + Style.BRIGHT + '\tmax: {:5.2f}'.format(self._max_value))
+
+                self._set_graph(rgbmatrix5x5, cpu_values, low=0.0, high=50.0) # high was 25
+                rgbmatrix5x5.show()
+                time.sleep(0.2)
+            except KeyboardInterrupt:
+                self._clear(rgbmatrix5x5)
+                self._log.info('cpu ended.')
+                sys.exit(0)
+
+    # ......................................................
+    def _set_graph(self, rgbmatrix5x5, values, low=None, high=None, x=0, y=0):
+        '''
+            Plot a series of values into the display buffer. 
+        '''
+        global enabled
+        # def set_graph(self, values, low=None, high=None, brightness=1.0, x=0, y=0, width=None, height=None):
+#       x=0 
+#       y=0
+        _width = self._width - 1
+        _height = self._height + 0
+        if low is None:
+            low = min(values)
+        if high is None:
+            high = max(values)
+        self._buf = self._grow_buffer(x + _width, y + _height)
+        span = high - low
+        for p_y in range(0, _height):
+            try:
+                _value = values[p_y] 
+                _value -= low
+                _value /= float(span)
+                _value *= _width * 10.0
+                _value = min(_value, _height * 12.0)
+                _value = max(_value, 0.0)
+#               self._log.info(Fore.MAGENTA + 'p_y={}; _value: {}'.format(p_y, _value) + Style.RESET_ALL)
+                for p_x in range(0, _width):
+                    _r = self._colors[p_x].red
+                    _g = self._colors[p_x].green
+                    _b = self._colors[p_x].blue
+                    if _value <= 10.0:
+                        _r = (_value / 10.0) * _r
+                        _g = (_value / 10.0) * _g
+                        _b = (_value / 10.0) * _b
+                    _x = x + (_width - p_x)
+                    _y = y + p_y
+#                   self._log.info(Fore.YELLOW + 'x={}/{}, y={}/{}; '.format(_x, _width, _y, _height) \
+#                           + Fore.GREEN + 'value: {:>5.2f}'.format(_value) + Style.RESET_ALL)
+                    rgbmatrix5x5.set_pixel(_x, _y , _r, _g, _b)
+                    _value -= 10.0
+                    if _value < 0.0:
+                        _value = 0.0
+            except IndexError:
+                return
+
+    # ......................................................
+    def _grow_buffer(self, x, y):
+        '''
+            Grows a copy of the buffer until the new shape fits inside it.
+            :param x: Minimum x size
+            :param y: Minimum y size
+        '''
+        x_pad = max(0, x - self._buf.shape[0])
+        y_pad = max(0, y - self._buf.shape[1])
+        return numpy.pad(self._buf, ((0, x_pad), (0, y_pad)), 'constant')
 
     # ..........................................................................
     def _rainbow(self, rgbmatrix5x5):
@@ -154,7 +240,6 @@ class RgbMatrix(Feature):
             time.sleep(0.0001)
         self._clear(rgbmatrix5x5)
         self._log.info('rainbow ended.')
-
 
     # ..........................................................................
     def _sworl(self, rgbmatrix5x5):
@@ -190,10 +275,8 @@ class RgbMatrix(Feature):
         finally:
             self.set_color(Color.BLACK)
 
-
     def set_solid_color(self, color):
         self._color = color
-
 
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):
@@ -208,7 +291,6 @@ class RgbMatrix(Feature):
         while enabled:
             time.sleep(0.2)
 
-
     # ..........................................................................
     def _dark(self, rgbmatrix5x5):
         '''
@@ -220,7 +302,6 @@ class RgbMatrix(Feature):
         while enabled:
             time.sleep(0.2)
 
-
     # ..........................................................................
     @staticmethod
     def make_gaussian(fwhm):
@@ -230,7 +311,6 @@ class RgbMatrix(Feature):
         fwhm = fwhm
         gauss = numpy.exp(-4 * numpy.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / fwhm ** 2)
         return gauss
-
 
     # ..........................................................................
     def _blinky(self, rgbmatrix5x5):
@@ -276,7 +356,6 @@ class RgbMatrix(Feature):
         self._clear(rgbmatrix5x5)
         self._log.info('blinky ended.')
 
-
     # ..........................................................................
     def _scan(self, rgbmatrix5x5):
         '''
@@ -310,7 +389,6 @@ class RgbMatrix(Feature):
         self._clear(rgbmatrix5x5)
         self._log.debug('scan ended.')
 
-
     # ..........................................................................
     def _random(self, rgbmatrix5x5):
         '''
@@ -340,7 +418,6 @@ class RgbMatrix(Feature):
         self._clear(rgbmatrix5x5)
         self._log.info('random ended.')
 
-
     # ..........................................................................
     def set_color(self, color):
         '''
@@ -348,7 +425,6 @@ class RgbMatrix(Feature):
         '''
         self._set_color(self._rgbmatrix5x5_PORT, color)
         self._set_color(self._rgbmatrix5x5_STBD, color)
-
 
     # ..........................................................................
     def _set_color(self, rgbmatrix5x5, color):
@@ -358,7 +434,6 @@ class RgbMatrix(Feature):
         rgbmatrix5x5.set_all(color.red, color.green, color.blue)
         rgbmatrix5x5.show()
 
-
     # ..........................................................................
     def _clear(self, rgbmatrix5x5):
         '''
@@ -366,11 +441,9 @@ class RgbMatrix(Feature):
         '''
         self._set_color(rgbmatrix5x5, Color.BLACK)
 
-
     # ..........................................................................
     def set_display_type(self, display_type):
         self._display_type = display_type
-
 
     # ..........................................................................
     def close(self):

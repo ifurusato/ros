@@ -285,12 +285,12 @@ class IntegratedFrontSensor():
 
     # ..........................................................................
     def enable(self):
-        if self._enabled:
+        if not self._enabled:
             if not self._closed:
                 self._log.info('enabled integrated front sensor.')
                 self._enabled = True
                 if not self.in_loop():
-                    self.start_front_sensor_loop()
+                    self._start_front_sensor_loop()
                 else:
                     self._log.error('cannot start integrated front sensor: already in loop.')
             else:
@@ -371,11 +371,10 @@ class IntegratedFrontSensor():
 
             time.sleep(self._loop_delay_sec)
 
-        # we never get here if using 'while True:'
         self._log.info('exited event loop.')
 
     # ..........................................................................
-    def start_front_sensor_loop(self):
+    def _start_front_sensor_loop(self):
         '''
             This is the method to call to actually start the loop.
         '''
@@ -383,7 +382,6 @@ class IntegratedFrontSensor():
             raise Exception('attempt to start front sensor event loop while disabled.')
         elif not self._closed:
             if self._thread is None:
-                enabled = True
                 self._thread = threading.Thread(target=IntegratedFrontSensor._front_sensor_loop, args=[self])
                 self._thread.start()
                 self._log.info('started.')

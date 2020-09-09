@@ -34,19 +34,18 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-    
+
         _log = Logger("batterycheck test", Level.INFO)
         _log.info('starting test...')
         _log.info(Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.')
-    
+
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
-    
+
         _queue = MessageQueue(Level.INFO)
         _battery_check = BatteryCheck(_config, _queue, Level.INFO)
-        _battery_check.set_loop_delay_sec(0.5)
         _battery_check.set_enable_messaging(True)
         _battery_check.enable()
 
@@ -57,13 +56,12 @@ def main():
             count += 1
             time.sleep(0.5)
 
-        while count < 20:
-            count += 1
+        while _battery_check.get_count() < 30:
             time.sleep(0.5)
-    
+
         _battery_check.close()
         _log.info('complete.')
-    
+
     except KeyboardInterrupt:
         _log.info('Ctrl-C caught: complete.')
     except Exception as e:

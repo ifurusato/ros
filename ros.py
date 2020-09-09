@@ -31,9 +31,8 @@ from lib.arbitrator import Arbitrator
 from lib.controller import Controller
 from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader
-from lib.batlevel import BatteryLevelIndicator
 from lib.indicator import Indicator
-from lib.gamepad import Gamepad
+from lib.gamepad import Gamepad, GamepadConnectException
 
 # standard features:
 from lib.motor_configurer import MotorConfigurer
@@ -41,6 +40,7 @@ from lib.ifs import IntegratedFrontSensor
 from lib.switch import Switch
 from lib.button import Button
 from lib.batterycheck import BatteryCheck
+from lib.temperature import Temperature
 from lib.lidar import Lidar
 from lib.matrix import Matrix
 from lib.rgbmatrix import RgbMatrix, DisplayType
@@ -144,9 +144,14 @@ class ROS(AbstractTask):
         self._switch.on()
         self._log.info('configuring button...')
         self._button = Button(self._config, self.get_message_queue(), self._mutex)
+
         self._log.info('configure battery check...')
         _battery_check = BatteryCheck(self._config, self.get_message_queue(), Level.INFO)
         self.add_feature(_battery_check)
+
+        self._log.info('configure CPU temperature check...')
+        _temperature_check = Temperature(self._config, self._queue, Level.INFO)
+        self.add_feature(_temperature_check)
 
         ultraborg_available = ( 0x36 in self._addresses )
         if ultraborg_available:
@@ -327,7 +332,14 @@ class ROS(AbstractTask):
             return
         if self._gamepad is None:
             self._log.info('creating gamepad...')
-            self._gamepad = Gamepad(self._config, self._queue, Level.INFO)
+            try:
+                self._gamepad = Gamepad(self._config, self._queue, Level.INFO)
+            except GamepadConnectException as e:
+                self._log.error('unable to connect to gamepad: {}'.format(e))
+                self._gamepad = None
+                self._gamepad_enabled = False
+                self._log.info('gamepad unavailable.')
+                return
         if self._gamepad is not None:
             self._log.info('enabling gamepad...')
             self._gamepad.enable()
@@ -450,10 +462,6 @@ class ROS(AbstractTask):
 
         # begin main loop ..............................
 
-        self._log.info('starting battery check thread...')
-        self._bat_lev = BatteryLevelIndicator(Level.INFO)
-        self._bat_lev.enable()
-
         self._log.info('starting button thread...')
         self._button.start()
 
@@ -563,8 +571,6 @@ class ROS(AbstractTask):
                 self._motors.close()
             if self._ifs:
                 self._ifs.close() 
-            if self._bat_lev:
-                self._bat_lev.disable()
 
             # close features
             for feature in self._features:

@@ -17,12 +17,12 @@ class Feature(ABC):
     def __init__(self, feature_name):
         super().__init__(feature_name)
 
-
+    # ..........................................................................
     @abstractmethod
     def name(self) -> str:
         pass
 
-
+    # ..........................................................................
     @abstractmethod
     def enable(self):
         '''
@@ -30,6 +30,7 @@ class Feature(ABC):
         '''
         raise NotImplementedError
 
+    # ..........................................................................
     @abstractmethod
     def disable(self):
         '''

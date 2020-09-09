@@ -115,6 +115,12 @@ class GamepadControl(Enum):
                 return ctrl
         return None
 
+# ..............................................................................
+class GamepadConnectException(Exception):
+    '''
+        Exception raised when unable to connect to Gamepad.
+    '''
+    pass
 
 # ..............................................................................
 class Gamepad():
@@ -159,10 +165,11 @@ class Gamepad():
             # display device info
             self._log.info(Fore.GREEN + "gamepad: {}".format(self._gamepad))
             self._log.info('connected.')
-        except FileNotFoundError:
-            self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [1]')
+        except Exception as e:
+#           self._log.error('unable to connect to gamepad: {}/{}'.format(e, traceback.format_exc()))
+            self._enabled = False
             self._gamepad = None
-            sys.exit(1)
+            raise GamepadConnectException('unable to connect to input device path {}: {}'.format(self._device_path, e))
 
     # ..........................................................................
     def enable(self):
