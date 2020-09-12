@@ -21,7 +21,7 @@ except ImportError:
 
 from lib.logger import Level, Logger
 from lib.devnull import DevNull
-from lib.enums import Direction, Orientation, Speed
+from lib.enums import Direction, Velocity, Orientation, Speed
 from lib.slew import SlewRate
 from lib.rotary_encoder import Decoder
 from lib.pid import PID
@@ -333,9 +333,6 @@ class Motor():
         self._accelerate_to_velocity(velocity, slew_rate, _step_limit)
         self._log.info(Fore.YELLOW + 'REACHED TARGET VELOCITY: {:>5.2f}, now maintaining...'.format(velocity))
 
-        # now maintain velocity...
-#       self.maintain_velocity(velocity, _step_limit)
-
         self._log.info(Fore.BLUE + Style.BRIGHT + 'accelerated to velocity {:>5.2f} at power: {:>5.2f}. '.format(velocity, self.get_current_power_level()))
 
     # ..........................................................................
@@ -380,33 +377,41 @@ class Motor():
 #               self._log.info(Fore.CYAN + 'WHILE velocity {:>5.2f} < {:>5.2f}: current power level: {:>5.2f}.'.format(self._velocity,velocity, _current_power_level))
 
     # ..........................................................................
-    def maintain_velocity(self, velocity, step_limit):
+    def maintain_velocity(self, velocity, direction, step_limit):
         '''
-            Maintain the specified velocity, using the current power level at the beginning of the call.
+            Maintain the specified Velocity, using the current power level at the beginning of the call.
+
+            We expect a velocity enum but also accept a float.
         '''
-        _current_power_level = self.get_current_power_level() * ( 1.0 / self._max_power_ratio )
-        self._log.info('maintain velocity {:>5.2f} @ power level: {:>5.2f}.'.format(velocity, _current_power_level))
-        _slew_rate_ratio = SlewRate.EXTREMELY_SLOW.ratio # 0.0034
-        while self._steps < step_limit or step_limit == -1:
-            _diff = self._velocity - velocity
-            if _diff < 0.0: # if current velocity is less than requested, speed up
-                _current_power_level = min(_current_power_level + _slew_rate_ratio, self._max_power_limit)
-                driving_power_level = float(_current_power_level * self._max_power_ratio)
-                self._log.info(Fore.GREEN + 'INCREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
-                        + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
-                self.set_motor_power(driving_power_level)
-                if self._interrupt:
-                    break
-            elif _diff > 0.0: # if current velocity is greater than requested, slow down
-                _current_power_level = max(_current_power_level - _slew_rate_ratio, -1.0 * self._max_power_limit)
-                driving_power_level = float(_current_power_level * self._max_power_ratio)
-                self._log.info(Fore.RED + 'DECREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
-                        + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
-                self.set_motor_power(driving_power_level)
-                if self._interrupt:
-                    break
-            time.sleep(0.05)
-        self._interrupt = False
+        if direction is Direction.FORWARD:
+            if isinstance(velocity, Velocity):
+                velocity = velocity.value
+            _current_power_level = self.get_current_power_level() * ( 1.0 / self._max_power_ratio )
+            self._log.info('maintain velocity {:>5.2f} @ power level: {:>5.2f}.'.format(velocity, _current_power_level))
+            _slew_rate_ratio = SlewRate.EXTREMELY_SLOW.ratio # 0.0034
+            while self._steps < step_limit or step_limit == -1:
+                _diff = self._velocity - velocity
+                if _diff < 0.0: # if current velocity is less than requested, speed up
+                    _current_power_level = min(_current_power_level + _slew_rate_ratio, self._max_power_limit)
+                    driving_power_level = float(_current_power_level * self._max_power_ratio)
+                    self._log.info(Fore.GREEN + 'INCREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
+                            + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
+                    self.set_motor_power(driving_power_level)
+                    if self._interrupt:
+                        break
+                elif _diff > 0.0: # if current velocity is greater than requested, slow down
+                    _current_power_level = max(_current_power_level - _slew_rate_ratio, -1.0 * self._max_power_limit)
+                    driving_power_level = float(_current_power_level * self._max_power_ratio)
+                    self._log.info(Fore.RED + 'DECREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
+                            + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
+                    self.set_motor_power(driving_power_level)
+                    if self._interrupt:
+                        break
+                time.sleep(0.05)
+            self._interrupt = False
+        elif direction is Direction.REVERSE:
+            # FIXME get this to run in reverse
+            raise Exception('unimplemented.')
 
     # ..........................................................................
     def ahead_for_steps(self, speed, steps):

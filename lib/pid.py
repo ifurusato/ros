@@ -10,7 +10,7 @@
 # modified: 2020-04-21
 #
 
-import sys, time, itertools
+import sys, time, itertools, math
 from collections import deque
 from colorama import init, Fore, Style
 init()
@@ -36,32 +36,30 @@ class PID():
         setpoint by adjusting an output. The way in which it does this can be
         'tuned' by adjusting three parameters (P,I,D).
 
+        This uses the ros:motors:pid: and ros:geometry: sections of the
+        YAML configuration.
+
         If a FileWriter is set odometry data will be written to a data file.
 
-        This uses the ros:motors:pid: section of the YAML configuration.
+        Various formulae are found at the bottom of this file.
     '''
     def __init__(self, config, motor, level):
         self._motor = motor
         self._orientation = motor.get_orientation()
         self._log = Logger('pid:{}'.format(self._orientation.label), level)
 
-#       self._millis  = lambda: int(round(time.time() * 1000))
-        self._counter = itertools.count()
-        self._last_error = 0.0
-        self._sum_errors = 0.0
-        self._step_limit = 0
-        self._filewriter = None              # optional: for statistics
-        self._stats_queue = None
-        self._filewriter_closed = False
-
-        # PID configuration ..........................................
-     
+        # PID configuration ................................
         if config is None:
             raise ValueError('null configuration argument.')
         _config = config['ros'].get('motors').get('pid')
         self._enable_slew = _config.get('enable_slew')
         if self._enable_slew:
             self._slewlimiter = SlewLimiter(config, self._orientation, Level.INFO)
+        # geometry configuration ...........................
+        _geo_config = config['ros'].get('geometry')
+        self._wheel_diameter = _geo_config.get('wheel_diameter')
+        self._wheelbase      = _geo_config.get('wheelbase')
+        self._step_per_rotation = _geo_config.get('steps_per_rotation')
 
         _clip_max = _config.get('clip_limit')
         _clip_min = -1.0 * _clip_max
@@ -74,43 +72,32 @@ class PID():
         _kd = _config.get('kd')
         self.set_tuning(_kp, _ki, _kd)
         self._rate = Rate(_config.get('sample_freq_hz')) # default sample rate is 20Hz
+#       self._millis  = lambda: int(round(time.time() * 1000))
+        self._counter = itertools.count()
+        self._last_error = 0.0
+        self._sum_errors = 0.0
+        self._step_limit = 0
+        self._stats_queue = None
+        self._filewriter = None  # optional: for statistics
+        self._filewriter_closed = False
+
+        _wheel_circumference = math.pi * self._wheel_diameter # mm
+        self._steps_per_m  = 1000.0 * self._step_per_rotation  / _wheel_circumference 
+        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per m.'.format(self._steps_per_m))
+        self._steps_per_cm = 10.0 * self._step_per_rotation  / _wheel_circumference 
+        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per cm.'.format(self._steps_per_cm))
+
         self._log.info('ready.')
 
-    # ..............................................................................
-    @staticmethod
-    def get_forward_steps(rotations):
+    # ..........................................................................
+    def set_tuning(self, p, i, d):
         '''
-             494 encoder steps per rotation (maybe 493)
-             218mm wheel circumference
-             1 wheel rotation = 218mm
-             2262 steps per meter
-             2262 steps per second = 1 m/sec
-             2262 steps per second = 100 cm/sec
-    
-             Notes:
-             1 rotation = 218mm = 493 steps
-             1 meter = 4.587 rotations
-             2266 steps per meter
+            Set the tuning of the power PID controller.
         '''
-#       _rotations = 5
-#       _wheel_circumference_mm = 218
-        _forward_steps_per_rotation = 494
-        _forward_steps = _forward_steps_per_rotation * rotations
-        return _forward_steps
-
-    # ..............................................................................
-    def set_filewriter(self, filewriter):
-        '''
-            If a FileWriter is set then the Motor will generate odometry data
-            and write this to a data file whose directory and filename are
-            determined by configuration.
-        '''
-        self._filewriter = filewriter
-        if self._filewriter:
-            if self._stats_queue is None:
-                self._stats_queue = deque()
-            self._filewriter.enable(self._stats_queue)
-            self._log.info('filewriter enabled.')
+        self._kp = p
+        self._ki = i
+        self._kd = d
+        self._log.info('set PID tuning for {} motor: P={:>8.5f}; I={:>8.5f}; D={:>8.5f}.'.format(self._orientation.name, self._kp, self._ki, self._kd))
 
     # ..........................................................................
     def get_tuning(self):
@@ -130,15 +117,12 @@ class PID():
                  '{:6.4f} ({})'.format(self._ki, _en_i),\
                  '{:6.4f} ({})'.format(self._kd, _en_d) ]
 
-    # ..........................................................................
-    def set_tuning(self, p, i, d):
+    # ..............................................................................
+    def get_steps(self):
         '''
-            Set the tuning of the power PID controller.
+           A convenience method that returns the number of steps registered by the motor encoder.
         '''
-        self._kp = p
-        self._ki = i
-        self._kd = d
-        self._log.info('set PID tuning; P={:>5.2f}; I={:>5.2f}; D={:>5.2f}.'.format(self._kp, self._ki, self._kd))
+        return self._motor.get_steps()
 
     # ..........................................................................
     def is_stepping(self, direction):
@@ -146,15 +130,15 @@ class PID():
             Returns True if the motor step count is less than the currently-set 
             step limit, or if traveling in REVERSE, greater than the step limit.
         '''
-#       while f_is_enabled() and (( direction is Direction.FORWARD and self._motor.get_steps() < _step_limit ) or \
-#                                 ( direction is Direction.REVERSE and self._motor.get_steps() > _step_limit )):
-#       return ( self._motor.get_steps() < self._step_limit ) if direction is Direction.FORWARD else ( self._motor.get_steps() > self._step_limit )
+#       while f_is_enabled() and (( direction is Direction.FORWARD and self.get_steps() < _step_limit ) or \
+#                                 ( direction is Direction.REVERSE and self.get_steps() > _step_limit )):
+#       return ( self.get_steps() < self._step_limit ) if direction is Direction.FORWARD else ( self.get_steps() > self._step_limit )
         if direction is Direction.FORWARD:
-            self._log.debug(Fore.MAGENTA + '{} is stepping forward? {:>5.2f} < {:>5.2f}'.format(self._orientation, self._motor.get_steps(), self._step_limit ))
-            return ( self._motor.get_steps() < self._step_limit )
+            self._log.debug(Fore.MAGENTA + '{} is stepping forward? {:>5.2f} < {:>5.2f}'.format(self._orientation, self.get_steps(), self._step_limit ))
+            return ( self.get_steps() < self._step_limit )
         elif direction is Direction.REVERSE:
-            self._log.debug(Fore.MAGENTA + '{} is stepping reverse? {:>5.2f} > {:>5.2f}'.format(self._orientation, self._motor.get_steps(), self._step_limit ))
-            return ( self._motor.get_steps() > self._step_limit )
+            self._log.debug(Fore.MAGENTA + '{} is stepping reverse? {:>5.2f} > {:>5.2f}'.format(self._orientation, self.get_steps(), self._step_limit ))
+            return ( self.get_steps() > self._step_limit )
         else:
             raise Exception('no direction provided.')
 
@@ -164,9 +148,9 @@ class PID():
             Sets the step limit (i.e., the goal) prior to a call to step_to().
         '''
         if direction is Direction.FORWARD:
-            self._step_limit = self._motor.get_steps() + steps
+            self._step_limit = self.get_steps() + steps
         elif direction is Direction.REVERSE:
-            self._step_limit = self._motor.get_steps() - steps
+            self._step_limit = self.get_steps() - steps
         else:
             raise Exception('no direction provided.')
 
@@ -200,16 +184,17 @@ class PID():
         if direction is Direction.FORWARD: # .......................................................
 
             _is_accelerating = self._motor.get_velocity() < _target_velocity
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'target velocity: {}; step limit: {}; is_accelerating: {}.'.format(_target_velocity, self._step_limit, _is_accelerating))
+            self._log.info(Fore.GREEN + Style.BRIGHT + 'current velocity: {};'.format(self._motor.get_velocity()) \
+                    + Fore.CYAN + Style.NORMAL + ' target velocity: {}; step limit: {}; is_accelerating: {}.'.format(_target_velocity, self._step_limit, _is_accelerating))
 
-            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self._motor.get_steps() > self._step_limit )):
+            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self.get_steps() > self._step_limit )):
                 if self._enable_slew:
                     _slewed_target_velocity = self._slewlimiter.slew(self._motor.get_velocity(), _target_velocity)
                     _changed = self._compute(_slewed_target_velocity)
                 else:
                     _changed = self._compute(_target_velocity)
     
-                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self._motor.get_steps(), self._step_limit))
+                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self.get_steps(), self._step_limit))
                 if not _changed and self._motor.get_velocity() == 0.0 and _target_velocity == 0.0 and self._step_limit > 0: # we will never get there if we aren't moving
                     self._log.info(Fore.RED + 'break 2.')
                     break
@@ -226,20 +211,27 @@ class PID():
                     self._log.info(Fore.RED + 'motor interrupted.')
                     break
 
+                if self._orientation is Orientation.PORT:
+                    self._log.info(Fore.RED + 'current velocity: {:>5.2f};'.format(self._motor.get_velocity() ) \
+                            + Fore.CYAN + ' target velocity: {}; {:d} steps of: {}; is_accelerating: {}.'.format(_target_velocity, self.get_steps(), self._step_limit, _is_accelerating))
+                else:
+                    self._log.info(Fore.GREEN + 'current velocity: {:>5.2f};'.format(self._motor.get_velocity() ) \
+                            + Fore.CYAN + ' target velocity: {}; {:d} steps of: {}; is_accelerating: {}.'.format(_target_velocity, self.get_steps(), self._step_limit, _is_accelerating))
+
         elif direction is Direction.REVERSE: # .....................................................
 
             _target_velocity = -1.0 * _target_velocity
             _is_accelerating = self._motor.get_velocity() < _target_velocity
             self._log.info(Fore.RED + Style.BRIGHT + 'target velocity: {}; step limit: {}; is_accelerating: {}.'.format(_target_velocity, self._step_limit, _is_accelerating))
 
-            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self._motor.get_steps() > self._step_limit )):
+            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self.get_steps() > self._step_limit )):
                 if self._enable_slew:
                     _slewed_target_velocity = self._slewlimiter.slew(self._motor.get_velocity(), _target_velocity)
                     _changed = self._compute(_slewed_target_velocity)
                 else:
                     _changed = self._compute(_target_velocity)
     
-                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self._motor.get_steps(), self._step_limit))
+                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self.get_steps(), self._step_limit))
                 if not _changed and self._motor.get_velocity() == 0.0 and _target_velocity == 0.0 and self._step_limit > 0: # we will never get there if we aren't moving
                     break
     
@@ -259,7 +251,7 @@ class PID():
 
         _elapsed = time.time() - self._start_time
         self._elapsed_sec = int(round(_elapsed)) + 1
-        self._log.info('step-to complete; {:5.2f} sec elapsed;'.format(_elapsed) + Fore.MAGENTA + ' {:d}/{:d} steps on {} PID.'.format(self._motor.get_steps(), self._step_limit, self._orientation.name))
+        self._log.info('{} motor step-to complete; {:5.2f} sec elapsed;'.format(self._orientation.name, _elapsed) + Fore.MAGENTA + ' {:d}/{:d} steps.'.format(self.get_steps(), self._step_limit))
         if self._enable_slew: # if not a repeat call
             self._slewlimiter.reset(0.0)
         self._motor.reset_interrupt()
@@ -351,22 +343,13 @@ class PID():
         # if configured, capture odometry data ...................
         if self._filewriter:
             _elapsed = time.time() - self._start_time
-            _data = '{:>5.3f}\t{:>5.2f}\t{:>5.2f}\t{:>5.2f}\t{:d}\n'.format(_elapsed, ( _power_level * 100.0), _current_velocity, target_velocity, self._motor.get_steps())
+            _data = '{:>5.3f}\t{:>5.2f}\t{:>5.2f}\t{:>5.2f}\t{:d}\n'.format(_elapsed, ( _power_level * 100.0), _current_velocity, target_velocity, self.get_steps())
             self._stats_queue.append(_data)
             self._log.debug('odometry:' + Fore.BLACK + ' time: {:>5.3f};\tpower: {:>5.2f};\tvelocity: {:>5.2f}/{:>5.2f}\tsteps: {:d}'.format(\
-                    _elapsed, _power_level, _current_velocity, target_velocity, self._motor.get_steps()))
+                    _elapsed, _power_level, _current_velocity, target_velocity, self.get_steps()))
 
         return _changed
 
-
-    # ..........................................................................
-    @staticmethod
-    def equals_zero(value):
-        '''
-            Returns True if the value is within 2% of 0.0.
-        '''
-#       return value == 0.0
-        return numpy.isclose(value, 0.0, rtol=0.02, atol=0.0)
 
     # ..........................................................................
     def enable(self):
@@ -379,6 +362,27 @@ class PID():
         pass
 
     # ..........................................................................
+    def close(self):
+        self.close_filewriter()
+        self._log.info('closed.')
+
+    # filewriter support .......................................................
+
+    # ..............................................................................
+    def set_filewriter(self, filewriter):
+        '''
+            If a FileWriter is set then the Motor will generate odometry data
+            and write this to a data file whose directory and filename are
+            determined by configuration.
+        '''
+        self._filewriter = filewriter
+        if self._filewriter:
+            if self._stats_queue is None:
+                self._stats_queue = deque()
+            self._filewriter.enable(self._stats_queue)
+            self._log.info('filewriter enabled.')
+
+    # ..........................................................................
     def close_filewriter(self):
         if not self._filewriter_closed:
             self._filewriter_closed = True
@@ -387,10 +391,54 @@ class PID():
                 self._filewriter.write_gnuplot_settings(_tuning)
                 self._filewriter.disable()
 
-    # ..........................................................................
-    def close(self):
-        self.close_filewriter()
-        self._log.info('closed.')
 
+    # formulae .................................................................
+
+    # ..........................................................................
+    @staticmethod
+    def equals_zero(value):
+        '''
+            Returns True if the value is within 2% of 0.0.
+        '''
+        return numpy.isclose(value, 0.0, rtol=0.02, atol=0.0)
+
+    # ..............................................................................
+    def get_distance_cm_for_steps(self, steps):
+        '''
+            Provided a number of steps returns the distance traversed.
+        '''
+        return steps / self._steps_per_cm
+
+    # ..............................................................................
+    def get_steps_for_distance_cm(self, distance_cm):
+        '''
+             A function that returns the number of forward steps require to
+             traverse the distance (measured in cm). Returns an int.
+        '''
+        '''
+            Geometry Notes ...................................
+    
+            494 encoder steps per rotation (maybe 493)
+            68.5mm diameter tires
+            215.19mm/21.2cm wheel circumference
+            1 wheel rotation = 215.2mm
+            2295 steps per meter
+            2295 steps per second = 1 m/sec
+            2295 steps per second = 100 cm/sec
+    
+            1 rotation = 215mm = 494 steps
+            1 meter = 4.587 rotations
+            2295.6 steps per meter
+            22.95 steps per cm
+        '''
+        return round(distance_cm * self._steps_per_cm)
+
+    # ..............................................................................
+    def get_forward_steps(self, rotations):
+        '''
+            A function that return the number of steps corresponding to the number
+            of wheel rotations.
+        '''
+        return self._step_per_rotation * rotations
 
 #EOF

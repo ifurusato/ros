@@ -28,14 +28,7 @@ from lib.motors import Motors
 from lib.pid import PID
 from lib.filewriter import FileWriter
 
-_port_motor = None
-_stbd_motor = None
-
 def quit():
-    if _port_motor:
-        _port_motor.halt()
-    if _stbd_motor:
-        _stbd_motor.halt()
     Motor.cancel()
     sys.stderr = DevNull()
     print('exit.')
@@ -47,20 +40,17 @@ def signal_handler(signal, frame):
     quit()
 
 # ..............................................................................
-def go(motors, slew_rate, direction, steps):
+def go(motors, velocity, slew_rate, direction, steps):
 
-    _port_motor = motors.get_motor(Orientation.PORT)
-    _port_pid   = _port_motor.get_pid_controller()
-    _stbd_motor = motors.get_motor(Orientation.STBD)
-    _stbd_pid   = _stbd_motor.get_pid_controller()
+    _port_pid = motors.get_motor(Orientation.PORT).get_pid_controller()
+    _stbd_pid = motors.get_motor(Orientation.STBD).get_pid_controller()
 
     _port_pid.set_step_limit(direction, steps)
-    _tp = Thread(target=_port_pid.step_to, args=(Velocity.HALF, direction, slew_rate, lambda: _port_pid.is_stepping(direction) ))
+    _tp = Thread(target=_port_pid.step_to, args=(velocity, direction, slew_rate, lambda: _port_pid.is_stepping(direction) ))
     if not _port_pid.is_stepping(direction):
         raise Exception('port pid not enabled')
-
     _stbd_pid.set_step_limit(direction, steps)
-    _ts = Thread(target=_stbd_pid.step_to, args=(Velocity.HALF, direction, slew_rate, lambda: _stbd_pid.is_stepping(direction) ))
+    _ts = Thread(target=_stbd_pid.step_to, args=(velocity, direction, slew_rate, lambda: _stbd_pid.is_stepping(direction) ))
     if not _stbd_pid.is_stepping(direction):
         raise Exception('stbd pid not enabled')
 
@@ -68,63 +58,93 @@ def go(motors, slew_rate, direction, steps):
     _ts.start()
     while _port_pid.is_stepping(direction) or _stbd_pid.is_stepping(direction):
         time.sleep(0.1)
-    motors.brake()
+#   motors.brake()
     _tp.join()
     _ts.join()
 
 # ..............................................................................
 def main():
     '''
-         494 encoder steps per rotation (maybe 493)
-         218mm wheel circumference
-         1 wheel rotation = 218mm
-         2262 steps per meter
-         2262 steps per second = 1 m/sec
-         2262 steps per second = 100 cm/sec
-
          Notes:
-         1 rotation = 218mm = 493 steps
+
+         494 encoder steps per rotation (maybe 493)
+         68.5mm diameter tires
+         215.19mm/21.2cm wheel circumference
+         1 wheel rotation = 215.2mm
+         2295 steps per meter
+         2295 steps per second = 1 m/sec
+         2295 steps per second = 100 cm/sec
+
+         1 rotation = 215mm = 494 steps
          1 meter = 4.587 rotations
-         2266 steps per meter
+         2295.6 steps per meter
+         229.5 steps per cm
     '''
+
+#   signal.signal(signal.SIGINT, signal_handler)
+    _log = Logger("pid-test", Level.INFO)
+
+    _loader = ConfigLoader(Level.INFO)
+    filename = 'config.yaml'
+    _config = _loader.configure(filename)
+
+    _motors = Motors(_config, None, Level.INFO)
+    _port_pid = _motors.get_motor(Orientation.PORT).get_pid_controller()
+    _stbd_pid = _motors.get_motor(Orientation.STBD).get_pid_controller()
+
     try:
 
-#       signal.signal(signal.SIGINT, signal_handler)
+        _distance_cm = 100
+        _fwd_steps_per_meter = _stbd_pid.get_steps_for_distance_cm(_distance_cm)
+        _log.info(Fore.MAGENTA + Style.BRIGHT + 'CALC: {:>5.2f} steps per {:d} cm.'.format(_fwd_steps_per_meter, _distance_cm) + Style.RESET_ALL)
 
-
-        _loader = ConfigLoader(Level.INFO)
-        filename = 'config.yaml'
-        _config = _loader.configure(filename)
-
-        _motors = Motors(_config, None, Level.INFO)
-        _port_motor = _motors.get_motor(Orientation.PORT)
-        _stbd_motor = _motors.get_motor(Orientation.STBD)
-
-#       _forward_steps = PID.get_forward_steps(1)
-        _forward_steps = 2266
-        print(Fore.MAGENTA + Style.BRIGHT + 'starting thread for {:d} steps...'.format(_forward_steps) + Style.RESET_ALL)
+        _forward_steps = _fwd_steps_per_meter
 
         _slew_rate = SlewRate.FAST
         _direction = Direction.FORWARD
+        _velocity = Velocity.HALF
 
-        go(_motors, _slew_rate, Direction.FORWARD, _forward_steps)
+        _log.info(Fore.RED + 'FORWARD...                  ---------------------------------- ' + Style.RESET_ALL)
+        go(_motors, _velocity, _slew_rate, Direction.FORWARD, _forward_steps)
 
-        time.sleep(0.5)
+        _log.info(Fore.RED + 'BRAKING...                  ---------------------------------- ' + Style.RESET_ALL)
+        _motors.brake()
 
-        go(_motors, _slew_rate, Direction.REVERSE, _forward_steps)
+        # maintain velocity for 1 m
+#       _distance_m = 2
+#       _port_step_limit = _port_pid.get_steps() + _fwd_steps_per_meter * _distance_m
+#       _stbd_step_limit = _stbd_motor.get_steps() + _fwd_steps_per_meter * _distance_m
 
-        print(Fore.YELLOW + Style.BRIGHT + 'completed thread.' + Style.RESET_ALL)
-        print(Fore.YELLOW + Style.BRIGHT + 'A. motor test complete; intended: {:d}; actual steps: {}.'.format(_forward_steps, _stbd_motor.get_steps()) + Style.RESET_ALL)
+#       _port_pid.maintain_velocity(_velocity, _port_step_limit)
+#       _stbd_motor.maintain_velocity(_velocity, _stbd_step_limit)
+
+#       time.sleep(1.0)
+#       _log.info(Fore.RED + 'REVERSE...                  ---------------------------------- ' + Style.RESET_ALL)
+
+#       go(_motors, _velocity, _slew_rate, Direction.REVERSE, _forward_steps)
+
+#       _port_pid.maintain_velocity(_velocity, _port_step_limit)
+#       _stbd_motor.maintain_velocity(_velocity, _stbd_step_limit)
+#       _motors.brake()
+
+        _log.info(Fore.CYAN + Style.BRIGHT + 'completed thread.' + Style.RESET_ALL)
+        _log.info(Fore.CYAN + Style.BRIGHT + 'A. motor test complete; intended: {:d}; actual steps: port: {} ; stbd: {}.'.format(\
+                _forward_steps, _port_pid.get_steps(), _stbd_pid.get_steps()  ) + Style.RESET_ALL)
+
+        _port_distance_cm = _port_pid.get_distance_cm_for_steps(_port_pid.get_steps())
+        _stbd_distance_cm = _stbd_pid.get_distance_cm_for_steps(_stbd_pid.get_steps())
+        _log.info(Fore.CYAN + Style.BRIGHT + 'distance traveled: port: {:>5.2f}, stbd: {:>5.2f}.'.format(_port_distance_cm, _stbd_distance_cm) + Style.RESET_ALL)
 
     except KeyboardInterrupt:
-        print(Fore.YELLOW + Style.BRIGHT + 'B. motor test complete; intended: {:d}; actual steps: {}.'.format(_forward_steps, _stbd_motor.get_steps()) + Style.RESET_ALL)
+        _log.info(Fore.CYAN + Style.BRIGHT + 'B. motor test complete; intended: {:d}; actual steps: port: {} ; stbd: {}.'.format(\
+                _forward_steps, _port_pid.get_steps(), _stbd_pid.get_steps()  ) + Style.RESET_ALL)
         _stbd_motor.halt()
         quit()
     except Exception as e:
-        print(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e))
+        _log.info(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e))
         traceback.print_exc(file=sys.stdout)
     finally:
-        print(Fore.YELLOW + Style.BRIGHT + 'C. finally.')
+        _log.info(Fore.YELLOW + Style.BRIGHT + 'C. finally.')
 #       _stbd_motor.halt()
 
 if __name__== "__main__":

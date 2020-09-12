@@ -97,13 +97,10 @@ def main():
             elif _calibration is Calibration.NEVER:
                 _log.info(Fore.CYAN + 'heading:\t{:>5.4f}° (never)'.format(_heading))
             elif _calibration is Calibration.LOST:
-                _log.info(Fore.CYAN + Style.BRIGHT + 'heading:\t{:>5.4f}° (lost)'.format(_heading))
+                _log.info(Fore.CYAN + Style.BRIGHT    + 'heading:\t{:>5.4f}° (lost)'.format(_heading))
             elif _calibration is Calibration.CALIBRATED:
                 success += 1
-                _log.info(Fore.MAGENTA + 'heading:\t{:>5.4f}° (calibrated)'.format(_heading))
-            elif _calibration is Calibration.TRUSTED:
-                success += 1
-                _log.info(Fore.MAGENTA + Style.BRIGHT + 'heading:\t{:>5.4f}° (trusted)'.format(_heading))
+                _log.info(Fore.MAGENTA + Style.BRIGHT + 'heading:\t{:>5.4f}° (calibrated)'.format(_heading))
             time.sleep(0.5)
 #           print(Fore.BLACK + '.' + Style.RESET_ALL)
     

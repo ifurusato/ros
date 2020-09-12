@@ -317,20 +317,19 @@ class NXP9DoF:
         while not self._closed:
             if self._enabled:
 
-                header = 90
-                print('-'*header)
-                print("| {:17} | {:20} | {:20} | {:20} |".format("Accels [g's]", " Magnet [uT]", "Gyros [dps]", "Roll, Pitch, Heading"))
-                print('-'*header)
+                header = 91
+                print(Fore.CYAN + ('-'*header) + Style.RESET_ALL)
+                print(Fore.CYAN + "| {:17} | {:20} | {:20} | {:21} |".format("Accels [g's]", " Magnet [uT]", "Gyros [dps]", "Roll, Pitch, Heading") + Style.RESET_ALL)
+                print(Fore.CYAN + ('-'*header) + Style.RESET_ALL)
                 for _ in range(10):
                     a, m, g = self._imu.get()
                     r, p, h = self._imu.getOrientation(a, m)
                     deg = Convert.to_degrees(h)
 #                   self._log.info(Fore.GREEN + '| {:>6.1f} {:>6.1f} {:>6.1f} | {:>6.1f} {:>6.1f} {:>6.1f} |'.format(a[0], a[1], a[2], r, p, h) + Style.RESET_ALL)
-                    print(Fore.CYAN + '| {:>5.2f} {:>5.2f} {:>5.2f} | {:>6.1f} {:>6.1f} {:>6.1f} | {:>6.1f} {:>6.1f} {:>6.1f} |'.format(
-                        a[0], a[1], a[2],
-                        m[0], m[1], m[2],
-                        g[0], g[1], g[2])
-                    + Style.BRIGHT + ' {:>6.1f} {:>6.1f} {:>6.1f}° |'.format(r, p, deg) + Style.RESET_ALL)
+                    print(Fore.CYAN        + '| {:>5.2f} {:>5.2f} {:>5.2f} '.format(a[0], a[1], a[2]) 
+                            + Fore.YELLOW  + '| {:>6.1f} {:>6.1f} {:>6.1f} '.format(m[0], m[1], m[2]) 
+                            + Fore.MAGENTA + '| {:>6.1f} {:>6.1f} {:>6.1f} '.format(g[0], g[1], g[2])
+                            + Fore.GREEN   + '| {:>6.1f} {:>6.1f} {:>6.1f}° |'.format(r, p, deg) + Style.RESET_ALL)
                     time.sleep(0.50)
                 print('-'*header)
                 print(' uT: micro Tesla')

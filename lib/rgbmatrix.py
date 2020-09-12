@@ -50,6 +50,7 @@ class RgbMatrix(Feature):
         self._rgbmatrix5x5_STBD.set_clear_on_exit()
         self._height = self._rgbmatrix5x5_PORT.height
         self._width  = self._rgbmatrix5x5_PORT.width
+        self._log.info('rgbmatrix width,height: {},{}'.format(self._width, self._height))
         self._thread_PORT = None
         self._thread_STBD = None
         self._color = Color.RED # used by _solid
@@ -183,6 +184,10 @@ class RgbMatrix(Feature):
                 _value *= _width * 10.0
                 _value = min(_value, _height * 12.0)
                 _value = max(_value, 0.0)
+
+                if _value > 5.0:
+                    _value = 50.0
+
 #               self._log.info(Fore.MAGENTA + 'p_y={}; _value: {}'.format(p_y, _value) + Style.RESET_ALL)
                 for p_x in range(0, _width):
                     _r = self._colors[p_x].red
@@ -194,12 +199,12 @@ class RgbMatrix(Feature):
                         _b = (_value / 10.0) * _b
                     _x = x + (_width - p_x)
                     _y = y + p_y
-#                   self._log.info(Fore.YELLOW + 'x={}/{}, y={}/{}; '.format(_x, _width, _y, _height) \
-#                           + Fore.GREEN + 'value: {:>5.2f}'.format(_value) + Style.RESET_ALL)
+                    self._log.info(Fore.YELLOW + 'setting pixel x={}/{}, y={}/{};'.format(_x, _width, _y, _height) + Fore.MAGENTA + '\tvalue: {:>5.2f}'.format(_value) + Style.RESET_ALL)
                     rgbmatrix5x5.set_pixel(_x, _y , _r, _g, _b)
                     _value -= 10.0
                     if _value < 0.0:
                         _value = 0.0
+                print('')
             except IndexError:
                 return
 
