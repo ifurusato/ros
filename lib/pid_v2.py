@@ -10,7 +10,7 @@
 # modified: 2020-04-21
 #
 
-import sys, time, itertools, math
+import sys, time, threading, itertools, math
 from collections import deque
 from colorama import init, Fore, Style
 init()
@@ -21,7 +21,8 @@ except ImportError:
     exit("This script requires the numpy module\nInstall with: sudo pip install numpy")
 
 from lib.logger import Level, Logger
-from lib.enums import Direction, Orientation, Speed, Velocity
+from lib.enums import Direction, Orientation, Speed
+from lib.velocity import Velocity
 from lib.filewriter import FileWriter
 from lib.slew import SlewRate, SlewLimiter
 from lib.rate import Rate
@@ -87,6 +88,11 @@ class PID():
         self._steps_per_cm = 10.0 * self._step_per_rotation  / _wheel_circumference 
         self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per cm.'.format(self._steps_per_cm))
 
+        self._last_steps = 0
+        self._max_diff_steps = 0
+        self._enabled = False
+        self._closed  = False
+        self._thread  = None
         self._log.info('ready.')
 
     # ..........................................................................
@@ -123,6 +129,13 @@ class PID():
            A convenience method that returns the number of steps registered by the motor encoder.
         '''
         return self._motor.get_steps()
+
+    # ..............................................................................
+    def reset_steps(self):
+        '''
+           A convenience method that resets the step count to zero.
+        '''
+        self._motor.reset_steps()
 
     # ..........................................................................
     def is_stepping(self, direction):
@@ -213,6 +226,32 @@ class PID():
         self._rate.wait() # 20Hz
         # ======================================================================
 
+    # ..........................................................................
+    def reset_max_diff_steps(self):
+        self._max_diff_steps = 0
+
+    # ..........................................................................
+    def get_max_diff_steps(self):
+        return self._max_diff_steps
+
+    # ..........................................................................
+    def _loop(self):
+        '''
+           The PID loop that continues until the enabled flag is false.
+        '''
+        while self._enabled:
+            _this_steps = self.get_steps()
+            _diff_steps = _this_steps - self._last_steps
+
+            self._max_diff_steps = max(self._max_diff_steps, _diff_steps)
+            time.sleep(0.04)
+            self._log.info(Fore.MAGENTA + Style.DIM + 'PID loop; diff steps: {:d}'.format(_diff_steps))
+
+            self._last_steps = _this_steps
+
+            self._rate.wait() # 20Hz
+
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'exited PID loop.')
 
     # ..........................................................................
     def step_to(self, target_velocity, direction, slew_rate, f_is_enabled):
@@ -427,10 +466,10 @@ class PID():
     # ..........................................................................
     def disable(self):
         self._enabled = False
-        time.sleep(self._loop_delay_sec_div_10)
+        time.sleep(0.06) # just a bit more than 1 loop in 20Hz
         if self._thread is not None:
             self._thread.join(timeout=1.0)
-            self._log.debug('battery check thread joined.')
+            self._log.debug('pid thread joined.')
             self._thread = None
         self._log.info('PID loop for {} motor disabled.'.format(self._orientation))
 

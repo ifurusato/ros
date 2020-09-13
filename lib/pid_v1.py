@@ -21,7 +21,7 @@ except ImportError:
     exit("This script requires the numpy module\nInstall with: sudo pip install numpy")
 
 from lib.logger import Level, Logger
-from lib.enums import Direction, Orientation, Speed, Velocity
+from lib.enums import Direction, Orientation, Speed
 from lib.filewriter import FileWriter
 from lib.slew import SlewRate, SlewLimiter
 from lib.rate import Rate
@@ -166,8 +166,8 @@ class PID():
             true in practice, until we tune these values).
         '''
 
-        if type(target_velocity) is not Velocity:
-            raise Exception('expected Velocity argument, not {}'.format(type(target_velocity)))
+#       if type(target_velocity) is not Velocity:
+#           raise Exception('expected Velocity argument, not {}'.format(type(target_velocity)))
         _target_velocity = target_velocity.value
 
         self._start_time = time.time()
@@ -350,16 +350,29 @@ class PID():
 
         return _changed
 
-
     # ..........................................................................
     def enable(self):
-        self._log.info('{} enabled.'.format(self._orientation))
-        pass
+        if not self._closed:
+            self._enabled = True
+            # if we haven't started the thread yet, do so now...
+            if self._thread is None:
+                self._thread = threading.Thread(target=PID._loop, args=[self])
+                self._thread.start()
+                self._log.info('PID loop for {} motor enabled.'.format(self._orientation))
+            else:
+                self._log.warning('cannot enable PID loop for {} motor: thread already exists.'.format(self._orientation))
+        else:
+            self._log.warning('cannot enable PID loop for {} motor: already closed.'.format(self._orientation))
 
     # ..........................................................................
     def disable(self):
-        self._log.info('{} disabled.'.format(self._orientation))
-        pass
+        self._enabled = False
+        time.sleep(self._loop_delay_sec_div_10)
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._log.debug('battery check thread joined.')
+            self._thread = None
+        self._log.info('PID loop for {} motor disabled.'.format(self._orientation))
 
     # ..........................................................................
     def close(self):
@@ -423,8 +436,10 @@ class PID():
             215.19mm/21.2cm wheel circumference
             1 wheel rotation = 215.2mm
             2295 steps per meter
-            2295 steps per second = 1 m/sec
-            2295 steps per second = 100 cm/sec
+            2295 steps per second  = 1 m/sec
+            2295 steps per second  = 100 cm/sec
+            229.5 steps per second = 10 cm/sec
+            22.95 steps per second = 1 cm/sec
     
             1 rotation = 215mm = 494 steps
             1 meter = 4.587 rotations

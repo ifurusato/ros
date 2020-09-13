@@ -23,7 +23,7 @@ except ImportError:
 
 from lib.logger import Logger, Level
 from lib.event import Event
-from lib.enums import Direction, Velocity, Orientation
+from lib.enums import Direction, Orientation
 from lib.slew import SlewRate
 
 try:
@@ -270,28 +270,28 @@ class Motors():
         self._log.info('stopped.')
         return True
 
-    # ..........................................................................
-    def slow_down(self, orientation):
-        '''
-            Slows both motors one step in the Velocity enumeration.
-        '''
-        if not self.is_in_motion():
-            self._log.warning('not moving: can\'t slow down.')
-        else:
-            self._log.info('slowing...')
-            _port_velocity = self._port_motor.get_velocity()
-            _slowed_port_velocity = Velocity.get_slower_than(_port_velocity).value
-            self._log.info(Fore.RED   + 'slowing port motor from {:>5.2f} to {:>5.2f}...'.format(_port_velocity, _slowed_port_velocity))
-            _stbd_velocity = self._stbd_motor.get_velocity()
-            _slowed_stbd_velocity = Velocity.get_slower_than(_stbd_velocity).value
-            self._log.info(Fore.GREEN + 'slowing stbd motor from {:>5.2f} to {:>5.2f}...'.format(_stbd_velocity, _slowed_stbd_velocity))
+#   # ..........................................................................
+#   def slow_down(self, orientation):
+#       '''
+#           Slows both motors one step in the Velocity enumeration.
+#       '''
+#       if not self.is_in_motion():
+#           self._log.warning('not moving: can\'t slow down.')
+#       else:
+#           self._log.info('slowing...')
+#           _port_velocity = self._port_motor.get_velocity()
+#           _slowed_port_velocity = Velocity.get_slower_than(_port_velocity).value
+#           self._log.info(Fore.RED   + 'slowing port motor from {:>5.2f} to {:>5.2f}...'.format(_port_velocity, _slowed_port_velocity))
+#           _stbd_velocity = self._stbd_motor.get_velocity()
+#           _slowed_stbd_velocity = Velocity.get_slower_than(_stbd_velocity).value
+#           self._log.info(Fore.GREEN + 'slowing stbd motor from {:>5.2f} to {:>5.2f}...'.format(_stbd_velocity, _slowed_stbd_velocity))
 
-            _forward_steps_per_rotation = 494
-            _rotations = 2
-            _steps = -1 #_forward_steps_per_rotation * _rotations
-            self.change_velocity(_slowed_port_velocity, _slowed_stbd_velocity, SlewRate.FAST, _steps)
-            self._log.info('slowed.')
-        return True
+#           _forward_steps_per_rotation = 494
+#           _rotations = 2
+#           _steps = -1 #_forward_steps_per_rotation * _rotations
+#           self.change_velocity(_slowed_port_velocity, _slowed_stbd_velocity, SlewRate.FAST, _steps)
+#           self._log.info('slowed.')
+#       return True
 
     # ..........................................................................
     def is_stopped(self):

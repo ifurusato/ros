@@ -155,11 +155,11 @@ ros:
             kp:             0.0020
             ki:             0.0010
             kd:             0.00010
-            clip_limit:     0.8         # negative and positive power limit
+            clip_limit:     0.8                  # negative and positive power limit
             sample_freq_hz: 20
     slew:
-        minimum_output: 0.00    # lower limit of permitted output values
-        maximum_output: 100.00  # upper limit of permitted output values
+        minimum_output: 0.00                     # lower limit of permitted output values
+        maximum_output: 100.00                   # upper limit of permitted output values
     filewriter:
         extension: '.dat'                        # file extension (must include the dot)
         directory_name: 'data'                   # output directory name
