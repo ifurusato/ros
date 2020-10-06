@@ -10,10 +10,11 @@
 # modified: 2020-08-06
 #
 # This class interprets the signals arriving from the 8BitDo N30 Pro gamepad,
-# a paired Bluetooth device. 
+# a paired Bluetooth device.
 #
 
-import sys, itertools, time, threading, traceback
+import os, sys, itertools, time, threading, traceback
+import datetime as dt
 from enum import Enum
 from evdev import InputDevice, categorize, ecodes
 from colorama import init, Fore, Style
@@ -24,6 +25,7 @@ from lib.logger import Logger, Level
 from lib.enums import Orientation
 from lib.event import Event
 from lib.message import Message
+from lib.rate import Rate
 
 '''
     Pairing and using a bluetooth gamepad device:
@@ -33,10 +35,15 @@ from lib.message import Message
        % ls /dev/input
 
     2. connect and pair the gamepad, then repeat the previous command. You'll
-       notice a new device, e.g., "/dev/input/event6". This is your gamepad.
-    3. set the value of gamepad:device_path in the config.yaml file to the 
+       notice a new device, e.g., "/dev/input/event6". This is likely your
+       gamepad. You may need to check which of the devices was most recently
+       changed to determine this, it isn't always the highest number.
+    3. set the value of gamepad:device_path in the config.yaml file to the
        value of your gamepad device.
     4. be sure your gamepad is paired prior to starting ros.
+
+    If everything seems all wired up but you're not getting a response from
+    your gamepad, you may have configured a connection to the wrong device.
 
     This class based on information found at:
 
@@ -63,10 +70,10 @@ class GamepadControl(Enum):
     X_BUTTON        = ( 3,  307,  'triangle', 'X (Triangle) Button', Event.ROAM)
     Y_BUTTON        = ( 4,  308,  'square',   'Y ((Square) Button',  Event.BRAKE)
 
-    L1_BUTTON       = ( 5,  310,  'l1',       'L1 Start Video',      Event.START_VIDEO)
-    L2_BUTTON       = ( 6,  312,  'l2',       'L2 Stop Video',       Event.STOP_VIDEO)
-    R1_BUTTON       = ( 8,  311,  'r1',       'R1 Lights On',        Event.LIGHTS_ON)
-    R2_BUTTON       = ( 7,  313,  'r2',       'R2 Lights Off',       Event.LIGHTS_OFF)
+    L1_BUTTON       = ( 5,  310,  'l1',       'L1 Video',            Event.VIDEO)
+    L2_BUTTON       = ( 6,  312,  'l2',       'L2 Event',            Event.EVENT_L2) # unassigned
+    R1_BUTTON       = ( 8,  311,  'r1',       'R1 Lights On',        Event.EVENT_R1) # unassigned
+    R2_BUTTON       = ( 7,  313,  'r2',       'R2 Lights Off',       Event.LIGHTS)
 #   L1_BUTTON       = ( 5,  310,  'l1',       'L1 Button',           Event.BUMPER_PORT)
 #   L2_BUTTON       = ( 6,  312,  'l2',       'L2 Button',           Event.BUMPER_CNTR)
 #   R2_BUTTON       = ( 7,  313,  'r2',       'R2 Button',           Event.BUMPER_CNTR)
@@ -123,6 +130,69 @@ class GamepadConnectException(Exception):
     pass
 
 # ..............................................................................
+class GamepadScan(object):
+    '''
+       Returns the device with the most recently changed status from /dev/input/event{n}
+       This can help you figure out which device is your gamepad, if if was connected
+       after everything else in the system had settled.
+    '''
+    def __init__(self, config, level):
+        self._log = Logger("gamepad-scan", level)
+        if config is None:
+            raise ValueError("no configuration provided.")
+        _config = config['ros'].get('gamepad')
+        self._device_path = _config.get('device_path')
+        self._log.debug('device path: {}'.format(self._device_path))
+        self._log.info('ready')
+
+    # ..........................................................................
+    def check_gamepad_device(self):
+        '''
+           Checks that the configured device matches the device with the most
+           recently changed status, returning True if matched.
+        '''
+        _latest_device = self.get_latest_device()
+        if self._device_path == _latest_device:
+            self._log.info(Fore.GREEN + Style.BRIGHT + 'matches:             ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
+            return True
+        else:
+            self._log.info(Fore.RED + Style.NORMAL   + 'does not match:      ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
+            return False
+
+    # ..........................................................................
+    def _get_ctime(self, path):
+        try:
+            _device_stat = os.stat(path)
+            return _device_stat.st_ctime
+        except OSError:
+            return -1.0
+
+    # ..........................................................................
+    def get_latest_device(self):
+        '''
+            Build a dictionary of available devices, return the one with the
+            most recent status change.
+        '''
+        _dict = {}
+        for i in range(10):
+            _path = '/dev/input/event{}'.format(i)
+            try:
+                _device_stat = os.stat(_path)
+                _ctime = _device_stat.st_ctime
+            except OSError:
+                break
+            self._log.debug('device: {}'.format(_path) + Fore.BLUE + Style.NORMAL + '\tstatus changed: {}'.format(dt.datetime.fromtimestamp(_ctime)))
+            _dict[_path] = _ctime
+        # find most recent by sorting the dictionary on ctime
+        _sorted = sorted(_dict.items(), key=lambda x:x[1])
+        _latest_devices = _sorted[len(_sorted)-1]
+        _latest_device = _latest_devices[0]
+        self._log.info(Style.BRIGHT + 'device path:         ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(self._device_path))
+        self._log.info(Style.BRIGHT + 'most recent device:  ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
+        return _latest_device
+
+
+# ..............................................................................
 class Gamepad():
 
     _NOT_AVAILABLE_ERROR = 'gamepad device not found (not configured, paired, powered or otherwise available)'
@@ -137,28 +207,44 @@ class Gamepad():
         '''
         if config is None:
             raise ValueError('no configuration provided.')
+        self._level = level
         self._log = Logger("gamepad", level)
         self._log.info('initialising...')
-        self._config = config['ros'].get('gamepad')
-        self._queue = queue
+        self._config = config
+        _config = config['ros'].get('gamepad')
         # config
-        self._loop_delay_sec = 0.01
-        self._device_path = self._config.get('device_path')
-#       self._device_path = '/dev/input/event6'
+        _loop_freq_hz = _config.get('loop_freq_hz')
+        self._rate = Rate(_loop_freq_hz)
+        self._device_path  = _config.get('device_path')
+        self._queue   = queue
         self._counter = itertools.count()
         self._closing = False
         self._closed  = False
         self._enabled = False
         self._thread  = None
         self._gamepad = None
-        self.connect()
+
+    # ..........................................................................
+    def connect(self):
+        '''
+           Scan for likely gamepad device, and if found, connect.
+           Otherwise we raise an OSError.
+        '''
+        _gp_scan = GamepadScan(self._config, self._level)
+        _matches = _gp_scan.check_gamepad_device()
+        if not _matches:
+            self._log.warning('no connection attempted: gamepad is not the most recent device (configured at: {}).'.format(self._device_path ))
+            raise OSError('no gamepad available.')
+        else:
+            self._connect()
+
 
     # ..........................................................................
     def has_connection(self):
         return self._gamepad != None
 
     # ..........................................................................
-    def connect(self):
+    def _connect(self):
         self._log.info('connecting...')
         try:
             self._gamepad = InputDevice(self._device_path)
@@ -199,7 +285,7 @@ class Gamepad():
 
     # ..........................................................................
     def _gamepad_loop(self, f_is_enabled):
-        self._log.info('starting event loop...\n')
+        self._log.info('starting event loop...')
         while f_is_enabled():
             if self._gamepad is None:
                 self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [2]')
@@ -210,7 +296,7 @@ class Gamepad():
                 self._handleEvent(event)
                 if not f_is_enabled():
                     break
-            time.sleep(self._loop_delay_sec)
+            self._rate.wait()
             self._log.info(Fore.BLACK + 'loop [{}]'.format(_count))
         self._log.info('exited event loop.')
 
@@ -277,7 +363,7 @@ class Gamepad():
     def _handleEvent(self, event):
         '''
             Handles the incoming event by filtering on event type and code.
-            There's possibly a more elegant way of doing this but for now this 
+            There's possibly a more elegant way of doing this but for now this
             works just fine.
         '''
         _message = None
@@ -386,13 +472,13 @@ def main(argv):
     except KeyboardInterrupt:
         print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
         if _gamepad:
-            _gamepad.disable() 
+            _gamepad.disable()
         sys.exit(0)
 
     except Exception:
         print(Fore.RED + Style.BRIGHT + 'error processing gamepad events: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
         if _gamepad:
-            _gamepad.disable() 
+            _gamepad.disable()
         sys.exit(1)
 
 

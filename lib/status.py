@@ -11,7 +11,7 @@
 #
 
 import time, threading
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 #from .import_gpio import *
 import lib.import_gpio
 from lib.logger import Level, Logger
@@ -28,17 +28,17 @@ class Status():
     '''
 
     # ..........................................................................
-    def __init__(self, config, GPIO, level):
+    def __init__(self, config, level):
         self._log = Logger('status', level)
         self._log.debug('initialising...')
         if config is None:
             raise ValueError('no configuration provided.')
         _config = config['ros'].get('status')
         self._led_pin = _config.get('led_pin')
-        self.GPIO = GPIO
-        self.GPIO.setwarnings(False)
-        self.GPIO.setmode(GPIO.BCM)
-        self.GPIO.setup(self._led_pin, GPIO.OUT, initial=GPIO.LOW)
+        self._gpio = GPIO
+        self._gpio.setwarnings(False)
+        self._gpio.setmode(GPIO.BCM)
+        self._gpio.setup(self._led_pin, GPIO.OUT, initial=GPIO.LOW)
         self._blink_thread = None
         self._blinking = False
         self._log.info('ready.')
@@ -50,9 +50,9 @@ class Status():
             The blinking thread.
         '''
         while self._blinking:
-            self.GPIO.output(self._led_pin,True)
+            self._gpio.output(self._led_pin,True)
             time.sleep(0.5)
-            self.GPIO.output(self._led_pin,False)
+            self._gpio.output(self._led_pin,False)
             time.sleep(0.5)
         self._log.info('blink complete.')
 
@@ -81,13 +81,13 @@ class Status():
     # ..........................................................................
     def enable(self):
         self._log.info('enable status light.')
-        self.GPIO.output(self._led_pin, True)
+        self._gpio.output(self._led_pin, True)
 
 
     # ..........................................................................
     def disable(self):
         self._log.info('disable status light.')
-        self.GPIO.output(self._led_pin,False)
+        self._gpio.output(self._led_pin,False)
         self._blinking = False
 
 
@@ -95,7 +95,7 @@ class Status():
     def close(self):
         self._log.info('closing status light...')
         self._blinking = False
-        self.GPIO.output(self._led_pin,False)
+        self._gpio.output(self._led_pin,False)
         self._log.info('status light closed.')
 
 

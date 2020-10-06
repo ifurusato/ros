@@ -28,8 +28,19 @@ class RoamBehaviour():
         self._roam_stbd_complete = False
         self._log.info('ready.')
 
+    # ..........................................................................
+    def _callback_port(self):
+        self._log.info(Fore.RED   + 'port roam complete.')
+        self._roam_port_complete = True
 
-    # roam .....................................................................
+    # ..........................................................................
+    def _callback_stbd(self):
+        self._log.info(Fore.GREEN + 'stbd roam complete.')
+        self._roam_stbd_complete = True
+
+    # ..........................................................................
+    def is_roaming(self):
+        return not self._roam_port_complete and not self._roam_stbd_complete
 
     def _roam(self, velocity, direction, slew_rate, steps, callback, orientation):
         self._log.info('begin roaming...')
@@ -42,23 +53,6 @@ class RoamBehaviour():
             time.sleep(1.0)
         callback()
         self._log.info('stop roaming.')
-
-
-    # ..........................................................................
-    def _callback_port(self):
-        self._log.info(Fore.RED   + 'port roam complete.')
-        self._roam_port_complete = True
-
-    # ..........................................................................
-    def _callback_stbd(self):
-        self._log.info(Fore.GREEN + 'stbd roam complete.')
-        self._roam_stbd_complete = True
-
-
-    # ..........................................................................
-    def is_roaming(self):
-        return not self._roam_port_complete and not self._roam_stbd_complete
-
 
     # ..........................................................................
     def roam(self):

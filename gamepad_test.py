@@ -20,19 +20,25 @@ init()
 from lib.logger import Logger, Level
 from lib.gamepad_demo import GamepadDemo
 
+_log = Logger('gamepad-demo', Level.INFO)
+
 try:
+
+    _log.info('starting gamepad demo...')
     _gamepad_demo = GamepadDemo(Level.INFO)
     _gamepad_demo.enable()
-
     while _gamepad_demo.is_enabled():
         time.sleep(1.0)
     _gamepad_demo.close()
 
 except KeyboardInterrupt:
-    print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
+    _log.info('caught Ctrl-C; exiting...')
     sys.exit(0)
+except OSError:
+    _log.error('unable to connect to gamepad')
+    sys.exit(1)
 except Exception:
-    print(Fore.RED + Style.BRIGHT + 'error processing gamepad events: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
+    _log.error('error processing gamepad events: {}'.format(traceback.format_exc()))
     sys.exit(1)
 
 # EOF

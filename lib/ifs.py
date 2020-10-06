@@ -306,7 +306,7 @@ class IntegratedFrontSensor():
         return self._thread != None and self._thread.is_alive()
 
     # ..........................................................................
-    def _front_sensor_loop(self):
+    def _loop(self):
         self._log.info('starting event loop...\n')
 
         while self._enabled:
@@ -382,7 +382,7 @@ class IntegratedFrontSensor():
             raise Exception('attempt to start front sensor event loop while disabled.')
         elif not self._closed:
             if self._thread is None:
-                self._thread = threading.Thread(target=IntegratedFrontSensor._front_sensor_loop, args=[self])
+                self._thread = threading.Thread(target=IntegratedFrontSensor._loop, args=[self])
                 self._thread.start()
                 self._log.info('started.')
             else:

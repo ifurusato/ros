@@ -26,6 +26,7 @@ from lib.velocity import Velocity
 from lib.filewriter import FileWriter
 from lib.slew import SlewRate, SlewLimiter
 from lib.rate import Rate
+from lib.pot import Potentiometer
 
 # _current_power = lambda: _motor.get_current_power_level()
 # _set_power = lambda p: _motor.set_motor_power(p)
@@ -55,7 +56,7 @@ class PID():
         _config = config['ros'].get('motors').get('pid')
         self._enable_slew = _config.get('enable_slew')
         if self._enable_slew:
-            self._slewlimiter = SlewLimiter(config, self._orientation, Level.INFO)
+            self._slewlimiter = SlewLimiter(config, self._orientation, level)
         # geometry configuration ...........................
         _geo_config = config['ros'].get('geometry')
         self._wheel_diameter = _geo_config.get('wheel_diameter')
@@ -72,7 +73,28 @@ class PID():
         _ki = _config.get('ki')
         _kd = _config.get('kd')
         self.set_tuning(_kp, _ki, _kd)
-        self._rate = Rate(_config.get('sample_freq_hz')) # default sample rate is 20Hz
+
+        self._read_p_from_pot = _config.get('read_p_from_pot')
+        self._read_i_from_pot = _config.get('read_i_from_pot')
+        self._read_d_from_pot = _config.get('read_d_from_pot')
+
+        if self._read_p_from_pot or self._read_i_from_pot or self._read_d_from_pot:
+            self._pot = Potentiometer(config,level)
+            # set scaled output maximum value to double k*
+            if self._read_p_from_pot:
+                _out_max = 0.01500
+                self._log.info(Fore.YELLOW + 'scaled output maximum set from KP: {:9.6f}'.format(_out_max))
+                self._pot.set_out_max(_out_max)
+            elif self._read_i_from_pot:
+                _out_max = 0.000470
+                self._log.info(Fore.YELLOW + 'scaled output maximum set from KI: {:9.6f}'.format(_out_max))
+                self._pot.set_out_max(_out_max)
+            elif self._read_d_from_pot:
+                _out_max = 0.00200
+                self._log.info(Fore.YELLOW + 'scaled output maximum set from KD: {:9.6f}'.format(_out_max))
+                self._pot.set_out_max(_out_max)
+
+        self._rate = Rate(_config.get('sample_freq_hz'), level) # default sample rate is 20Hz
 #       self._millis  = lambda: int(round(time.time() * 1000))
         self._counter = itertools.count()
         self._last_error = 0.0
@@ -84,9 +106,9 @@ class PID():
 
         _wheel_circumference = math.pi * self._wheel_diameter # mm
         self._steps_per_m  = 1000.0 * self._step_per_rotation  / _wheel_circumference 
-        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per m.'.format(self._steps_per_m))
+        self._log.info(Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per m.'.format(self._steps_per_m))
         self._steps_per_cm = 10.0 * self._step_per_rotation  / _wheel_circumference 
-        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per cm.'.format(self._steps_per_cm))
+        self._log.info(Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per cm.'.format(self._steps_per_cm))
 
         self._last_steps = 0
         self._max_diff_steps = 0
@@ -172,59 +194,13 @@ class PID():
         '''
             Sets the velocity of the motor to the specified Velocity.
         '''
-        if type(target_velocity) is not Velocity:
-            raise Exception('expected Velocity argument, not {}'.format(type(target_velocity)))
-        _target_velocity = target_velocity.value
+        if type(velocity) is Velocity:
+            self._target_velocity = velocity.value
+        elif isinstance(velocity, float):
+            self._target_velocity = velocity
+        else:
+            raise Exception('expected Velocity argument, not {}'.format(type(velocity)))
 
-        self._start_time = time.time()
-
-        if direction is Direction.FORWARD: # .......................................................
-
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'current velocity: {};'.format(self._motor.get_velocity()) \
-                    + Fore.CYAN + Style.NORMAL + ' target velocity: {}; step limit: {}.'.format(_target_velocity, self._step_limit))
-
-            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self.get_steps() > self._step_limit )):
-                _changed = self._compute(_target_velocity)
-    
-                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self.get_steps(), self._step_limit))
-                if not _changed and self._motor.get_velocity() == 0.0 and _target_velocity == 0.0 and self._step_limit > 0: # we will never get there if we aren't moving
-                    self._log.info(Fore.RED + 'break 2.')
-                    break
-    
-                self._rate.wait() # 20Hz
-
-                if self._motor.is_interrupted():
-                    self._log.info(Fore.RED + 'motor interrupted.')
-                    break
-
-                if self._orientation is Orientation.PORT:
-                    self._log.info(Fore.RED + 'current velocity: {:>5.2f};'.format(self._motor.get_velocity() ) \
-                            + Fore.CYAN + ' target velocity: {}; {:d} steps of: {}.'.format(_target_velocity, self.get_steps(), self._step_limit))
-                else:
-                    self._log.info(Fore.GREEN + 'current velocity: {:>5.2f};'.format(self._motor.get_velocity() ) \
-                            + Fore.CYAN + ' target velocity: {}; {:d} steps of: {}.'.format(_target_velocity, self.get_steps(), self._step_limit))
-
-        elif direction is Direction.REVERSE: # .....................................................
-
-            _target_velocity = -1.0 * _target_velocity
-
-            self._log.info(Fore.RED + Style.BRIGHT + 'target velocity: {}; step limit: {}.'.format(_target_velocity, self._step_limit))
-
-            while f_is_enabled() and self.is_stepping(direction): # or ( direction is Direction.REVERSE and self.get_steps() > self._step_limit )):
-                _changed = self._compute(_target_velocity)
-                self._log.debug(Fore.BLACK + Style.DIM + '{:d}/{:d} steps.'.format(self.get_steps(), self._step_limit))
-                if not _changed and self._motor.get_velocity() == 0.0 and _target_velocity == 0.0 and self._step_limit > 0: # we will never get there if we aren't moving
-                    break
-    
-
-                if self._motor.is_interrupted():
-                    break
-
-        else: # ....................................................................................
-            raise Exception('no direction provided.')
-
-        self._rate.wait() # 20Hz
-        # ======================================================================
 
     # ..........................................................................
     def reset_max_diff_steps(self):
@@ -240,12 +216,34 @@ class PID():
            The PID loop that continues until the enabled flag is false.
         '''
         while self._enabled:
+
+            if self._read_p_from_pot:
+                self._kp = self._pot.get_scaled_value()
+                self._log.info(Fore.BLUE + 'P={:>10.7f};'.format(self._kp) + Fore.BLACK + ' I={:>10.7f};'.format(self._ki) + Fore.BLACK + ' D={:>10.7f};'.format(self._kd)
+                        + Fore.GREEN + Style.BRIGHT + ' velocity: {:>5.2f}/{:>5.2f}'.format(self._motor.get_velocity(), self._target_velocity) )
+            elif self._read_i_from_pot:
+                self._ki = self._pot.get_scaled_value()
+                self._log.info(Fore.BLACK + 'P={:>10.7f};'.format(self._kp) + Fore.BLUE + ' I={:>10.7f};'.format(self._ki) + Fore.BLACK + ' D={:>10.7f};'.format(self._kd)
+                        + Fore.GREEN + Style.BRIGHT + ' velocity: {:>5.2f}/{:>5.2f}'.format(self._motor.get_velocity(), self._target_velocity) )
+            elif self._read_d_from_pot:
+                self._kd = self._pot.get_scaled_value()
+                self._log.info(Fore.BLACK + 'P={:>10.7f};'.format(self._kp) + Fore.BLACK + ' I={:>10.7f};'.format(self._ki) + Fore.BLUE + ' D={:>10.7f};'.format(self._kd)
+                        + Fore.GREEN + Style.BRIGHT + ' velocity: {:>5.2f}/{:>5.2f}'.format(self._motor.get_velocity(), self._target_velocity) )
+            else:
+                self._log.info(Fore.BLACK + 'P={:>10.7f}; I={:>10.7f}; D={:>10.7f}'.format(self._kp, self._ki, self._kd))
+
             _this_steps = self.get_steps()
             _diff_steps = _this_steps - self._last_steps
 
             self._max_diff_steps = max(self._max_diff_steps, _diff_steps)
-            time.sleep(0.04)
-            self._log.info(Fore.MAGENTA + Style.DIM + 'PID loop; diff steps: {:d}'.format(_diff_steps))
+#           time.sleep(0.04)
+            self._log.debug('PID loop; diff steps: {:d}'.format(_diff_steps))
+
+            # TODO figure out how many ticks per loop is required for a given velocity
+
+#           self._log.info(Fore.GREEN + Style.BRIGHT + 'current velocity: {};'.format(self._motor.get_velocity()) \
+#                   + Fore.CYAN + Style.NORMAL + ' target velocity: {}; step limit: {}.'.format(self._target_velocity, self._step_limit))
+            _changed = self._compute(self._target_velocity)
 
             self._last_steps = _this_steps
 
@@ -419,19 +417,18 @@ class PID():
 
             # set motor power ..............................................
             _power_level = _current_power + _clipped_output
-            if abs(_output) <= 0.0005: # we're pretty close to the right value
-                self._log.debug(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
-                        + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
-                        _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
-            elif _output >= 0: # we're going too slow
-                self._log.debug(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
-                        + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
-                        _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
-            else:              # we're going too fast
-                self._log.debug(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
-                        + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
-                        _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
-
+#           if abs(_output) <= 0.0005: # we're pretty close to the right value
+#               self._log.debug(Fore.WHITE + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+#                       + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+#                       _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
+#           elif _output >= 0: # we're going too slow
+#               self._log.debug(Fore.GREEN + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+#                       + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+#                       _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
+#           else:              # we're going too fast
+#               self._log.debug(Fore.RED   + Style.NORMAL + '[{:02d}]+ velocity:  {:+06.2f} ➔ {:+06.2f}'.format(self._loop_count, _current_velocity, target_velocity) \
+#                       + Style.BRIGHT + '\t new power: {:+5.3f}'.format(_power_level) + Style.NORMAL + ' = current: {:+5.3f} + output: {:+5.3f}   '.format(\
+#                       _current_power, _clipped_output) + Style.DIM + '\tP={:+5.4f}\tI={:+5.4f}\tD={:+5.4f}'.format(_p_diff, _i_diff, _d_diff))
             self._motor.set_motor_power(_power_level)
 
             # remember some variables for next time ........................

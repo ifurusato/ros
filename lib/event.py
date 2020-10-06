@@ -85,11 +85,11 @@ class Event(Enum):
     TURN_AHEAD_STBD        = ( 83, "turn ahead starboard",    100,   False)
     # high level behaviours ............
     ROAM                   = ( 90, "roam",                    100,   False)
-    SNIFF                  = ( 91, "sniff",                   100,   True)
-    START_VIDEO            = ( 92, "start video",             150,   False)
-    STOP_VIDEO             = ( 93, "stop video",              150,   False)
-    LIGHTS_ON              = ( 94, "lights on",               150,   False)
-    LIGHTS_OFF             = ( 95, "lights off",              150,   False)
+    SNIFF                  = ( 91, "sniff",                   100,    True) # A Button
+    VIDEO                  = ( 92, "video",                   150,   False) # L1 Button
+    EVENT_L2               = ( 93, "event L2",                150,   False) # L2 Button
+    EVENT_R1               = ( 94, "event R1",                150,   False) # R1 Button
+    LIGHTS                 = ( 95, "lights off",              150,   False) # R2 Button
 
     # movement directives ..............
     FORWARD_VELOCITY       = ( 101, "forward velocity",       200,   False)

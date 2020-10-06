@@ -10,7 +10,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Level
-from lib.motors import Motors
+from lib.motors_v2 import Motors
 from lib.config_loader import ConfigLoader
 
 # ..............................................................................
@@ -19,11 +19,11 @@ try:
     print('brake             :' + Fore.CYAN + Style.BRIGHT + ' INFO  : braking...' + Style.RESET_ALL)
 
     # read YAML configuration
-    _loader = ConfigLoader(Level.INFO)
+    _loader = ConfigLoader(Level.WARN)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
 
-    _motors = Motors(_config, None, Level.INFO)
+    _motors = Motors(_config, None, Level.WARN)
     _motors.brake()
 
 except KeyboardInterrupt:

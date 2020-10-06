@@ -88,7 +88,6 @@ class IntegratedFrontSensor():
         self._closed  = False
         self._log.info('ready.')
 
-
     # ..........................................................................
     def _callback(self, pin, pin_type, value):
         '''
@@ -146,12 +145,10 @@ class IntegratedFrontSensor():
             _message.set_value(value)
             self._queue.add(_message)
 
-
     # ..........................................................................
     def suppress(self, state):
         self._log.info('suppress {}.'.format(state))
         self._suppressed = state
-
 
     # ..........................................................................
     def enable(self):
@@ -165,14 +162,12 @@ class IntegratedFrontSensor():
         else:
             self._log.warning('cannot enable integrated front sensor: already closed.')
 
-
     # ..........................................................................
     def in_loop(self):
         '''
             Returns true if the main loop is active (the thread is alive).
         '''
         return self._thread != None and self._thread.is_alive()
-
 
     # ..........................................................................
     def _front_sensor_loop(self):
@@ -244,7 +239,6 @@ class IntegratedFrontSensor():
         # we never get here if using 'while True:'
         self._log.info('exited event loop.')
 
-
     # ..........................................................................
     def start_front_sensor_loop(self):
         '''
@@ -263,7 +257,6 @@ class IntegratedFrontSensor():
         else:
             self._log.warning('cannot enable: already closed.')
 
-
     # ..............................................................................
     def read_i2c_data(self):
         '''
@@ -278,7 +271,6 @@ class IntegratedFrontSensor():
             time.sleep(0.01)
         return _byte
 
-
     # ..........................................................................
     def write_i2c_data(self, data):
         '''
@@ -288,6 +280,7 @@ class IntegratedFrontSensor():
             bus.write_byte(self._device_id, data)
             time.sleep(0.01)
 
+    # ..........................................................................
     def _get_pin_for_event(self, event):
         '''
             Return the hardwired pin corresponding to the Event type.
@@ -322,12 +315,10 @@ class IntegratedFrontSensor():
         self._log.debug('received response from pin {:d} of {:08b}.'.format(_pin, _received_data))
         return _received_data
 
-
     # ..........................................................................
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
-
 
     # ..........................................................................
     def close(self):
@@ -353,6 +344,5 @@ class IntegratedFrontSensor():
                 self._log.error('error closing: {}'.format(e))
         else:
             self._log.debug('already closed.')
-
 
 #EOF

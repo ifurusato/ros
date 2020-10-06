@@ -20,7 +20,7 @@
 #  % sudo pip3 install colorama
 #
 
-import sys, itertools, time, traceback
+import sys, itertools, time, threading, traceback
 import datetime as dt
 from enum import Enum
 from colorama import init, Fore, Style
@@ -41,64 +41,140 @@ from lib.queue import MessageQueue
 from lib.gamepad import Gamepad
 from lib.lux import Lux
 from lib.compass import Compass
+from lib.blob import BlobSensor
 from lib.video import Video
 from lib.indicator import Indicator
 from lib.ifs import IntegratedFrontSensor
 from lib.batterycheck import BatteryCheck
 from lib.matrix import Matrix
+from lib.behaviours_v2 import Behaviours
+from lib.rate import Rate
+from lib.motors_v2 import Motors
+from lib.pid_v4 import PIDController
 
-from lib.motors import Motors
 
 # ..............................................................................
-class SimpleMotorController():
-    def __init__(self, motors, level):
+class PIDMotorController():
+    def __init__(self, config, motors, level):
         super().__init__()
-        self._log = Logger("motor-ctrl", Level.INFO)
         self._motors = motors
-        self._port_motor = motors.get_motor(Orientation.PORT)
-        self._port_motor.set_motor_power(0.0)
-        self._stbd_motor = motors.get_motor(Orientation.STBD)
-        self._stbd_motor.set_motor_power(0.0)
-        self._log.info('ready.')
+        self._port_pid = PIDController(config, motors.get_motor(Orientation.PORT), level=level)
+        self._stbd_pid = PIDController(config, motors.get_motor(Orientation.STBD), level=level)
+#       self._port_pid.enable()
+#       self._stbd_pid.enable()
 
     # ..........................................................................
-    def set_led_color(self, color):
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'set LED color to {}.'.format(color))
-        self._motors.set_led_show_battery(False)
-        self._motors.set_led_color(color)
+    def get_pid_controllers(self):
+        return self._port_pid, self._stbd_pid
 
     # ..........................................................................
-    def set_led_show_battery(self, enabled):
-        self._motors.set_led_show_battery(enabled)
-
-    # ..........................................................................
-    def set_motor(self, orientation, value):
+    def _monitor(self, f_is_enabled):
         '''
-            Values between 0 and 1.
+            A 20Hz loop that prints PID statistics to the log while enabled. Note that this loop
+            is not synchronised with the two PID controllers, which each have their own loop.
         '''
-        if orientation is Orientation.PORT:
-            self._log.info(Fore.RED + 'PORT motor: {:>5.2f}%'.format(value * 100.0))
-            self._port_motor.set_motor_power(value)
-        elif orientation is Orientation.STBD:
-            self._log.info(Fore.GREEN + 'STBD motor: {:>5.2f}%'.format(value * 100.0))
-            self._stbd_motor.set_motor_power(value)
+        _rate = Rate(20)
+        while f_is_enabled():
+            kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps = self._port_pid.stats
+            _x, _y, _z, s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps = self._stbd_pid.stats
+            _msg = ('{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|').format(\
+                    kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps, \
+                    s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps)
+            _p_hilite = Style.BRIGHT if p_power > 0.0 else Style.NORMAL
+            _s_hilite = Style.BRIGHT if s_power > 0.0 else Style.NORMAL
+            _msg2 = (Fore.RED+_p_hilite+'{:7.4f}|{:7.4f}|{:7.4f}|{:<5.2f}|{:<5.2f}|{:<5.2f}|{:>5.2f}|{:d}'+Fore.GREEN+_s_hilite+'|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:<5.2f}|{:d}|').format(\
+                    p_cp, p_ci, p_cd, p_last_power, p_power, p_current_velocity, p_setpoint, p_steps, \
+                    s_cp, s_ci, s_cd, s_last_power, s_power, s_current_velocity, s_setpoint, s_steps)
+            _rate.wait()
+            self._file_log.file(_msg)
+            self._log.info(_msg2)
+        self._log.info('PID monitor stopped.')
+
+    # ..........................................................................
+    @property
+    def enabled(self):
+        return self._port_pid.enabled or self._stbd_pid.enabled
+
+    # ..........................................................................
+    def enable(self):
+        self._port_pid.enable()
+        self._stbd_pid.enable()
+
+    # ..........................................................................
+    def disable(self):
+        self._motors.disable()
+        self._port_pid.disable()
+        self._stbd_pid.disable()
+
+    # ..........................................................................
+    def close(self):
+        self._motors.close()
+        self._port_pid.close()
+        self._stbd_pid.close()
+
+# ..............................................................................
+
+#class SimpleMotorController():
+#    def __init__(self, motors, level):
+#        super().__init__()
+#        self._log = Logger("motor-ctrl", Level.INFO)
+#        self._motors = motors
+#        self._port_motor = motors.get_motor(Orientation.PORT)
+#        self._port_motor.set_motor_power(0.0)
+#        self._stbd_motor = motors.get_motor(Orientation.STBD)
+#        self._stbd_motor.set_motor_power(0.0)
+#        self._log.info('ready.')
+#
+#    # ..........................................................................
+#    def set_led_color(self, color):
+#        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'set LED color to {}.'.format(color))
+#        self._motors.set_led_show_battery(False)
+#        self._motors.set_led_color(color)
+#
+#    # ..........................................................................
+#    def set_led_show_battery(self, enabled):
+#        self._motors.set_led_show_battery(enabled)
+#
+#    # ..........................................................................
+#    def set_motor(self, orientation, value):
+#        '''
+#            Values between 0 and 1.
+#        '''
+#        if orientation is Orientation.PORT:
+#            self._log.info(Fore.RED + 'PORT motor: {:>5.2f}%'.format(value * 100.0))
+#            self._port_motor.set_motor_power(value)
+#        elif orientation is Orientation.STBD:
+#            self._log.info(Fore.GREEN + 'STBD motor: {:>5.2f}%'.format(value * 100.0))
+#            self._stbd_motor.set_motor_power(value)
  
 # ..............................................................................
 class MockMessageQueue():
-    def __init__(self, motors, video, matrix11x7_available, level, close_callback):
+    def __init__(self, config, motors, motor_controller, video, blob, matrix11x7_available, level, close_callback):
         super().__init__()
+        if config is None:
+            raise ValueError('null configuration argument.')
         self._log = Logger("mock-queue", level)
+        self._file_log = None
         self._enabled = False
         self._motors = motors
+        self._motor_controller = motor_controller
+        _controllers = motor_controller.get_pid_controllers()
+        self._port_pid = _controllers[0]
+        self._stbd_pid = _controllers[1]
+        self._pid_enabled = False
+        self._monitor_thread = None
+        self._behaviours = Behaviours(config, self._port_pid, self._stbd_pid, None, level)
         self._counter = itertools.count()
         self._video = video
         self._close_callback = close_callback
+        self._blob = blob
         if matrix11x7_available:
             self._port_light = Matrix(Orientation.PORT, Level.INFO)
             self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
         else:
             self._port_light = None
             self._stbd_light = None
+        self._lights_on = False
         self._consumers = []
         self._start_time = dt.datetime.now()
         self._min_loop_ms = 5 # minimum gamepad loop time (ms)
@@ -118,6 +194,7 @@ class MockMessageQueue():
     # ..........................................................................
     def disable(self):
         self._enabled = False
+#       self._behaviours.disable()
 
     # ..........................................................................
     def _close(self):
@@ -129,17 +206,37 @@ class MockMessageQueue():
         return self._enabled
 
     # ..........................................................................
+    def set_led_color(self, color):
+        self._log.info('set LED color to {}.'.format(color))
+        self._motors.set_led_show_battery(False)
+        self._motors.set_led_color(color)
+
+    # ..........................................................................
+    def set_led_show_battery(self, enabled):
+        self._log.info('set LED show battery to {}.'.format(enabled))
+        self._motors.set_led_show_battery(enabled)
+
+    # ..........................................................................
     def _enable_video(self, enabled):
         if enabled:
             self._log.info(Fore.GREEN + Style.BRIGHT + 'START VIDEO')
             self._video.start()
-            self._motors.set_led_color(Color.BLACK) # so it doesn't show up on video
+            self.set_led_color(Color.BLACK) # so it doesn't show up on video
         else:
             self._log.info(Fore.GREEN + Style.BRIGHT + 'STOP VIDEO')
             if self._video is not None:
                 self._video.stop()
-#           self._motors.set_led_color(Color.DARK_GREEN)
-            self._motors.set_led_show_battery(True)
+#           self.set_led_color(Color.DARK_GREEN)
+            self.set_led_show_battery(True)
+
+    # ..........................................................................
+    def _capture_blob(self):
+        self._log.info('capture blob image.')
+#       self.set_led_color(Color.BLACK) # so it doesn't show up on video
+        self._blob.capture()
+#       time.sleep(0.5)
+#       self.set_led_show_battery(True)
+        self._log.info('blob capture complete.')
 
     # ..........................................................................
     def _enable_lights(self, enabled):
@@ -150,6 +247,50 @@ class MockMessageQueue():
             else:
                 self._port_light.clear()
                 self._stbd_light.clear()
+        self._lights_on = enabled
+
+    # ..........................................................................
+    def _enable_pid(self, enabled):
+        if self._port_pid.enabled:
+            self._pid_enabled = False
+            self._port_pid.disable()
+            self._stbd_pid.disable()
+        else:
+            if self._monitor_thread is None:
+                _indent = '                                                    '
+                self._log.info('PID monitor header:\n' \
+                    + _indent + 'name   : description\n' \
+                    + _indent + 'kp     : proportional constant\n' \
+                    + _indent + 'ki     : integral constant\n' \
+                    + _indent + 'kd     : derivative constant\n' \
+                    + _indent + 'p.cp   : port proportial value\n' \
+                    + _indent + 'p.ci   : port integral value\n' \
+                    + _indent + 'p.cd   : port derivative value\n' \
+                    + _indent + 'p.lpw  : port last power\n' \
+                    + _indent + 'p.cpw  : port current motor power\n' \
+                    + _indent + 'p.spwr : port set power\n' \
+                    + _indent + 'p.cvel : port current velocity\n' \
+                    + _indent + 'p.stpt : port velocity setpoint\n' \
+                    + _indent + 's.cp   : starboard proportial value\n' \
+                    + _indent + 's.ci   : starboard integral value\n' \
+                    + _indent + 's.cd   : starboard derivative value\n' \
+                    + _indent + 's.lpw  : starboard proportional value\n' \
+                    + _indent + 's.cpw  : starboard integral value\n' \
+                    + _indent + 's.spw  : starboard derivative value\n' \
+                    + _indent + 's.cvel : starboard current velocity\n' \
+                    + _indent + 's.stpt : starboard velocity setpoint\n' \
+                    + _indent + 'p.stps : port encoder steps\n' \
+                    + _indent + 's.stps : starboard encoder steps')
+                if self._file_log is None:
+                    self._file_log = Logger("pid", Level.INFO, log_to_file=True)
+                    # write header
+                    self._file_log.file("kp|ki|kd|p.cp|p.ci|p.cd|p.lpw|p.cpw|p.spwr|p.cvel|p.stpt|s.cp|s.ci|s.cd|s.lpw|s.cpw|s.spw|s.cvel|s.stpt|p.stps|s.stps|")
+                self._log.info(Fore.GREEN + 'starting PID monitor...')
+                self._pid_enabled = True
+                self._monitor_thread = threading.Thread(target=PIDMotorController._monitor, args=[self, lambda: self._pid_enabled ])
+                self._monitor_thread.start()
+            self._port_pid.enable()
+            self._stbd_pid.enable()
 
     # ......................................................
     def add(self, message):
@@ -193,9 +334,11 @@ class MockMessageQueue():
 
         elif event is Event.PORT_VELOCITY:
 #           if message.get_value() == 0: # on push of button
-            _velocity = Gamepad.convert_range(message.get_value())
-            self._log.debug('{};\tvalue: {:>5.2f}'.format(event.description, _velocity))
-            self._motors.set_motor(Orientation.PORT, _velocity)
+            _value = message.get_value()
+            _velocity = Gamepad.convert_range(_value)
+#           self._log.info(Fore.WHITE + Style.BRIGHT + 'PORT: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
+#           self._motors.set_motor(Orientation.PORT, _velocity)
+            self._port_pid.velocity = _velocity * 100.0
 
         elif event is Event.PORT_THETA:
 #           if message.get_value() == 0: # on push of button
@@ -204,9 +347,11 @@ class MockMessageQueue():
 
         elif event is Event.STBD_VELOCITY:
 #           if message.get_value() == 0: # on push of button
-            _velocity = Gamepad.convert_range(message.get_value())
-            self._log.debug('{};\tvalue: {:>5.2f}'.format(event.description, _velocity))
-            self._motors.set_motor(Orientation.STBD, _velocity)
+            _value = message.get_value()
+            _velocity = Gamepad.convert_range(_value)
+#           self._log.info(Fore.WHITE + Style.BRIGHT + 'STBD: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
+#           self._motors.set_motor(Orientation.STBD, _velocity)
+            self._stbd_pid.velocity = _velocity * 100.0
 
         elif event is Event.STBD_THETA:
 #           if message.get_value() == 0: # on push of button
@@ -224,29 +369,40 @@ class MockMessageQueue():
             self._log.info(Fore.RED + Style.BRIGHT + 'HALT event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
         elif event is Event.BRAKE:
             self._log.info(Fore.RED + Style.BRIGHT + 'BRAKE event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            if message.get_value() == 1: # shutdown on push of button
+                self._enable_pid(not self._port_pid.enabled)
+                
         elif event is Event.STOP:
             self._log.info(Fore.RED + Style.BRIGHT + 'STOP event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
         elif event is Event.ROAM:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'ROAM event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            if message.get_value() == 0:
+                self._behaviours.roam()
+        elif event is Event.SNIFF:
+            if message.get_value() == 0:
+                self._behaviours.one_meter()
         elif event is Event.NO_ACTION:
             self._log.info(Fore.BLACK + Style.DIM + 'NO_ACTION event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
 
-        elif event is Event.START_VIDEO:
-            self._log.info(Fore.GREEN + Style.DIM + 'START VIDEO event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+        elif event is Event.VIDEO:
             if message.get_value() == 0:
-                self._enable_video(True)
+                if self._video.active:
+                    self._log.info(Fore.GREEN + Style.DIM + 'STOP VIDEO event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+                    self._enable_video(False)
+                else:
+                    self._log.info(Fore.GREEN + Style.DIM + 'START VIDEO event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+                    self._enable_video(True)
 #               time.sleep(0.5) # debounce
-        elif event is Event.STOP_VIDEO:
-            self._log.info(Fore.GREEN + Style.DIM + 'STOP VIDEO event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+        elif event is Event.EVENT_L2:
             if message.get_value() == 0:
-                self._enable_video(False)
+                self._log.info(Fore.GREEN + Style.DIM + 'BLOB_SENSOR event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+                self._capture_blob()
 #               time.sleep(0.5) # debounce
-        elif event is Event.LIGHTS_ON:
+        elif event is Event.LIGHTS:
             if message.get_value() == 0:
-                self._enable_lights(True)
-        elif event is Event.LIGHTS_OFF:
-            if message.get_value() == 0:
-                self._enable_lights(False)
+                self._enable_lights(not self._lights_on)
+
+        elif event is Event.EVENT_R1:
+            self._log.info(Fore.RED + 'EVENT_R1 event: {}'.format(event.description))
         else:
             self._log.info(Fore.RED + 'other event: {}'.format(event.description))
             pass
@@ -258,25 +414,25 @@ class MockMessageQueue():
         self._start_time = dt.datetime.now()
 
 
+# ..............................................................................
 class GamepadDemo():
 
     def __init__(self, level):
         super().__init__()
-        self._log = Logger("gamepad-demo", Level.INFO)
         _loader      = ConfigLoader(Level.INFO)
         filename     = 'config.yaml'
         _config      = _loader.configure(filename)
+        self._log = Logger("gamepad-demo", level)
         self._config = _config['ros'].get('gamepad_demo')
         self._enable_ifs      = self._config.get('enable_ifs')
-        self._loop_delay_ms   = self._config.get('loop_delay_ms')
         self._enable_compass  = self._config.get('enable_compass')
         self._motors = Motors(_config, None, Level.INFO)
-        self._motor_controller = SimpleMotorController(self._motors, Level.INFO)
+#       self._motor_controller = SimpleMotorController(self._motors, Level.INFO)
+        self._motor_controller = PIDMotorController(_config, self._motors, Level.INFO)
         # i2c scanner, let's us know if certain devices are available
         _i2c_scanner = I2CScanner(Level.WARN)
         _addresses = _i2c_scanner.getAddresses()
         ltr559_available = ( 0x23 in _addresses )
-
         ''' Availability of displays:
             The 5x5 RGB Matrix is at 0x74 for port, 0x77 for starboard.
             The 11x7 LED matrix is at 0x75 for starboard, 0x77 for port. The latter
@@ -287,16 +443,21 @@ class GamepadDemo():
         rgbmatrix5x5_stbd_available = ( 0x74 in _addresses ) # not used yet
         matrix11x7_stbd_available   = ( 0x75 in _addresses ) # used as camera lighting
 
-        self._log.info('starting battery check thread...')
-        self._battery_check = BatteryCheck(self._config, self.get_message_queue(), Level.INFO)
-
+        self._blob      = BlobSensor(_config, self._motors, Level.INFO)
         self._lux       = Lux(Level.INFO) if ltr559_available else None
         self._video     = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
-        self._queue     = MockMessageQueue(self._motor_controller, self._video, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+        self._queue     = MockMessageQueue(_config, self._motors, self._motor_controller, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+
+        # attempt to find the gamepad
+        self._gamepad = Gamepad(_config, self._queue, Level.INFO)
+
         self._indicator = Indicator(Level.INFO)
         if self._enable_compass:
             self._compass = Compass(_config, self._queue, self._indicator, Level.INFO)
             self._video.set_compass(self._compass)
+
+        self._log.info('starting battery check thread...')
+        self._battery_check = BatteryCheck(_config, self._queue, Level.INFO)
 
         if self._enable_ifs:
             self._log.info('integrated front sensor enabled.')
@@ -306,8 +467,9 @@ class GamepadDemo():
         else:
             self._ifs  = None
             self._log.info('integrated front sensor disabled.')
-        self._gamepad = Gamepad(_config, self._queue, Level.INFO)
         self._enabled = False
+        self._log.info('connecting gamepad...')
+        self._gamepad.connect()
         self._log.info('ready.')
 
     # ..........................................................................
@@ -344,7 +506,7 @@ class GamepadDemo():
             self._compass.disable()
         if self._enable_ifs:
             self._ifs.disable()
-        self._motors.disable()
+        self._motor_controller.disable()
         self._gamepad.disable()
         self._enabled = False
         self._log.info('disabled.')
@@ -363,7 +525,7 @@ class GamepadDemo():
         self._log.info('closing...')
         if self._enable_ifs:
             self._ifs.close()
-        self._motors.close()
+        self._motor_controller.close()
         self._gamepad.close()
         self._log.info('closed.')
 

@@ -23,12 +23,12 @@ from lib.logger import Level, Logger
 # ..............................................................................
 class Velocity(Enum):
     '''
-        Provides a configurable Velocity Enum, which returns encoder steps
-        per second corresponding to a given velocity in cm/sec.
+        A Velocity Enum, which for each enumerated velocity provides an ability
+        to set a specific number of encoder steps per second corresponding to a
+        given velocity in cm/sec.
 
-        To configure, call:
-
-            Velocity.CONFIG.configure(_config)
+        Setting the velocity values is expected to be done via the Geometry
+        class, which contains information such as wheel diameter.
 
         Notes ....................................
 
@@ -39,33 +39,17 @@ class Velocity(Enum):
              enumerated values that represent named velocities, e.g., "HALF"
           3. figure out how many ticks per second the upper limit represents
           4. figure out how many ticks per 20Hz (50ms) loop that represents
-
-        494 encoder steps per rotation (maybe 493)
-        68.5mm diameter tires
-        215.19mm/21.2cm wheel circumference
-        1 wheel rotation = 215.2mm
-        2295 steps per meter
-        2295 steps per second  = 1 m/sec
-        2295 steps per second  = 100 cm/sec
-        229.5 steps per second = 10 cm/sec
-        22.95 steps per second = 1 cm/sec
-
-        1 rotation = 215mm = 494 steps
-        1 meter = 4.587 rotations
-        2295.6 steps per meter
-        22.95 steps per cm
     '''
 
-    CONFIG        = ( 0,  0.0, -1.0 )
-    STOP          = ( 1,  0.0,  0.0 )
-    DEAD_SLOW     = ( 2, 10.0,  0.0 )
-    SLOW          = ( 3, 25.0,  0.0 )
-    ONE_THIRD     = ( 4, 33.3,  0.0 )
-    HALF          = ( 5, 50.0,  0.0 )
-    TWO_THIRDS    = ( 6, 66.6,  0.0 )
-    THREE_QUARTER = ( 7, 75.0,  0.0 )
-    FULL          = ( 8, 90.0,  0.0 )
-    MAXIMUM       = ( 9, 100.0, 0.0 )
+    STOP          = ( 0,  0.0,  0.0 )
+    DEAD_SLOW     = ( 1, 10.0,  0.0 )
+    SLOW          = ( 2, 25.0,  0.0 )
+    ONE_THIRD     = ( 3, 33.3,  0.0 )
+    HALF          = ( 4, 50.0,  0.0 )
+    TWO_THIRDS    = ( 5, 66.6,  0.0 )
+    THREE_QUARTER = ( 6, 75.0,  0.0 )
+    FULL          = ( 7, 90.0,  0.0 )
+    MAXIMUM       = ( 8, 100.0, 0.0 )
 
     # ignore the first param since it's already set by __new__
     def __init__(self, num, percent, value):
@@ -74,25 +58,11 @@ class Velocity(Enum):
         self._value = value # how many ticks per 20Hz loop?
 
     # ..........................................................................
-    def configure(self, config):
-        if config is None:
-            raise ValueError('null configuration argument.')
-        _config = config['ros'].get('geometry')
-        self._wheel_diameter    = _config.get('wheel_diameter')
-        self._wheelbase         = _config.get('wheelbase')
-        self._step_per_rotation = _config.get('steps_per_rotation')
-        _wheel_circumference    = math.pi * self._wheel_diameter # mm
-        self._steps_per_m       = 1000.0 * self._step_per_rotation  / _wheel_circumference 
-        self._steps_per_cm      = 10.0 * self._step_per_rotation  / _wheel_circumference 
-        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per m.'.format(self._steps_per_m))
-        self._log.info( Fore.BLUE + Style.BRIGHT + '{:5.2f} steps per cm.'.format(self._steps_per_cm))
-        # TODO set values for each enumeration
-
-        self._log.info('ready.')
-
-    # ..........................................................................
     @property
     def percentage(self):
+        '''
+            Returns the velocity as a percentage.
+        '''
         return self._percent
 
     # ..........................................................................
@@ -102,6 +72,13 @@ class Velocity(Enum):
             Returns the number of ticks per second
         '''
         return self._value
+
+    @value.setter
+    def value(self, value):
+        '''
+            Sets the number of ticks per second for a given Velocity.
+        '''
+        self._value = value
 
     # ..........................................................................
     @staticmethod
@@ -126,3 +103,4 @@ class Velocity(Enum):
         else:
             return Velocity.FULL
 
+#EOF

@@ -16,7 +16,7 @@ except ImportError:
 
 from lib.logger import Level, Logger
 from lib.feature import Feature
-from lib.enums import Color
+from lib.enums import Color, Orientation
 from rgbmatrix5x5 import RGBMatrix5x5
 
 # ..............................................................................
@@ -280,8 +280,30 @@ class RgbMatrix(Feature):
         finally:
             self.set_color(Color.BLACK)
 
+    # ..........................................................................
     def set_solid_color(self, color):
         self._color = color
+
+    # ..........................................................................
+    def show_color(self, color, orientation):
+        self.set_solid_color(color)
+        if orientation is Orientation.PORT:
+            self._set_color(self._rgbmatrix5x5_PORT, self._color)
+        else:
+            self._set_color(self._rgbmatrix5x5_STBD, self._color)
+
+    # ..........................................................................
+    def _solid(self, rgbmatrix5x5):
+        '''
+            Display a specified static, solid color on only the port display.
+        '''
+        global enabled
+#       self.set_color(self._color)
+#       self._set_color(self._rgbmatrix5x5_STBD, self._color)
+        self._set_color(self._rgbmatrix5x5_PORT, self._color)
+        self._log.info('starting solid color to {}...'.format(str.lower(self._color.name)))
+        while enabled:
+            time.sleep(0.2)
 
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):

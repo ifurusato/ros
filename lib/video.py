@@ -82,6 +82,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
     def __init__(self, socket, tup, server):
         super().__init__(socket, tup, server)
 
+    # ..........................................................................
     def get_page(self):
         global video_width, video_height
         return """<!DOCTYPE html>
@@ -98,6 +99,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 </html>
 """.format(width_value=video_width, height_value=video_height)
 
+    # ..........................................................................
     def do_GET(self):
         global output
         _output = output
@@ -136,7 +138,6 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_error(404)
             self.end_headers()
 
-
 # ..............................................................................
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
@@ -148,7 +149,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
         self._enabled_flag = f_is_enabled
         self._log.info('ready.')
 
-
+    # ..........................................................................
     def serve_forever(self):
         '''
             Handle one request at a time until the enabled flag is False.
@@ -156,9 +157,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
         while self._enabled_flag():
             self._log.info('serve_forever handling request...')
             self.handle_request()
-
         self._log.info('exited serve_forever loop.')
-
 
 # ..............................................................................
 class Video():
@@ -175,6 +174,7 @@ class Video():
         self._port        = _config.get('port')
         self._lux_threshold = _config.get('lux_threshold')
         self._counter = itertools.count()
+        self._server = None
 
         # camera configuration
         self._ctrl_lights = _config.get('ctrl_lights')
@@ -243,6 +243,18 @@ class Video():
         return self._filename
 
     # ..........................................................................
+    def get_ip_address(self):
+        _socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            _socket.connect(('10.255.255.255', 1))
+            _ip = _socket.getsockname()[0]
+        except Exception:
+            _ip = '127.0.0.1'
+        finally:
+            _socket.close()
+        return _ip
+
+    # ..........................................................................
     def _start(self, output_splitter, f_is_enabled):
         global output # necessary for access from StreamingHandler, passed as type
         output = output_splitter
@@ -271,24 +283,27 @@ class Video():
                 camera.start_recording(output_splitter, format='mjpeg', quality=self._quality)
             else:
                 camera.start_recording(output_splitter, format='mjpeg')
-
+            # ............
             try:
                 if self._enable_streaming:
-                    self._log.info('starting streaming server...')
-                    address = ('', self._port)
-                    server = StreamingServer(address, StreamingHandler, f_is_enabled)
-                    self._killer = lambda: self.close(camera, output_splitter)
-                    server.serve_forever()
+                    if self._server is None:
+                        self._log.info('starting streaming server...')
+                        address = ('', self._port)
+                        self._server = StreamingServer(address, StreamingHandler, f_is_enabled)
+                        self._killer = lambda: self.close(camera, output_splitter)
+                        self._server.serve_forever()
+                    else:
+                        self._log.info('streaming server already active.')
                 else: # keepalive
                     while f_is_enabled():
                         self._log.debug('keep-alive...')
                         time.sleep(1.0)
-                self._log.info(Fore.RED + 'EXITED LOOP.                   zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz ')
+                self._log.info(Fore.RED + 'exited video loop.')
             except Exception:
                 self._log.error('error streaming video: {}'.format(traceback.format_exc()))
             finally:
                 self._log.info(Fore.RED + 'finally.')
-                self.close(camera, server, output_splitter)
+#               self.close(camera, output_splitter)
         self._log.info('_start: complete.')
 
     # ..........................................................................
@@ -361,10 +376,14 @@ class Video():
                 self._port_light.clear()
                 self._stbd_light.clear()
 
-
     # ..........................................................................
     def is_enabled(self):
         return self._enabled
+
+    # ..........................................................................
+    @property
+    def active(self):
+        return self._thread is not None
 
     # ..........................................................................
     def start(self):
@@ -380,8 +399,8 @@ class Video():
         self._thread = threading.Thread(target=Video._start, args=[self, _output, lambda: self.is_enabled(), ])
         self._thread.setDaemon(True)
         self._thread.start()
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video started. (flag: {})'.format(self._enabled))
-#       self._log.info('started.')
+        _ip = self.get_ip_address()
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video started on:\thttp://{}:{:d}/'.format(_ip, self._port))
 
     # ..........................................................................
     def stop(self):
@@ -442,6 +461,10 @@ class Video():
             self._log.debug('output flushed.')
             output.close()
             self._log.debug('output closed.')
+        if self._server is not None:
+            self._log.info('shutting down server...')
+            self._server.shutdown()
+            self._log.info('server shut down.')
         self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video closed.')
 
 

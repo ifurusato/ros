@@ -52,12 +52,8 @@ class Motors():
         self._pi = pigpio.pi()
         self._port_motor = Motor(config, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
-        self._port_pid = self._port_motor.get_pid_controller()
-#       self._log.debug('implementing class for port motor: {}'.format(type(self._port_motor)))
         self._stbd_motor = Motor(config, self._tb, self._pi, Orientation.STBD, level)
         self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
-        self._stbd_pid = self._stbd_motor.get_pid_controller()
-#       self._log.debug('implementing class for stbd motor: {}'.format(type(self._stbd_motor)))
         self._enabled = True # default enabled
         # a dictionary of motor # to last set value
         self._msgIndex = 0
@@ -164,14 +160,15 @@ class Motors():
     def is_faster_than(self, speed):
         '''
             Returns true if either motor is moving faster than the argument.
+
+            DEAD_SLOW_SPEED     = 20.0
+            SLOW_SPEED          = 30.0
+            HALF_SPEED          = 50.0
+            THREE_QUARTER_SPEED = 65.0
+            FULL_SPEED          = 80.0
+            EMERGENCY_SPEED     = 100.0
+            MAXIMUM             = 100.000001
         '''
-#   DEAD_SLOW_SPEED     = 20.0
-#   SLOW_SPEED          = 30.0
-#   HALF_SPEED          = 50.0
-#   THREE_QUARTER_SPEED = 65.0
-#   FULL_SPEED          = 80.0
-#   EMERGENCY_SPEED     = 100.0
-#   MAXIMUM             = 100.000001
         self._log.warning('SPEED {:5.2f} compared to port: {:>5.2f}; stbd: {:>5.2f}'.format(speed.value, self._port_motor.get_current_power_level(), \
                 self._stbd_motor.get_current_power_level()) )
         return ( self._port_motor.get_current_power_level() > speed.value ) or ( self._stbd_motor.get_current_power_level() > speed.value )

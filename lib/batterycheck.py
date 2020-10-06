@@ -60,12 +60,10 @@ class BatteryCheck(Feature):
     # ..........................................................................
     def __init__(self, config, queue, level):
         self._log = Logger("battery", level)
-        self._config = config
         if config is None:
             raise ValueError('no configuration provided.')
-        self._log.info('configuration provided.')
-        _battery_config = self._config['ros'].get('battery')
-        _enable_messaging           = _battery_config.get('enable_messaging')
+        _battery_config = config['ros'].get('battery')
+        _enable_messaging = _battery_config.get('enable_messaging')
         self.set_enable_messaging(_enable_messaging)
 
         # configuration ....................
@@ -229,7 +227,13 @@ class BatteryCheck(Feature):
                 _motor_voltage = self._read_tb_voltage()
                 self._log.info('battery channel: {}; reference: {:<5.2f}v'.format(self._battery_channel, self._reference))
                 self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel,     reference_voltage=self._reference)
-                self._log.info('raw battery voltage: {:<5.2f}v; thunderborg motor voltage: {:>5.2f}v'.format(self._battery_voltage, _motor_voltage))
+                if self._battery_voltage is None or _motor_voltage is None:
+                    _motor_voltage = 0.0
+                    self._battery_voltage = 0.0
+                    self._log.warning('raw battery or thunderborg motor voltage is NA')
+                else:
+                    self._log.info('raw battery voltage: {:<5.2f}v; thunderborg motor voltage: {:>5.2f}v'.format(self._battery_voltage, _motor_voltage))
+ 
                 self._regulator_a_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_a_channel, reference_voltage=self._reference)
                 self._regulator_b_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_b_channel, reference_voltage=self._reference)
                 self._log.info('five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))

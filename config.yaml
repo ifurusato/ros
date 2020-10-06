@@ -13,10 +13,6 @@ pi:
     led_1_path:   '/sys/class/leds/led1/brightness'
     sudo_name:    'sudo'
 
-rosd:
-    switch_pin: 14                               # the GPIO pin connected to the 'enable' toggle switch
-    led_pin: 27                                  # the GPIO pin connected to the status LED
-    application: 'gamepad'                       # the application to start via daemon ('ros' or 'gamepad')
 ros:
     wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
@@ -38,10 +34,29 @@ ros:
         low_5v_threshold:      4.75              # really 4.82v
         settle_count:          3                 # how many times should we sample before accepting a first value?
         loop_delay_sec:       15                 # loop delay (sec)
+    behaviours:
+        accel_range_cm:    250.0                 # the distance used for acceleration and deceleration (cm)
+        targeting_velocity: 10.0                 # low velocity from which we're prepared to immediately halt upon reaching a step target
+        cruising_velocity:  50.0                 # velocity used for long distance steady cruising
     temperature:
         warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
         max_threshold:     84.0                  # maximum allowable temperature threshold, exceeding this sends an event (nominal 85°C)
         loop_delay_sec:    15.0                  # loop delay (sec)
+    blob:
+        blob_color:        [248, 136, 255]       # color of blob to sense
+        flip_horizontal:   False                 # flip the image horizontally
+        flip_vertical:     False                 # flip the image verticaly
+#       image_width:       1920                   # camera resolution: width
+#       image_height:      1088                    # camera resolution: height
+        image_width:       128                   # camera resolution: width
+        image_height:      64                    # camera resolution: height
+        start_row:         20                    # the top row of the image to be processed (0 is top)
+        end_row:           50                    # the bottom row of the image to be processed (-1 to use full image height)
+        filter_threshold:  0.25                  # the low pass filter threshold for color distance (e.g., ignore > color distance of 0.25)
+        take_snapshot:     False                 # also create timestamped JPEG of image
+        print_image:       True                  # if True print image array to console
+        print_summary:     True                  # if True print image summary to console
+        suppress_info:     True                  # if True don't print 'complete' message
     video:
         enable_streaming: True                   # if True, stream video to a localhost HTTP server
         ctrl_lights: True                        # if True, permit video to control Matrix11x7 lights
@@ -126,12 +141,12 @@ ros:
 #       use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
     gamepad:
         enabled: True
-        device_path: '/dev/input/event6'         # the path to the bluetooth gamepad on the pi
+        device_path: '/dev/input/event5'         # the path to the bluetooth gamepad on the pi (see find_gamepad.py)
         loop_delay: 0.01                         # main loop delay
+        loop_freq_hz: 20                         # main loop frequency
     gamepad_demo:
         enable_compass: False                    # if True, enable Compass
-        enable_ifs: True                         # if True, enable IntegratedFrontSensor
-        loop_delay_ms: 20                        # the intended loop delay in ms (limit on message queue)
+        enable_ifs: False                        # if True, enable IntegratedFrontSensor
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22
@@ -144,19 +159,31 @@ ros:
         velocity_fudge_factor: 14.0              # convert raw velocity to approximate a percentage
         max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
-        pid:
-            enable_slew:    True
-            enable_p:       True
-            enable_i:       False
-            enable_d:       True
-#           kp:             0.0016
-#           ki:             0.0010
-#           kd:             0.00010
-            kp:             0.0020
-            ki:             0.0010
-            kd:             0.00010
-            clip_limit:     0.8                  # negative and positive power limit
+        pid-controller:
+            enable_slew:    False
             sample_freq_hz: 20
+            pot_ctrl:        True                # if True enable potentiometer for setting PID terms
+        pid:
+            kp:             0.09500
+            ki:             0.00000
+            kd:             0.00030
+            min_output:     -10.0                # lower output limit
+            max_output:      10.0                # upper output limit
+    elastic:                                     # ElasticSearch connection
+        host: 'http://192.168.1.81'
+        port:              9200
+        schema:            'robot'
+        index:             'kr01'
+        doc_type:          'pid'
+    potentiometer:                               # potentiometer connected as voltage divider
+        pin:             14                      # pin connected to wiper
+        in_min:           0                      # minimum analog value from IO Expander
+        in_max:         330                      # maximum analog value from IO Expander
+#       out_min:       -100.0                    # minimum scaled output value
+#       out_max:        100.0                    # VEL: maximum scaled output value
+#       out_max:          1.0                    # KP:  maximum scaled output value
+        out_min:          0.0                    # minimum scaled output value
+        out_max:          0.001                  # KD:  maximum scaled output value
     slew:
         minimum_output: 0.00                     # lower limit of permitted output values
         maximum_output: 100.00                   # upper limit of permitted output values
@@ -220,3 +247,9 @@ ros:
         ht0740: False
         placeholder: ''
 
+rosd:
+    switch_pin: 14                               # the GPIO pin connected to the 'enable' toggle switch
+    led_pin: 27                                  # the GPIO pin connected to the status LED
+    application: 'gamepad'                       # the application to start via daemon ('ros' or 'gamepad')
+
+#EOF

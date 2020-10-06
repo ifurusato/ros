@@ -15,11 +15,10 @@ import os, sys, signal, time, traceback
 from colorama import init, Fore, Style
 init()
 
-from lib.enums import Orientation
 from lib.logger import Logger, Level
-from lib.filewriter import FileWriter
 from lib.config_loader import ConfigLoader
-from lib.slewlimiter import SlewLimiter
+from lib.slew import SlewLimiter
+from lib.rate import Rate
 
 # ..............................................................................
 try:
@@ -29,57 +28,33 @@ try:
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
-    _filewriter  = FileWriter(_config, 'slew', Level.INFO)
-    _slewlimiter = SlewLimiter(_config, Orientation.PORT, Level.INFO)
-    _slewlimiter.set_filewriter(_filewriter)
 
-    _start_time = time.time()
+    _limiter = SlewLimiter(_config, None, Level.INFO)
+#   _limiter.set_rate_limit(SlewRate.NORMAL)
+    _limiter.enable()
 
-#   _slewlimiter.set_rate_limit(20.0)
-    _slewlimiter.enable()
-    _slewlimiter.start()
-
-    _decelerate = False
+    _decelerate = True
 
     # begin test .......................................
     _log.info('starting...')
 
-    _current_velocity = 0.0
-    _target_velocity  = 50.0
-    _reached_target = 0
+    _rate = Rate(20) # Hz
+    _motor_velocity  = 0.0
+    _target_velocity = 80.0
 
-    while True:
-        _current_velocity = _slewlimiter.slew(_current_velocity, _target_velocity)
-        if _current_velocity == _target_velocity:
-            if _reached_target == 0:
-                _target_velocity  = 80.0
-            elif _reached_target == 1:
-                _target_velocity  = 30.0
-            elif _reached_target >= 3 and _reached_target < 6:
-                _target_velocity  = 61.0
-            elif _reached_target == 7:
-                _target_velocity  = 40.0
-            elif _reached_target == 8:
-                _target_velocity  = 20.0
-            elif _reached_target >= 9 and _reached_target <= 11:
-                _target_velocity  = 5.0
-            elif _reached_target == 12:
-                _target_velocity  = 95.0
-            elif _reached_target == 13:
-                _target_velocity  = 0.0
-            elif _reached_target  > 13 and _reached_target < 21:
-                _target_velocity  = 77.0
-            elif _reached_target == 21:
-                _target_velocity  = 33.0
-            elif _reached_target == 22:
-                _target_velocity  = 0.0
-            elif _target_velocity == 0.0:
-                break
-            _reached_target += 1
-        time.sleep(0.05)
+    while _motor_velocity < _target_velocity:
+        _motor_velocity = _limiter.slew(_motor_velocity, _target_velocity)
+        _log.info(Fore.CYAN + Style.BRIGHT + 'velocity: {:>5.2f} -> {:>5.2f}.'.format(_motor_velocity, _target_velocity))
+        _rate.wait()
 
-    _slewlimiter.close_filewriter()
-    _slewlimiter.reset(_target_velocity)
+    if _decelerate:
+        _target_velocity = 0.0
+        while _motor_velocity > _target_velocity:
+            _motor_velocity = _limiter.slew(_motor_velocity, _target_velocity)
+            _log.info(Fore.YELLOW + Style.NORMAL + 'velocity: {:>5.2f} -> {:>5.2f}.'.format(_motor_velocity, _target_velocity))
+            _rate.wait()
+
+
     _log.info('done.')
 
 except KeyboardInterrupt:

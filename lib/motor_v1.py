@@ -24,7 +24,6 @@ from lib.devnull import DevNull
 from lib.enums import Direction, Orientation, Speed
 from lib.slew import SlewRate
 from lib.rotary_encoder import Decoder
-from lib.pid_v2 import PID
 
 # ..............................................................................
 class Motor():
@@ -107,27 +106,11 @@ class Motor():
         else:
             self.configure_encoder(self._orientation)
 
-        # create and configure PID controller ..............
-        self._pid = PID(config, self, level)
         self._log.info('ready.')
 
     # ..............................................................................
-    def get_pid_controller(self):
-        '''
-            Return the PID controller used for this Motor.
-        '''
-        return self._pid
-
-#   # ..............................................................................
-#   def get_thunderborg(self):
-#       '''
-#           Return the backing ThunderBorg. This is provided for testing only;
-#           normally this would not be used directly.
-#       '''
-#       return self._tb
-
-    # ..............................................................................
-    def get_velocity(self):
+    @property
+    def velocity(self):
         return self._velocity
 
     # ..............................................................................
@@ -174,7 +157,6 @@ class Motor():
                 self._steps = self._steps - pulse
             else:
                 self._steps = self._steps + pulse
-        self._log.debug(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
         if self._steps % self._sample_rate == 0:
             if self._steps_begin != 0:
                 self._velocity = ( (self._steps - self._steps_begin) / (time.time() - self._stepcount_timestamp) / self._velocity_fudge_factor ) # steps / duration
@@ -182,6 +164,7 @@ class Motor():
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
+#       self._log.info(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
 
     # ..............................................................................
     def cruise():
@@ -202,8 +185,6 @@ class Motor():
 
     # ..........................................................................
     def close(self):
-        if self._pid:
-            self._pid.close()
         self._log.info('max velocity: {:>5.2f}; max power: {:>5.2f}; max adjusted power: {:>5.2f}.'.format(self._max_velocity, self._max_power, self._max_driving_power))
         self._log.info('closed.')
 
@@ -388,43 +369,6 @@ class Motor():
                 time.sleep(0.1)
 #               self._log.info(Fore.CYAN + 'WHILE velocity {:>5.2f} < {:>5.2f}: current power level: {:>5.2f}.'.format(self._velocity,velocity, _current_power_level))
 
-#   # ..........................................................................
-#   def maintain_velocity(self, velocity, direction, step_limit):
-#       '''
-#           Maintain the specified Velocity, using the current power level at the beginning of the call.
-
-#           We expect a velocity enum but also accept a float.
-#       '''
-#       if direction is Direction.FORWARD:
-#           if isinstance(velocity, Velocity):
-#               velocity = velocity.value
-#           _current_power_level = self.get_current_power_level() * ( 1.0 / self._max_power_ratio )
-#           self._log.info('maintain velocity {:>5.2f} @ power level: {:>5.2f}.'.format(velocity, _current_power_level))
-#           _slew_rate_ratio = SlewRate.EXTREMELY_SLOW.ratio # 0.0034
-#           while self._steps < step_limit or step_limit == -1:
-#               _diff = self._velocity - velocity
-#               if _diff < 0.0: # if current velocity is less than requested, speed up
-#                   _current_power_level = min(_current_power_level + _slew_rate_ratio, self._max_power_limit)
-#                   driving_power_level = float(_current_power_level * self._max_power_ratio)
-#                   self._log.info(Fore.GREEN + 'INCREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
-#                           + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
-#                   self.set_motor_power(driving_power_level)
-#                   if self._interrupt:
-#                       break
-#               elif _diff > 0.0: # if current velocity is greater than requested, slow down
-#                   _current_power_level = max(_current_power_level - _slew_rate_ratio, -1.0 * self._max_power_limit)
-#                   driving_power_level = float(_current_power_level * self._max_power_ratio)
-#                   self._log.info(Fore.RED + 'DECREASE:' + Fore.CYAN + ' velocity {:>5.2f} ({:+.02f});'.format(self._velocity, _diff) \
-#                           + Fore.BLACK + ' current power: {:>5.2f};\tdriving power: {:>5.2f}.'.format(driving_power_level, _current_power_level) + Style.DIM + ';\t{:+d} steps.'.format(self._steps))
-#                   self.set_motor_power(driving_power_level)
-#                   if self._interrupt:
-#                       break
-#               time.sleep(0.05)
-#           self._interrupt = False
-#       elif direction is Direction.REVERSE:
-#           # FIXME get this to run in reverse
-#           raise Exception('unimplemented.')
-
     # ..........................................................................
     def ahead_for_steps(self, speed, steps):
         '''
@@ -592,7 +536,7 @@ class Motor():
         _driving_power = float(power_level * self._max_power_ratio)
         self._max_power = max(power_level, self._max_power)
         self._max_driving_power = max(abs(_driving_power), self._max_driving_power)
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL \
+        self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL \
                 + '\tcurrent power: {:>5.2f}; driving power: {:>5.2f}.'.format(_current_power, _driving_power))
         if self._orientation is Orientation.PORT:
             self._tb.SetMotor1(_driving_power)

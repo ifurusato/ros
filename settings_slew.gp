@@ -3,7 +3,7 @@
 # config for plotting PID output
 
 set autoscale x
-set xrange [0:3]
+set xrange [0:0.01]
 set autoscale y
 #set yrange [0:70]
 #set xdata time
