@@ -43,20 +43,19 @@ ros:
         max_threshold:     84.0                  # maximum allowable temperature threshold, exceeding this sends an event (nominal 85°C)
         loop_delay_sec:    15.0                  # loop delay (sec)
     blob:
+        image_width:       320                   # camera resolution: width
+        image_height:      240                   # camera resolution: height
+    image_processor:
         blob_color:        [248, 136, 255]       # color of blob to sense
         flip_horizontal:   False                 # flip the image horizontally
         flip_vertical:     False                 # flip the image verticaly
-#       image_width:       1920                   # camera resolution: width
-#       image_height:      1088                    # camera resolution: height
-        image_width:       128                   # camera resolution: width
-        image_height:      64                    # camera resolution: height
-        start_row:         20                    # the top row of the image to be processed (0 is top)
-        end_row:           50                    # the bottom row of the image to be processed (-1 to use full image height)
+        start_row:         0                     # the top row of the image to be processed (0 is top)
+        end_row:           -1                    # the bottom row of the image to be processed (-1 to use full image height)
         filter_threshold:  0.25                  # the low pass filter threshold for color distance (e.g., ignore > color distance of 0.25)
         take_snapshot:     False                 # also create timestamped JPEG of image
         print_image:       True                  # if True print image array to console
         print_summary:     True                  # if True print image summary to console
-        suppress_info:     True                  # if True don't print 'complete' message
+        suppress_info:     False                 # if True don't print 'complete' message
     video:
         enable_streaming: True                   # if True, stream video to a localhost HTTP server
         ctrl_lights: True                        # if True, permit video to control Matrix11x7 lights
@@ -170,7 +169,8 @@ ros:
             min_output:     -10.0                # lower output limit
             max_output:      10.0                # upper output limit
     elastic:                                     # ElasticSearch connection
-        host: 'http://192.168.1.81'
+#       host: '192.168.1.81'
+        host: '192.168.1.74'
         port:              9200
         schema:            'robot'
         index:             'kr01'

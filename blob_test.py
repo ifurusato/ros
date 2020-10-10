@@ -21,8 +21,10 @@ init()
 
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
-#from lib.blob_v2 import Blob
-from lib.blob import Blob
+from lib.blob_v4 import Blob
+from lib.rate import Rate
+#from lib.blob_v3 import Blob
+#from lib.blob import Blob
 from lib.motors_v2 import Motors
 
 # main .........................................................................
@@ -37,11 +39,20 @@ def main(argv):
         _config = _loader.configure(filename)
         _motors = Motors(_config, None, Level.INFO)
 
-        _ros = Blob(_config, _motors, _level)
-        _ros.capture()
+        _blob = Blob(_config, _motors, _level)
+        _blob.enable()
+        _rate = Rate(1)
+
+#       _blob.capture()
 #       for i in range(32):
-#       while True:
-#           _ros.capture()
+        while True:
+            print(Fore.BLACK + Style.DIM + 'capturing...' + Style.RESET_ALL)
+#           _location = _blob.capture()
+#           print(Fore.YELLOW + Style.NORMAL + 'captured location: {}'.format(_location) + Style.RESET_ALL)
+#           print('captured.')
+            _rate.wait()
+
+        _blob.disable()
 
     except KeyboardInterrupt:
         print(Fore.CYAN + 'Ctrl-C interrupt.' + Style.RESET_ALL)
