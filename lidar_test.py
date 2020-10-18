@@ -23,7 +23,7 @@ from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.devnull import DevNull
-from lib.player import Player
+#rom lib.player import Player
 from lib.lidar import Lidar
 
 _lidar = None
@@ -64,13 +64,13 @@ def main():
             raise OSError('UltraBorg hardware dependency not available.')
     
         _log.info('starting scan...')
-        _player = Player(Level.INFO)
+#       _player = Player(Level.INFO)
 
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
 
-        _lidar = Lidar(_config, _player, Level.INFO)
+        _lidar = Lidar(_config, Level.INFO)
         _lidar.enable()
         values = _lidar.scan()
 

@@ -7,17 +7,13 @@
 #
 # author:   Murray Altheim
 # created:  2020-08-05
-# modified: 2020-08-08
+# modified: 2020-10-18
 #
 # This is a test class that interprets the signals arriving from the 8BitDo N30
 # Pro Gamepad, a paired Bluetooth device. The result is passed on to a 
 # mocked MessageQueue, which passes a filtered subset of those messages on to a 
 # SimpleMotorController. The result is tele-robotics, i.e., a remote-controlled 
 # robot.
-#
-# This requires availability of the colorama library, which can be installed via:
-#
-#  % sudo pip3 install colorama
 #
 
 import sys, itertools, time, threading, traceback
@@ -36,12 +32,12 @@ from lib.logger import Logger, Level
 from lib.i2c_scanner import I2CScanner
 from lib.enums import Color, Orientation
 from lib.event import Event
-from lib.message import Message
+from lib.message import Message, MessageFactory
 from lib.queue import MessageQueue
 from lib.gamepad import Gamepad
 from lib.lux import Lux
 from lib.compass import Compass
-from lib.blob import BlobSensor
+#rom lib.blob import BlobSensor
 from lib.video import Video
 from lib.indicator import Indicator
 from lib.ifs import IntegratedFrontSensor
@@ -50,102 +46,7 @@ from lib.matrix import Matrix
 from lib.behaviours_v2 import Behaviours
 from lib.rate import Rate
 from lib.motors_v2 import Motors
-from lib.pid_v4 import PIDController
-
-
-# ..............................................................................
-class PIDMotorController():
-    def __init__(self, config, motors, level):
-        super().__init__()
-        self._motors = motors
-        self._port_pid = PIDController(config, motors.get_motor(Orientation.PORT), level=level)
-        self._stbd_pid = PIDController(config, motors.get_motor(Orientation.STBD), level=level)
-#       self._port_pid.enable()
-#       self._stbd_pid.enable()
-
-    # ..........................................................................
-    def get_pid_controllers(self):
-        return self._port_pid, self._stbd_pid
-
-    # ..........................................................................
-    def _monitor(self, f_is_enabled):
-        '''
-            A 20Hz loop that prints PID statistics to the log while enabled. Note that this loop
-            is not synchronised with the two PID controllers, which each have their own loop.
-        '''
-        _rate = Rate(20)
-        while f_is_enabled():
-            kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps = self._port_pid.stats
-            _x, _y, _z, s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps = self._stbd_pid.stats
-            _msg = ('{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|').format(\
-                    kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps, \
-                    s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps)
-            _p_hilite = Style.BRIGHT if p_power > 0.0 else Style.NORMAL
-            _s_hilite = Style.BRIGHT if s_power > 0.0 else Style.NORMAL
-            _msg2 = (Fore.RED+_p_hilite+'{:7.4f}|{:7.4f}|{:7.4f}|{:<5.2f}|{:<5.2f}|{:<5.2f}|{:>5.2f}|{:d}'+Fore.GREEN+_s_hilite+'|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:<5.2f}|{:d}|').format(\
-                    p_cp, p_ci, p_cd, p_last_power, p_power, p_current_velocity, p_setpoint, p_steps, \
-                    s_cp, s_ci, s_cd, s_last_power, s_power, s_current_velocity, s_setpoint, s_steps)
-            _rate.wait()
-            self._file_log.file(_msg)
-            self._log.info(_msg2)
-        self._log.info('PID monitor stopped.')
-
-    # ..........................................................................
-    @property
-    def enabled(self):
-        return self._port_pid.enabled or self._stbd_pid.enabled
-
-    # ..........................................................................
-    def enable(self):
-        self._port_pid.enable()
-        self._stbd_pid.enable()
-
-    # ..........................................................................
-    def disable(self):
-        self._motors.disable()
-        self._port_pid.disable()
-        self._stbd_pid.disable()
-
-    # ..........................................................................
-    def close(self):
-        self._motors.close()
-        self._port_pid.close()
-        self._stbd_pid.close()
-
-# ..............................................................................
-
-#class SimpleMotorController():
-#    def __init__(self, motors, level):
-#        super().__init__()
-#        self._log = Logger("motor-ctrl", Level.INFO)
-#        self._motors = motors
-#        self._port_motor = motors.get_motor(Orientation.PORT)
-#        self._port_motor.set_motor_power(0.0)
-#        self._stbd_motor = motors.get_motor(Orientation.STBD)
-#        self._stbd_motor.set_motor_power(0.0)
-#        self._log.info('ready.')
-#
-#    # ..........................................................................
-#    def set_led_color(self, color):
-#        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'set LED color to {}.'.format(color))
-#        self._motors.set_led_show_battery(False)
-#        self._motors.set_led_color(color)
-#
-#    # ..........................................................................
-#    def set_led_show_battery(self, enabled):
-#        self._motors.set_led_show_battery(enabled)
-#
-#    # ..........................................................................
-#    def set_motor(self, orientation, value):
-#        '''
-#            Values between 0 and 1.
-#        '''
-#        if orientation is Orientation.PORT:
-#            self._log.info(Fore.RED + 'PORT motor: {:>5.2f}%'.format(value * 100.0))
-#            self._port_motor.set_motor_power(value)
-#        elif orientation is Orientation.STBD:
-#            self._log.info(Fore.GREEN + 'STBD motor: {:>5.2f}%'.format(value * 100.0))
-#            self._stbd_motor.set_motor_power(value)
+from lib.pid_ctrl import PIDMotorController
  
 # ..............................................................................
 class MockMessageQueue():
@@ -263,28 +164,28 @@ class MockMessageQueue():
                     + _indent + 'kp     : proportional constant\n' \
                     + _indent + 'ki     : integral constant\n' \
                     + _indent + 'kd     : derivative constant\n' \
-                    + _indent + 'p.cp   : port proportial value\n' \
-                    + _indent + 'p.ci   : port integral value\n' \
-                    + _indent + 'p.cd   : port derivative value\n' \
-                    + _indent + 'p.lpw  : port last power\n' \
-                    + _indent + 'p.cpw  : port current motor power\n' \
-                    + _indent + 'p.spwr : port set power\n' \
-                    + _indent + 'p.cvel : port current velocity\n' \
-                    + _indent + 'p.stpt : port velocity setpoint\n' \
-                    + _indent + 's.cp   : starboard proportial value\n' \
-                    + _indent + 's.ci   : starboard integral value\n' \
-                    + _indent + 's.cd   : starboard derivative value\n' \
-                    + _indent + 's.lpw  : starboard proportional value\n' \
-                    + _indent + 's.cpw  : starboard integral value\n' \
-                    + _indent + 's.spw  : starboard derivative value\n' \
-                    + _indent + 's.cvel : starboard current velocity\n' \
-                    + _indent + 's.stpt : starboard velocity setpoint\n' \
-                    + _indent + 'p.stps : port encoder steps\n' \
-                    + _indent + 's.stps : starboard encoder steps')
+                    + _indent + 'p_cp   : port proportial value\n' \
+                    + _indent + 'p_ci   : port integral value\n' \
+                    + _indent + 'p_cd   : port derivative value\n' \
+                    + _indent + 'p_lpw  : port last power\n' \
+                    + _indent + 'p_cpw  : port current motor power\n' \
+                    + _indent + 'p_spwr : port set power\n' \
+                    + _indent + 'p_cvel : port current velocity\n' \
+                    + _indent + 'p_stpt : port velocity setpoint\n' \
+                    + _indent + 's_cp   : starboard proportial value\n' \
+                    + _indent + 's_ci   : starboard integral value\n' \
+                    + _indent + 's_cd   : starboard derivative value\n' \
+                    + _indent + 's_lpw  : starboard proportional value\n' \
+                    + _indent + 's_cpw  : starboard integral value\n' \
+                    + _indent + 's_spw  : starboard derivative value\n' \
+                    + _indent + 's_cvel : starboard current velocity\n' \
+                    + _indent + 's_stpt : starboard velocity setpoint\n' \
+                    + _indent + 'p_stps : port encoder steps\n' \
+                    + _indent + 's_stps : starboard encoder steps')
                 if self._file_log is None:
                     self._file_log = Logger("pid", Level.INFO, log_to_file=True)
                     # write header
-                    self._file_log.file("kp|ki|kd|p.cp|p.ci|p.cd|p.lpw|p.cpw|p.spwr|p.cvel|p.stpt|s.cp|s.ci|s.cd|s.lpw|s.cpw|s.spw|s.cvel|s.stpt|p.stps|s.stps|")
+                    self._file_log.file("kp|ki|kd|p_cp|p_ci|p_cd|p_lpw|p_cpw|p_spwr|p_cvel|p_stpt|s_cp|s_ci|s_cd|s_lpw|s_cpw|s_spw|s_cvel|s_stpt|p_stps|s_stps|")
                 self._log.info(Fore.GREEN + 'starting PID monitor...')
                 self._pid_enabled = True
                 self._monitor_thread = threading.Thread(target=PIDMotorController._monitor, args=[self, lambda: self._pid_enabled ])
@@ -426,6 +327,7 @@ class GamepadDemo():
         self._config = _config['ros'].get('gamepad_demo')
         self._enable_ifs      = self._config.get('enable_ifs')
         self._enable_compass  = self._config.get('enable_compass')
+        self._message_factory = MessageFactory(level)
         self._motors = Motors(_config, None, Level.INFO)
 #       self._motor_controller = SimpleMotorController(self._motors, Level.INFO)
         self._motor_controller = PIDMotorController(_config, self._motors, Level.INFO)
@@ -443,13 +345,14 @@ class GamepadDemo():
         rgbmatrix5x5_stbd_available = ( 0x74 in _addresses ) # not used yet
         matrix11x7_stbd_available   = ( 0x75 in _addresses ) # used as camera lighting
 
-        self._blob      = BlobSensor(_config, self._motors, Level.INFO)
+#       self._blob      = BlobSensor(_config, self._motors, Level.INFO)
+        self._blob      = None
         self._lux       = Lux(Level.INFO) if ltr559_available else None
         self._video     = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
         self._queue     = MockMessageQueue(_config, self._motors, self._motor_controller, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
 
         # attempt to find the gamepad
-        self._gamepad = Gamepad(_config, self._queue, Level.INFO)
+        self._gamepad = Gamepad(_config, self._queue, self._message_factory, Level.INFO)
 
         self._indicator = Indicator(Level.INFO)
         if self._enable_compass:

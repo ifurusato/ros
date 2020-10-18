@@ -197,13 +197,14 @@ class Gamepad():
 
     _NOT_AVAILABLE_ERROR = 'gamepad device not found (not configured, paired, powered or otherwise available)'
 
-    def __init__(self, config, queue, level):
+    def __init__(self, config, queue, message_factory, level):
         '''
         Parameters:
 
-           config:          the YAML-based application configuration
-           queue:           the message queue to receive messages from this task
-           mutex:           vs godzilla
+           config:           the YAML-based application configuration
+           queue:            the message queue to receive messages from this task
+           message_factory:  the factory for creating messages
+           mutex:            vs godzilla
         '''
         if config is None:
             raise ValueError('no configuration provided.')
@@ -217,6 +218,7 @@ class Gamepad():
         self._rate = Rate(_loop_freq_hz)
         self._device_path  = _config.get('device_path')
         self._queue   = queue
+        self._message_factory = message_factory
         self._counter = itertools.count()
         self._closing = False
         self._closed  = False
@@ -444,10 +446,8 @@ class Gamepad():
     #       self._log.info(Fore.BLACK + Style.DIM + "ZZ. event type: {}; code: {}; value: {}".format(event.type, event.code, event.value))
             pass
         if _control != None:
-            _value = event.value
-            self._log.debug(Fore.CYAN + Style.BRIGHT + "triggered control: {} with value: {}".format(_control, _value))
-            _message = Message(_control.event)
-            _message.set_value(_value)
+            _message = self._message_factory.get_message(_control.event, event.value)
+            self._log.debug(Fore.CYAN + Style.BRIGHT + "triggered control with message {}".format(_message))
             self._queue.add(_message)
 
 

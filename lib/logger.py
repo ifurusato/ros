@@ -40,8 +40,10 @@ class Logger:
         self._mutex = threading.Lock()
         # some of this could be set via configuration
         self._include_timestamp = True 
-#       self._date_format = '%Y-%m-%d %H:%M:%S'
-        self._date_format = '%H:%M:%S'
+#       _format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', 
+        self._date_format='%Y-%m-%dT%H:%M:%S'
+#       self._date_format = '%Y-%m-%dT%H:%M:%S.%f'
+#       self._date_format = '%H:%M:%S'
         if not self.__log.handlers: # log to stream ............................
             if log_to_file:
                 _ts = dt.utcfromtimestamp(dt.utcnow().timestamp()).isoformat().replace(':','_').replace('-','_').replace('.','_')
@@ -50,7 +52,7 @@ class Logger:
                 fh = RotatingFileHandler(filename=_filename, mode='w', maxBytes=262144, backupCount=10)
                 fh.setLevel(level.value)
                 if self._include_timestamp:
-                    fh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)06f\t|%(name)s|%(message)s', datefmt=self._date_format))
+                    fh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03dZ\t|%(name)s|%(message)s', datefmt=self._date_format))
                 else:
                     fh.setFormatter(logging.Formatter('%(name)s|%(message)s'))
                 self.__log.addHandler(fh)
@@ -58,7 +60,7 @@ class Logger:
                 sh = logging.StreamHandler()
                 sh.setLevel(level.value)
                 if self._include_timestamp:
-                    sh.setFormatter(logging.Formatter(Fore.BLACK + '%(asctime)s.%(msecs)06f :' + Fore.RESET + '\t%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
+                    sh.setFormatter(logging.Formatter(Fore.BLACK + '%(asctime)s.%(msecs)03fZ\t:' + Fore.RESET + '\t%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
 #                   sh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)06f  %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
                 else:
                     sh.setFormatter(logging.Formatter('%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s'))

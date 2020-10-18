@@ -14,38 +14,44 @@
 
 from flask import jsonify
 import queue, itertools
+from queue import Empty
 from colorama import init, Fore, Style
 init()
 
-from .message import Message
-from .event import Event
-from .enums import ActionState
-from .logger import Logger, Level
+from lib.message import Message
+from lib.event import Event
+from lib.enums import ActionState
+from lib.logger import Logger, Level
 
 # ..............................................................................
 class MessageQueue():
     '''
-        A priority message queue, where the highest priority is the lowest priority number.
+        A priority message queue, where the highest priority is the lowest 
+        priority number.
+
+        The MessageFactory parameter is optional if not using the FlaskWrapper
+        (which calls the respond() method).
     '''
 
     MAX_SIZE = 100
 
-    def __init__(self, level):
+    def __init__(self, message_factory, level):
         super().__init__()
         self._log = Logger('queue', level)
         self._log.debug('initialised MessageQueue...')
         heap = []
         self._counter = itertools.count()
+        self._message_factory = message_factory
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
         self._consumers = []
         self._log.info('MessageQueue ready.')
 
     # ......................................................
-    def get_queue(self):
-        '''
-            Return the backing queue.
-        '''
-        return self._queue
+#   def get_queue(self):
+#       '''
+#           Return the backing queue.
+#       '''
+#       return self._queue
 
     # ..........................................................................
     def add_consumer(self, consumer):
@@ -59,9 +65,15 @@ class MessageQueue():
         '''
             Add a new Message to the queue, then additionally to any consumers.
         '''
-        self._queue.put(message);
+        if self._queue.full():
+            try:
+                _dumped = self._queue.get()
+                self._log.debug('dumping old message eid#{}/msg#{}: {}'.format(_dumped.eid, _dumped.get_number(), _dumped.get_description()))
+            except Empty:
+                pass
         message.set_number(next(self._counter))
-        self._log.debug('added message #{} to queue: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
+        self._queue.put(message);
+        self._log.debug('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.get_number(), message.get_priority(), message.get_description()))
         # we're finished, now add to any consumers
         for consumer in self._consumers:
             consumer.add(message);
@@ -113,11 +125,13 @@ class MessageQueue():
     def respond(self, event):
         '''
             Responds to the Event by wrapping it in Message and adding it to the backing queue.
+ 
+            This is only used by FlaskWrapper.
         '''
         self._log.info('RESPOND to event {}.'.format(event.name))
-        _message = Message(event)
+        _message = self._message_factory.get_message(event, None)
         self.add(_message)
-        return jsonify( [ { 'id': _message.get_number() }, { 'event': event.name }, { 'priority': event.priority } ] )
+        return jsonify( [ { 'eid': _message.eid }, { 'event': event.name }, { 'priority': event.priority } ] )
 
     # ......................................................
     def clear(self):

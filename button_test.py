@@ -29,8 +29,9 @@ def main():
     filename = 'config.yaml'
     _config = _loader.configure(filename)
     
-    _queue = MessageQueue(Level.INFO)
-    _button = Button(_config, _queue, threading.Lock())
+    _message_factory = MessageFactory(Level.INFO)
+    _queue = MessageQueue(_message_factory, Level.INFO)
+    _button = Button(_config, _queue, _message_factory, threading.Lock())
     _button.start()
 
     while not _button.get():

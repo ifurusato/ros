@@ -25,8 +25,7 @@ from lib.config_loader import ConfigLoader
 from lib.pintype import PinType
 from lib.logger import Logger, Level
 from lib.event import Event
-from lib.message import Message
-
+from lib.message import Message, MessageFactory
 from lib.indicator import Indicator
 
 CLEAR_SCREEN = '\n'  # no clear screen
@@ -38,13 +37,13 @@ class MockMessageQueue():
     '''
     def __init__(self, level):
         super().__init__()
-        self._counter = itertools.count()
+        self._message_counter = itertools.count()
         self._log = Logger("mock queue", Level.INFO)
         self._log.info('ready.')
 
     # ......................................................
     def add(self, message):
-        message.set_number(next(self._counter))
+        message.set_number(next(self._message_counter))
         self._log.info('added message #{}: priority {}: {}'.format(message.get_number(), message.get_priority(), message.get_description()))
         event = message.get_event()
         if event is Event.INFRARED_PORT_SIDE:
@@ -66,9 +65,9 @@ class MockMessageQueue():
         else:
             self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(event.description))
 
-    # ......................................................
-    def is_complete(self):
-        return not self._events
+#   # ......................................................
+#   def is_complete(self):
+#       return not self._events
 
     # ......................................................
     def _display_event_list(self):
@@ -156,6 +155,7 @@ class IntegratedFrontSensor():
     
            config: the YAML based application configuration
            queue:  the message queue receiving activation notifications
+           message_factory: optional MessageFactory
            level:  the logging Level
     
         Usage:
@@ -165,7 +165,7 @@ class IntegratedFrontSensor():
     '''
 
     # ..........................................................................
-    def __init__(self, config, queue, level):
+    def __init__(self, config, queue, message_factory, level):
         if config is None:
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('integrated_front_sensor')
@@ -203,9 +203,15 @@ class IntegratedFrontSensor():
                 + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance_far, self._port_trigger_distance_far) \
                 + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance_far) \
                 + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance_far, self._stbd_side_trigger_distance_far ))
-        self._loop_delay_sec = self._config.get('loop_delay_sec')
+        self._loop_delay_sec                 = self._config.get('loop_delay_sec')
+        if message_factory:
+            self._message_factory = message_factory
+        else:
+            self._message_factory = MessageFactory(level)
         self._log.debug('initialising integrated front sensor...')
-        self._counter = itertools.count()
+        self._loop_counter     = itertools.count()
+        self._callback_counter = itertools.count()
+        self._callback_count = 0
         self._last_event = None
         self._thread  = None
         self._enabled = False
@@ -230,73 +236,53 @@ class IntegratedFrontSensor():
         if not self._enabled or self._suppressed:
             self._log.debug(Fore.BLACK + Style.DIM + 'SUPPRESSED callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
             return
-#       self._log.debug(Fore.BLACK + Style.BRIGHT + 'callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
-        _message = None
+        self._log.debug('callback: pin {:d}; type: {}; value: {:d}'.format(pin, pin_type, value))
+        _event = None
         # NOTE: the shorter range infrared triggers preclude the longer range triggers 
         if pin == self._port_side_ir_pin:
             if value > self._port_side_trigger_distance:
-                _message = Message(Event.INFRARED_PORT_SIDE)
+                _event = Event.INFRARED_PORT_SIDE
             elif value > self._port_side_trigger_distance_far:
-                _message = Message(Event.INFRARED_PORT_SIDE)
+                _event = Event.INFRARED_PORT_SIDE
         elif pin == self._port_ir_pin:
             if value > self._port_trigger_distance:
-                _message = Message(Event.INFRARED_PORT)
+                _event = Event.INFRARED_PORT
             elif value > self._port_trigger_distance_far:
-                _message = Message(Event.INFRARED_PORT_FAR)
+                _event = Event.INFRARED_PORT_FAR
         elif pin == self._center_ir_pin:
             if value > self._center_trigger_distance:
-                _message = Message(Event.INFRARED_CNTR)
+                _event = Event.INFRARED_CNTR
             elif value > self._center_trigger_distance_far:
-                _message = Message(Event.INFRARED_CNTR_FAR)
+                _event = Event.INFRARED_CNTR_FAR
         elif pin == self._stbd_ir_pin:
             if value > self._stbd_trigger_distance:
-                _message = Message(Event.INFRARED_STBD)
+                _event = Event.INFRARED_STBD
             elif value > self._stbd_trigger_distance_far:
-                _message = Message(Event.INFRARED_STBD_FAR)
+                _event = Event.INFRARED_STBD_FAR
         elif pin == 5: #self._stbd_side_ir_pin:
             if value > self._stbd_side_trigger_distance:
-                _message = Message(Event.INFRARED_STBD_SIDE)
+                _event = Event.INFRARED_STBD_SIDE
             elif value > self._stbd_side_trigger_distance_far:
-                _message = Message(Event.INFRARED_STBD_SIDE_FAR)
+                _event = Event.INFRARED_STBD_SIDE_FAR
         elif pin == self._port_bmp_pin:
             if value == 1:
-                _message = Message(Event.BUMPER_PORT)
+                _event = Event.BUMPER_PORT
         elif pin == self._center_bmp_pin:
             if value == 1:
-                _message = Message(Event.BUMPER_CNTR)
+                _event = Event.BUMPER_CNTR
         elif pin == self._stbd_bmp_pin:
             if value == 1:
-                _message = Message(Event.BUMPER_STBD)
-        if _message is not None:
-            _message.set_value(value)
-            _event = _message.get_event()
+                _event = Event.BUMPER_STBD
+        if _event is not None:
+            self._callback_count = next(self._callback_counter)
+            self._log.info(Fore.GREEN + '{:d} callbacks.'.format(self._callback_count))
             if not self._ignore_duplicates or _event != self._last_event:
-                self._log.debug(Fore.CYAN + Style.BRIGHT + 'adding new message for event {}'.format(_event.description))
+                _message = self._message_factory.get_message(_event, value)
+                self._log.info(Fore.CYAN + Style.BRIGHT + 'adding new message eid#{} for event {}'.format(_message.eid, _event.description))
                 self._queue.add(_message)
             else:
-                self._log.info(Fore.CYAN + Style.DIM    + 'ignoring message for event {}'.format(_event.description))
-                self._queue.add(_message) # FIXME remove this
+                self._log.warning(Fore.CYAN + Style.NORMAL + 'ignoring message for event {}'.format(_event.description))
             self._last_event = _event
-
-    # ..........................................................................
-    def suppress(self, state):
-        self._log.info('suppress {}.'.format(state))
-        self._suppressed = state
-
-    # ..........................................................................
-    def enable(self):
-        if not self._enabled:
-            if not self._closed:
-                self._log.info('enabled integrated front sensor.')
-                self._enabled = True
-                if not self.in_loop():
-                    self._start_front_sensor_loop()
-                else:
-                    self._log.error('cannot start integrated front sensor: already in loop.')
-            else:
-                self._log.warning('cannot enable integrated front sensor: already closed.')
-        else:
-            self._log.warning('already enabled integrated front sensor.')
 
     # ..........................................................................
     def in_loop(self):
@@ -306,12 +292,12 @@ class IntegratedFrontSensor():
         return self._thread != None and self._thread.is_alive()
 
     # ..........................................................................
-    def _loop(self):
+    def __loop(self):
         self._log.info('starting event loop...\n')
 
         while self._enabled:
-            _count = next(self._counter)
-
+            _count = next(self._loop_counter)
+#           self._log.info(Fore.WHITE + Style.DIM + '[{:04d}] loop start.'.format(_count))
             _start_time = dt.datetime.now()
 
             _port_side_data = self.get_input_for_event_type(Event.INFRARED_PORT_SIDE)
@@ -326,8 +312,7 @@ class IntegratedFrontSensor():
             _delta = dt.datetime.now() - _start_time
             _elapsed_ms = int(_delta.total_seconds() * 1000) 
             # typically 173ms from ItsyBitsy, 85ms from Pimoroni IO Expander
-
-            self._log.debug( Fore.WHITE + '[{:04d}] elapsed: {:d}ms'.format(_count, _elapsed_ms))
+            self._log.info(Fore.WHITE + '[{:04d}] acquisition time elapsed: {:d}ms'.format(_count, _elapsed_ms))
 
             # pin 1: analog infrared sensor ................
             self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 1) + ( Fore.RED if ( _port_side_data > 100.0 ) else Fore.YELLOW ) \
@@ -369,6 +354,7 @@ class IntegratedFrontSensor():
                     + Style.DIM + '\t(displays digital pup value 0|1)')
             self._callback(11, PinType.DIGITAL_INPUT_PULLUP, _stbd_bmp_data)
 
+#           self._log.info(Fore.WHITE + Style.DIM + '[{:04d}] loop end.'.format(_count))
             time.sleep(self._loop_delay_sec)
 
         self._log.info('exited event loop.')
@@ -376,13 +362,13 @@ class IntegratedFrontSensor():
     # ..........................................................................
     def _start_front_sensor_loop(self):
         '''
-            This is the method to call to actually start the loop.
+            This is the method to call to actually start the loop thread.
         '''
         if not self._enabled:
             raise Exception('attempt to start front sensor event loop while disabled.')
         elif not self._closed:
             if self._thread is None:
-                self._thread = threading.Thread(target=IntegratedFrontSensor._loop, args=[self])
+                self._thread = threading.Thread(target=IntegratedFrontSensor.__loop, args=[self])
                 self._thread.start()
                 self._log.info('started.')
             else:
@@ -415,6 +401,26 @@ class IntegratedFrontSensor():
             raise Exception('unexpected event type.')
 
     # ..........................................................................
+    def suppress(self, state):
+        self._log.info('suppress {}.'.format(state))
+        self._suppressed = state
+
+    # ..........................................................................
+    def enable(self):
+        if not self._enabled:
+            if not self._closed:
+                self._log.info('enabled integrated front sensor.')
+                self._enabled = True
+                if not self.in_loop():
+                    self._start_front_sensor_loop()
+                else:
+                    self._log.error('cannot start integrated front sensor: already in loop.')
+            else:
+                self._log.warning('cannot enable integrated front sensor: already closed.')
+        else:
+            self._log.warning('already enabled integrated front sensor.')
+
+    # ..........................................................................
     def disable(self):
         self._log.info('disabled integrated front sensor.')
         self._enabled = False
@@ -443,86 +449,5 @@ class IntegratedFrontSensor():
                 self._log.error('error closing: {}'.format(e))
         else:
             self._log.debug('already closed.')
-
-
-## main .........................................................................
-#def main(argv):
-#
-#    try:
-#
-#        # read YAML configuration
-#        _loader = ConfigLoader(Level.INFO)
-#        filename = 'config.yaml'
-#        _config = _loader.configure(filename)
-#
-#        _queue = MockMessageQueue(Level.INFO)
-#
-#        _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
-#        _board = _ioe.board
-##       sys.exit(0)
-#
-##       _indicator = Indicator(Level.INFO)
-##       # add indicator as message consumer
-##       _queue.add_consumer(_indicator)
-#
-#        _max_value = 0
-#
-#        # start...
-#        while True:
-#
-#            _start_time = dt.datetime.now()
-#
-#            _port_side_ir_value = _ioe.get_port_side_ir_value()
-#            _port_ir_value      = _ioe.get_port_ir_value()
-#            _center_ir_value    = _ioe.get_center_ir_value()
-#            _stbd_ir_value      = _ioe.get_stbd_ir_value()
-#            _stbd_side_ir_value = _ioe.get_stbd_side_ir_value()
-#            _port_bmp_value     = _ioe.get_port_bmp_value()
-#            _center_bmp_value   = _ioe.get_center_bmp_value()
-#            _stbd_bmp_value     = _ioe.get_stbd_bmp_value()
-#
-##           _port_side_ir_value = _board.input(_ioe._port_side_ir_pin )
-##           _max_value = max(_max_value, _port_side_ir_value)
-##           _port_ir_value      = _board.input(_ioe._port_ir_pin)
-##           _max_value = max(_max_value, _port_ir_value)
-##           _center_ir_value    = _board.input(_ioe._center_ir_pin)
-##           _max_value = max(_max_value, _center_ir_value)
-##           _stbd_ir_value      = _board.input(_ioe._stbd_ir_pin)
-##           _max_value = max(_max_value, _stbd_ir_value)
-##           _stbd_side_ir_value = _board.input(_ioe._stbd_side_ir_pin)
-##           _max_value = max(_max_value, _stbd_side_ir_value)
-##           _port_bmp_value     = _board.input(_ioe._port_bmp_pin) == 0
-##           _max_value = max(_max_value, _port_bmp_value)
-##           _center_bmp_value   = _board.input(_ioe._center_bmp_pin) == 0
-##           _max_value = max(_max_value, _center_bmp_value)
-##           _stbd_bmp_value     = _board.input(_ioe._stbd_bmp_pin) == 0
-##           _max_value = max(_max_value, _stbd_bmp_value)
-#
-#            _delta = dt.datetime.now() - _start_time
-#            _elapsed_ms = int(_delta.total_seconds() * 1000)
-#
-#            print(Fore.RED       + 'PSIR: {:d}; '.format(_port_side_ir_value) \
-#                  + Fore.MAGENTA + 'PIR: {:d}; '.format(_port_ir_value) \
-#                  + Fore.BLUE    + 'CIR: {:d}; '.format(_center_ir_value) \
-#                  + Fore.CYAN    + 'SIR: {:d}; '.format(_stbd_ir_value) \
-#                  + Fore.GREEN   + 'SSIR: {:d} '.format(_stbd_side_ir_value) \
-#                  + Fore.MAGENTA + 'PB: {}; '.format(_port_bmp_value) \
-#                  + Fore.BLUE    + 'CB: {}; '.format(_center_bmp_value) \
-#                  + Fore.CYAN    + 'SB: {}; '.format(_stbd_bmp_value) \
-#                  + Fore.BLACK   + 'max: {:>5.2f}; '.format(_max_value) \
-#                  + Fore.WHITE   + '{:>5.2f}ms elapsed.'.format(_elapsed_ms) + Style.RESET_ALL)
-#
-##           time.sleep(1.0 / 30)
-#
-#
-#    except KeyboardInterrupt:
-#        print(Fore.CYAN + Style.BRIGHT + 'caught Ctrl-C; exiting...')
-#        
-#    except Exception:
-#        print(Fore.RED + Style.BRIGHT + 'error starting IoExpander: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-#
-## call main ....................................................................
-#if __name__== "__main__":
-#    main(sys.argv[1:])
 
 #EOF

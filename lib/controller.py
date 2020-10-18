@@ -33,8 +33,14 @@ class Controller():
     '''
         Responds to Events. Simple tasks are handled within this script, more
         complicated ones are farmed out to task files.
+
+        There are two API methods for this class:
+
+          .get_current_message()   returns the last message received
+          .act(_current_message, _action_complete_callback)
+                                   act upon the current message, with
+                                   a callback called upon completion
     '''
-#   def __init__(self, level, config, switch, infrared_trio, motors, rgbmatrix, lidar, callback_shutdown):
     def __init__(self, config, ifs, motors, callback_shutdown, level):
         super().__init__()
         self._log = Logger('controller', level)
@@ -111,6 +117,10 @@ class Controller():
     def act(self, message, callback):
         '''
             Responds to the Event contained within the Message.
+
+            The callback method's API is:
+
+              callback(self._current_message, _current_power_levels)
         '''
         if not self._enabled:
             self._log.warning('action ignored: controller disabled.')
@@ -395,8 +405,9 @@ class Controller():
             pass
 
         _current_power_levels = self._motors.get_current_power_levels()
-        self._log.debug(Fore.MAGENTA + 'callback message: {}; '.format(self._current_message.get_value()) + Fore.CYAN + 'current power levels: {}'.format( _current_power_levels))
-        callback(self._current_message, _current_power_levels)
+        if callback is not None:
+            self._log.debug(Fore.MAGENTA + 'callback message: {}; '.format(self._current_message.get_value()) + Fore.CYAN + 'current power levels: {}'.format( _current_power_levels))
+            callback(self._current_message, _current_power_levels)
         self._clear_current_message()
 
         _delta = dt.datetime.now() - _start_time

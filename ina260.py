@@ -29,10 +29,14 @@ def main(argv):
 
         i2c = busio.I2C(board.SCL, board.SDA)
 #       i2c = board.I2C()
-        ina260 = adafruit_ina260.INA260(i2c)
+#       ina260 = adafruit_ina260.INA260(i2c)
+        ina260 = adafruit_ina260.INA260(i2c, address=0x44)
 
         while True:
-            print(Fore.YELLOW + 'current: %.2f mA Voltage: %.2f V Power:%.2f mW'.format(ina260.current, ina260.voltage, ina260.power) + Style.RESET_ALL)
+            print(Fore.MAGENTA    + 'current: {:>5.2f}mA'.format(ina260.current) \
+                    + Fore.CYAN   + '\tvoltage: {:>5.2f}V'.format(ina260.voltage) \
+                    + Fore.YELLOW + '\tpower: {:>5.2f}mW'.format(ina260.power) \
+                    + Style.RESET_ALL)
             time.sleep(1.0)
 
         print(Fore.GREEN + 'end.' + Style.RESET_ALL)

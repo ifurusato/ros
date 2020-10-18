@@ -42,7 +42,7 @@ class Button(AbstractTask):
 
     button_priority = 6
 
-    def __init__(self, config, queue, mutex):
+    def __init__(self, config, queue, message_factory, mutex):
         '''
         Parameters:
 
@@ -60,6 +60,7 @@ class Button(AbstractTask):
         self._toggle = _config.get('toggle') # if true, the value toggles when the button is pushed rather than acting as a momentary button
         self._log.info('initialising button on pin {:d}; toggle={}'.format(_pin, self._toggle))
         self._queue = queue
+        self._message_factory = message_factory
         self._button = GpioButton(_pin)
         self._value = False
         self._log.debug('ready.')
@@ -78,8 +79,7 @@ class Button(AbstractTask):
     def toggle_state(self):
         self._value = not self._value
         self._log.info("button toggle: {}".format(self._value))
-        _message = Message(Event.BUTTON)
-        _message.set_value(self._value)
+        _message = self._message_factory.get_message(Event.BUTTON, self._value)
         if self._queue:
             self._queue.add(_message)
 

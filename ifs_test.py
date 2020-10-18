@@ -18,13 +18,14 @@
 #   % sudo pip3 install pigpio
 #
 
-import time, itertools
+import time, itertools, traceback
 from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.event import Event
+from lib.message import MessageFactory
 from lib.queue import MessageQueue
 from lib.ifs import IntegratedFrontSensor
 from lib.indicator import Indicator
@@ -42,8 +43,9 @@ def main():
         filename = 'config.yaml'
         _config = _loader.configure(filename)
 
-        _queue = MessageQueue(Level.INFO)
-        _ifs = IntegratedFrontSensor(_config, _queue, Level.INFO)
+        _message_factory = MessageFactory(Level.INFO)
+        _queue = MessageQueue(_message_factory, Level.INFO)
+        _ifs = IntegratedFrontSensor(_config, _queue, _message_factory, Level.INFO)
 
         _indicator = Indicator(Level.INFO)
 #       _indicator.set_heading(180)
@@ -53,10 +55,12 @@ def main():
         _ifs.enable() 
 
         while True:
-            time.sleep(0.1)
+            time.sleep(1.0)
 
     except KeyboardInterrupt:
         print(Fore.RED + 'Ctrl-C caught; exiting...' + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + Style.BRIGHT + 'error starting ifs: {}\n{}'.format(e, traceback.format_exc()) + Style.RESET_ALL)
     finally:
         if _ifs is not None:
             _ifs.close()
