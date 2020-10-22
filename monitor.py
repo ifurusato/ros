@@ -36,5 +36,4 @@ else:
     print('top already running.')
     sys.exit(0)
 
-
-#EOF
+# EOF

@@ -24,7 +24,7 @@ _log = Logger('gamepad-demo', Level.INFO)
 
 try:
 
-    _log.info('starting gamepad demo...')
+    _log.header('test', 'starting gamepad demo...', None)
     _gamepad_demo = GamepadDemo(Level.INFO)
     _gamepad_demo.enable()
     while _gamepad_demo.is_enabled():

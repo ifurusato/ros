@@ -146,6 +146,10 @@ ros:
     gamepad_demo:
         enable_compass: False                    # if True, enable Compass
         enable_ifs: False                        # if True, enable IntegratedFrontSensor
+        controller:
+            log_to_file:       False             # if True, log PID data to file
+            log_to_console:    False             # if True, log PID data to console
+            min_loop_time_ms:  5                 # gamepad loop time (ms)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
         rotary_encoder_a1_port: 22

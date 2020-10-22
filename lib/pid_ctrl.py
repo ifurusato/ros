@@ -16,45 +16,33 @@ init()
 #from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.enums import Orientation
+from lib.rate import Rate
 from lib.motors_v2 import Motors
 from lib.pid_v4 import PIDController
 
 # ..............................................................................
-class PIDMotorController():
+class PIDMotorController(object):
+    '''
+       A simple composite pattern consisting of two PIDControllers, one for
+       control of the port motor, another for the starboard motor.
+    '''
     def __init__(self, config, motors, level):
         super().__init__()
+        self._log = Logger("pmc", level)
         self._motors = motors
         self._port_pid = PIDController(config, motors.get_motor(Orientation.PORT), level=level)
         self._stbd_pid = PIDController(config, motors.get_motor(Orientation.STBD), level=level)
 #       self._port_pid.enable()
 #       self._stbd_pid.enable()
+        self._log.info('ready.')
+
+    # ..........................................................................
+    def get_motors(self):
+        return self._motors
 
     # ..........................................................................
     def get_pid_controllers(self):
         return self._port_pid, self._stbd_pid
-
-    # ..........................................................................
-    def _monitor(self, f_is_enabled):
-        '''
-            A 20Hz loop that prints PID statistics to the log while enabled. Note that this loop
-            is not synchronised with the two PID controllers, which each have their own loop.
-        '''
-        _rate = Rate(20)
-        while f_is_enabled():
-            kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps = self._port_pid.stats
-            _x, _y, _z, s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps = self._stbd_pid.stats
-            _msg = ('{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|').format(\
-                    kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps, \
-                    s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps)
-            _p_hilite = Style.BRIGHT if p_power > 0.0 else Style.NORMAL
-            _s_hilite = Style.BRIGHT if s_power > 0.0 else Style.NORMAL
-            _msg2 = (Fore.RED+_p_hilite+'{:7.4f}|{:7.4f}|{:7.4f}|{:<5.2f}|{:<5.2f}|{:<5.2f}|{:>5.2f}|{:d}'+Fore.GREEN+_s_hilite+'|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:<5.2f}|{:d}|').format(\
-                    p_cp, p_ci, p_cd, p_last_power, p_power, p_current_velocity, p_setpoint, p_steps, \
-                    s_cp, s_ci, s_cd, s_last_power, s_power, s_current_velocity, s_setpoint, s_steps)
-            _rate.wait()
-            self._file_log.file(_msg)
-            self._log.info(_msg2)
-        self._log.info('PID monitor stopped.')
 
     # ..........................................................................
     @property

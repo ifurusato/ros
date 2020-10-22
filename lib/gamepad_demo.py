@@ -49,36 +49,42 @@ from lib.motors_v2 import Motors
 from lib.pid_ctrl import PIDMotorController
  
 # ..............................................................................
-class MockMessageQueue():
-    def __init__(self, config, motors, motor_controller, video, blob, matrix11x7_available, level, close_callback):
+class GamepadController():
+    '''
+       While this implements the queue.add(Message) method, this is a
+       controller for the Gamepad demo.
+    '''
+    def __init__(self, config, motor_controller, video, blob, matrix11x7_available, level, close_callback):
         super().__init__()
         if config is None:
             raise ValueError('null configuration argument.')
         self._log = Logger("mock-queue", level)
-        self._file_log = None
-        self._enabled = False
-        self._motors = motors
+        self._config = config['ros'].get('gamepad_demo').get('controller')
+        self._log_to_file    = self._config.get('log_to_file')
+        self._log_to_console = self._config.get('log_to_console')
+        self._min_loop_ms    = self._config.get('min_loop_time_ms') # minimum gamepad loop time (ms)
         self._motor_controller = motor_controller
+        self._motors = self._motor_controller.get_motors()
         _controllers = motor_controller.get_pid_controllers()
         self._port_pid = _controllers[0]
         self._stbd_pid = _controllers[1]
-        self._pid_enabled = False
-        self._monitor_thread = None
+        self._video          = video
+        self._blob           = blob
         self._behaviours = Behaviours(config, self._port_pid, self._stbd_pid, None, level)
         self._counter = itertools.count()
-        self._video = video
-        self._close_callback = close_callback
-        self._blob = blob
         if matrix11x7_available:
             self._port_light = Matrix(Orientation.PORT, Level.INFO)
             self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
         else:
             self._port_light = None
             self._stbd_light = None
-        self._lights_on = False
-        self._consumers = []
-        self._start_time = dt.datetime.now()
-        self._min_loop_ms = 5 # minimum gamepad loop time (ms)
+        self._close_callback = close_callback
+        self._monitor_thread = None
+        self._pid_enabled    = False
+        self._enabled        = False
+        self._lights_on      = False
+        self._consumers      = []
+        self._start_time     = dt.datetime.now()
         self._log.info('ready.')
 
     # ..........................................................................
@@ -132,12 +138,15 @@ class MockMessageQueue():
 
     # ..........................................................................
     def _capture_blob(self):
-        self._log.info('capture blob image.')
-#       self.set_led_color(Color.BLACK) # so it doesn't show up on video
-        self._blob.capture()
-#       time.sleep(0.5)
-#       self.set_led_show_battery(True)
-        self._log.info('blob capture complete.')
+        if self._blog:
+            self._log.info('capture blob image.')
+#           self.set_led_color(Color.BLACK) # so it doesn't show up on video
+            self._blob.capture()
+#           time.sleep(0.5)
+#           self.set_led_show_battery(True)
+            self._log.info('blob capture complete.')
+        else:
+            self._log.info('blob capture not enabled.')
 
     # ..........................................................................
     def _enable_lights(self, enabled):
@@ -158,40 +167,69 @@ class MockMessageQueue():
             self._stbd_pid.disable()
         else:
             if self._monitor_thread is None:
-                _indent = '                                                    '
-                self._log.info('PID monitor header:\n' \
-                    + _indent + 'name   : description\n' \
-                    + _indent + 'kp     : proportional constant\n' \
-                    + _indent + 'ki     : integral constant\n' \
-                    + _indent + 'kd     : derivative constant\n' \
-                    + _indent + 'p_cp   : port proportial value\n' \
-                    + _indent + 'p_ci   : port integral value\n' \
-                    + _indent + 'p_cd   : port derivative value\n' \
-                    + _indent + 'p_lpw  : port last power\n' \
-                    + _indent + 'p_cpw  : port current motor power\n' \
-                    + _indent + 'p_spwr : port set power\n' \
-                    + _indent + 'p_cvel : port current velocity\n' \
-                    + _indent + 'p_stpt : port velocity setpoint\n' \
-                    + _indent + 's_cp   : starboard proportial value\n' \
-                    + _indent + 's_ci   : starboard integral value\n' \
-                    + _indent + 's_cd   : starboard derivative value\n' \
-                    + _indent + 's_lpw  : starboard proportional value\n' \
-                    + _indent + 's_cpw  : starboard integral value\n' \
-                    + _indent + 's_spw  : starboard derivative value\n' \
-                    + _indent + 's_cvel : starboard current velocity\n' \
-                    + _indent + 's_stpt : starboard velocity setpoint\n' \
-                    + _indent + 'p_stps : port encoder steps\n' \
-                    + _indent + 's_stps : starboard encoder steps')
-                if self._file_log is None:
-                    self._file_log = Logger("pid", Level.INFO, log_to_file=True)
-                    # write header
-                    self._file_log.file("kp|ki|kd|p_cp|p_ci|p_cd|p_lpw|p_cpw|p_spwr|p_cvel|p_stpt|s_cp|s_ci|s_cd|s_lpw|s_cpw|s_spw|s_cvel|s_stpt|p_stps|s_stps|")
-                self._log.info(Fore.GREEN + 'starting PID monitor...')
                 self._pid_enabled = True
-                self._monitor_thread = threading.Thread(target=PIDMotorController._monitor, args=[self, lambda: self._pid_enabled ])
-                self._monitor_thread.start()
+                if self._log_to_file or self._log_to_console:
+                    # if logging to file and/or console start monitor thread
+                    self._monitor_thread = threading.Thread(target=GamepadController._monitor, args=[self, lambda: self._pid_enabled ])
+                    self._monitor_thread.start()
             self._port_pid.enable()
             self._stbd_pid.enable()
+
+    # ..........................................................................
+    def _monitor(self, f_is_enabled):
+        '''
+            A 20Hz loop that prints PID statistics to the log while enabled. Note that this loop
+            is not synchronised with the two PID controllers, which each have their own loop.
+        '''
+        _indent = '                                                    '
+        self._log.info('PID monitor header:\n' \
+            + _indent + 'name   : description\n' \
+            + _indent + 'kp     : proportional constant\n' \
+            + _indent + 'ki     : integral constant\n' \
+            + _indent + 'kd     : derivative constant\n' \
+            + _indent + 'p_cp   : port proportial value\n' \
+            + _indent + 'p_ci   : port integral value\n' \
+            + _indent + 'p_cd   : port derivative value\n' \
+            + _indent + 'p_lpw  : port last power\n' \
+            + _indent + 'p_cpw  : port current motor power\n' \
+            + _indent + 'p_spwr : port set power\n' \
+            + _indent + 'p_cvel : port current velocity\n' \
+            + _indent + 'p_stpt : port velocity setpoint\n' \
+            + _indent + 's_cp   : starboard proportial value\n' \
+            + _indent + 's_ci   : starboard integral value\n' \
+            + _indent + 's_cd   : starboard derivative value\n' \
+            + _indent + 's_lpw  : starboard proportional value\n' \
+            + _indent + 's_cpw  : starboard integral value\n' \
+            + _indent + 's_spw  : starboard derivative value\n' \
+            + _indent + 's_cvel : starboard current velocity\n' \
+            + _indent + 's_stpt : starboard velocity setpoint\n' \
+            + _indent + 'p_stps : port encoder steps\n' \
+            + _indent + 's_stps : starboard encoder steps')
+
+        if self._log_to_file:
+            self._file_log = Logger("pid", Level.INFO, log_to_file=True)
+            # write header
+            self._file_log.file("kp|ki|kd|p_cp|p_ci|p_cd|p_lpw|p_cpw|p_spwr|p_cvel|p_stpt|s_cp|s_ci|s_cd|s_lpw|s_cpw|s_spw|s_cvel|s_stpt|p_stps|s_stps|")
+
+            self._log.info(Fore.GREEN + 'starting PID monitor...')
+        _rate = Rate(20)
+        while f_is_enabled():
+            kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps = self._port_pid.stats
+            _x, _y, _z, s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps = self._stbd_pid.stats
+            _msg = ('{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:>5.2f}|{:d}|').format(\
+                    kp, ki, kd, p_cp, p_ci, p_cd, p_last_power, p_current_motor_power, p_power, p_current_velocity, p_setpoint, p_steps, \
+                    s_cp, s_ci, s_cd, s_last_power, s_current_motor_power, s_power, s_current_velocity, s_setpoint, s_steps)
+            _p_hilite = Style.BRIGHT if p_power > 0.0 else Style.NORMAL
+            _s_hilite = Style.BRIGHT if s_power > 0.0 else Style.NORMAL
+            _msg2 = (Fore.RED+_p_hilite+'{:7.4f}|{:7.4f}|{:7.4f}|{:<5.2f}|{:<5.2f}|{:<5.2f}|{:>5.2f}|{:d}'+Fore.GREEN+_s_hilite+'|{:7.4f}|{:7.4f}|{:7.4f}|{:5.2f}|{:5.2f}|{:<5.2f}|{:<5.2f}|{:d}|').format(\
+                    p_cp, p_ci, p_cd, p_last_power, p_power, p_current_velocity, p_setpoint, p_steps, \
+                    s_cp, s_ci, s_cd, s_last_power, s_power, s_current_velocity, s_setpoint, s_steps)
+            _rate.wait()
+            if self._log_to_file:
+                self._file_log.file(_msg)
+            if self._log_to_console:
+                self._log.info(_msg2)
+        self._log.info('PID monitor stopped.')
 
     # ......................................................
     def add(self, message):
@@ -324,13 +362,14 @@ class GamepadDemo():
         filename     = 'config.yaml'
         _config      = _loader.configure(filename)
         self._log = Logger("gamepad-demo", level)
+        self._log.header('gamepad-demo','Configuring Gamepad...',None)
         self._config = _config['ros'].get('gamepad_demo')
         self._enable_ifs      = self._config.get('enable_ifs')
         self._enable_compass  = self._config.get('enable_compass')
         self._message_factory = MessageFactory(level)
         self._motors = Motors(_config, None, Level.INFO)
 #       self._motor_controller = SimpleMotorController(self._motors, Level.INFO)
-        self._motor_controller = PIDMotorController(_config, self._motors, Level.INFO)
+        self._motor_controller = PIDMotorController(_config, self._motors, Level.WARN)
         # i2c scanner, let's us know if certain devices are available
         _i2c_scanner = I2CScanner(Level.WARN)
         _addresses = _i2c_scanner.getAddresses()
@@ -349,7 +388,7 @@ class GamepadDemo():
         self._blob      = None
         self._lux       = Lux(Level.INFO) if ltr559_available else None
         self._video     = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
-        self._queue     = MockMessageQueue(_config, self._motors, self._motor_controller, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+        self._queue     = GamepadController(_config, self._motor_controller, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
 
         # attempt to find the gamepad
         self._gamepad = Gamepad(_config, self._queue, self._message_factory, Level.INFO)
@@ -360,7 +399,7 @@ class GamepadDemo():
             self._video.set_compass(self._compass)
 
         self._log.info('starting battery check thread...')
-        self._battery_check = BatteryCheck(_config, self._queue, Level.INFO)
+        self._battery_check = BatteryCheck(_config, self._queue, self._message_factory, Level.INFO)
 
         if self._enable_ifs:
             self._log.info('integrated front sensor enabled.')

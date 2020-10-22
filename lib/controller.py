@@ -28,6 +28,7 @@ from lib.gamepad import Gamepad
 from lib.behaviours import Behaviours
 from lib.roam import RoamBehaviour
 
+
 # ..............................................................................
 class Controller():
     '''
@@ -41,6 +42,7 @@ class Controller():
                                    act upon the current message, with
                                    a callback called upon completion
     '''
+
     def __init__(self, config, ifs, motors, callback_shutdown, level):
         super().__init__()
         self._log = Logger('controller', level)
@@ -60,7 +62,7 @@ class Controller():
         self._enabled = True
         # behaviours .................................
         self._behaviours = Behaviours(motors, ifs, Level.INFO)
-        self._roam_behaviour  = RoamBehaviour(motors, Level.INFO)
+        self._roam_behaviour = RoamBehaviour(motors, Level.INFO)
         self._log.debug('ready.')
 
     # ..........................................................................
@@ -136,7 +138,7 @@ class Controller():
 #           self._log.debug('last set power port: {}, starboard: {}'.format(_port_speed, _stbd_speed))
 
         _event = self._current_message.get_event()
-        self._log.debug(Fore.CYAN + 'act()' + Style.BRIGHT + ' event: {}.'.format(_event) + Fore.YELLOW )
+        self._log.debug(Fore.CYAN + 'act()' + Style.BRIGHT + ' event: {}.'.format(_event) + Fore.YELLOW)
         self._current_message.start()
 
         # no action ............................................................
@@ -209,18 +211,18 @@ class Controller():
         elif _event is Event.SNIFF:
             self._log.info('event: sniff.')
             self._behaviours.sniff()
-            time.sleep(0.5) # debounce gamepad
+            time.sleep(0.5)  # debounce gamepad
 
         # D-PAD HORIZONTAL     .................................................
         elif _event is Event.FORWARD_VELOCITY:
             _direction = message.get_value()
             _speed = 80.0
-            if _direction == -1: # then ahead
+            if _direction == -1:  # then ahead
                 self._log.info('event: d-pad movement: ahead.')
 #               self._motors.change_velocity(0.5, 0.5, SlewRate.SLOW, -1)
                 self._motors.ahead(_speed)
                 time.sleep(2.0)
-            elif _direction == 1: # then astern
+            elif _direction == 1:  # then astern
                 self._log.info('event: d-pad movement: astern.')
 #               self._motors.change_velocity(-0.5, -0.5, SlewRate.SLOW, -1)
                 self._motors.astern(_speed)
@@ -231,11 +233,11 @@ class Controller():
         # D-PAD VERTICAL       .................................................
         elif _event is Event.THETA:
             _direction = message.get_value()
-            if _direction == -1: # then ahead
+            if _direction == -1:  # then ahead
                 self._log.info('event: d-pad rotate: counter-clockwise.')
                 self._motors.step(-100.0, 100.0, -1, -1)
                 time.sleep(2.0)
-            elif _direction == 1: # then astern
+            elif _direction == 1:  # then astern
                 self._log.info('event: d-pad rotate: clockwise.')
                 self._motors.step(100.0, -100.0, -1, -1)
                 time.sleep(2.0)
@@ -268,7 +270,7 @@ class Controller():
         # BUMPER_PORT             ..............................................
         elif _event is Event.BUMPER_PORT:
             self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port bumper.' + Style.RESET_ALL)
-            if self._motors.is_in_motion(): # if we're moving then halt
+            if self._motors.is_in_motion():  # if we're moving then halt
                 self._ifs.disable()
                 self._motors.stop()
 #               self._motors.astern(Speed.HALF.value)
@@ -283,7 +285,7 @@ class Controller():
         # BUMPER_CNTR           ..............................................
         elif _event is Event.BUMPER_CNTR:
             self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.BLUE + ' center bumper.' + Style.RESET_ALL)
-            if self._motors.is_in_motion(): # if we're moving then halt
+            if self._motors.is_in_motion():  # if we're moving then halt
                 self._ifs.disable()
                 self._motors.stop()
                 self._motors.astern(Speed.HALF.value)
@@ -297,7 +299,7 @@ class Controller():
         # BUMPER_STBD        ..............................................
         elif _event is Event.BUMPER_STBD:
             self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard bumper.' + Style.RESET_ALL)
-            if self._motors.is_in_motion(): # if we're moving then halt
+            if self._motors.is_in_motion():  # if we're moving then halt
                 self._motors.stop()
 #               self._motors.astern(Speed.FULL.value)
                 self._motors.turn_astern(Speed.HALF.value, Speed.THREE_QUARTER.value)
@@ -312,20 +314,20 @@ class Controller():
         # INFRARED_PORT_SIDE      ..............................................
         elif _event is Event.INFRARED_PORT_SIDE:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value) )
+            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
         # INFRARED_PORT_SIDE_FAR      ..........................................
         elif _event is Event.INFRARED_PORT_SIDE_FAR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value) )
+            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
         # INFRARED_PORT           ..............................................
         elif _event is Event.INFRARED_PORT:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port infrared; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._avoid(Orientation.PORT)
                 self._log.info('action complete: port infrared.')
             else:
@@ -335,8 +337,8 @@ class Controller():
         # INFRARED_PORT_FAR           ..........................................
         elif _event is Event.INFRARED_PORT_FAR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._slow_down(Orientation.PORT)
                 self._log.info('action complete: port infrared far.')
             else:
@@ -346,8 +348,8 @@ class Controller():
         # INFRARED_CNTR         ..............................................
         elif _event is Event.INFRARED_CNTR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.BLUE + ' center infrared; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.BLUE + ' center infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._avoid(Orientation.CNTR)
                 self._log.info('action complete: center infrared.')
             else:
@@ -357,8 +359,8 @@ class Controller():
         # INFRARED_CNTR_FAR         ..........................................
         elif _event is Event.INFRARED_CNTR_FAR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.BLUE + ' center infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.BLUE + ' center infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._slow_down(Orientation.CNTR)
                 self._log.info('action complete: center infrared far.')
             else:
@@ -368,8 +370,8 @@ class Controller():
         # INFRARED_STBD      ...................................................
         elif _event is Event.INFRARED_STBD:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard infrared; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._avoid(Orientation.STBD)
                 self._log.info('action complete: starboard infrared.')
             else:
@@ -379,8 +381,8 @@ class Controller():
         # INFRARED_STBD_FAR      ...................................................
         elif _event is Event.INFRARED_STBD_FAR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value) )
-            if self._motors.is_in_motion(): # if we're moving then avoid
+            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
+            if self._motors.is_in_motion():  # if we're moving then avoid
                 self._slow_down(Orientation.STBD)
                 self._log.info('action complete: starboard infrared far.')
             else:
@@ -390,13 +392,13 @@ class Controller():
         # INFRARED_STBD_SIDE         ...........................................
         elif _event is Event.INFRARED_STBD_SIDE:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value) )
+            self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
         # INFRARED_STBD_SIDE_FAR         .......................................
         elif _event is Event.INFRARED_STBD_SIDE_FAR:
             _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value) )
+            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
         # EVENT UNKNOWN: FAILURE ...............................................
@@ -406,12 +408,12 @@ class Controller():
 
         _current_power_levels = self._motors.get_current_power_levels()
         if callback is not None:
-            self._log.debug(Fore.MAGENTA + 'callback message: {}; '.format(self._current_message.get_value()) + Fore.CYAN + 'current power levels: {}'.format( _current_power_levels))
+            self._log.debug(Fore.MAGENTA + 'callback message: {}; '.format(self._current_message.get_value()) + Fore.CYAN + 'current power levels: {}'.format(_current_power_levels))
             callback(self._current_message, _current_power_levels)
         self._clear_current_message()
 
         _delta = dt.datetime.now() - _start_time
         _elapsed_ms = int(_delta.total_seconds() * 1000)
-        self._log.debug(Fore.MAGENTA + Style.DIM + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM )
+        self._log.debug(Fore.MAGENTA + Style.DIM + 'elapsed: {}ms'.format(_elapsed_ms) + Style.DIM)
 
-#EOF
+# EOF

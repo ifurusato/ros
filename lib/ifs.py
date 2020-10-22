@@ -30,11 +30,13 @@ from lib.indicator import Indicator
 
 CLEAR_SCREEN = '\n'  # no clear screen
 
+
 # ..............................................................................
 class MockMessageQueue():
     '''
         This message queue waits for at least one infrared event of each type.
     '''
+
     def __init__(self, level):
         super().__init__()
         self._message_counter = itertools.count()
@@ -82,6 +84,7 @@ class IoExpander():
         Wraps an IO Expander board as input from an integrated front sensor
         array of infrareds and bumper switches.
     '''
+
     def __init__(self, config, level):
         super().__init__()
         if config is None:
@@ -89,23 +92,23 @@ class IoExpander():
         _config = config['ros'].get('io_expander')
         self._log = Logger('ioe', level)
         # infrared
-        self._port_side_ir_pin = _config.get('port_side_ir_pin') # pin connected to port side infrared
-        self._port_ir_pin      = _config.get('port_ir_pin')      # pin connected to port infrared
-        self._center_ir_pin    = _config.get('center_ir_pin')    # pin connected to center infrared
-        self._stbd_ir_pin      = _config.get('stbd_ir_pin')      # pin connected to starboard infrared
-        self._stbd_side_ir_pin = _config.get('stbd_side_ir_pin') # pin connected to starboard side infrared
+        self._port_side_ir_pin = _config.get('port_side_ir_pin')  # pin connected to port side infrared
+        self._port_ir_pin = _config.get('port_ir_pin')  # pin connected to port infrared
+        self._center_ir_pin = _config.get('center_ir_pin')  # pin connected to center infrared
+        self._stbd_ir_pin = _config.get('stbd_ir_pin')  # pin connected to starboard infrared
+        self._stbd_side_ir_pin = _config.get('stbd_side_ir_pin')  # pin connected to starboard side infrared
         self._log.info('IR pin assignments: port side: {:d}; port: {:d}; center: {:d}; stbd: {:d}; stbd side: {:d}.'.format(\
                 self._port_side_ir_pin, self._port_ir_pin, self._center_ir_pin, self._stbd_ir_pin, self._stbd_side_ir_pin))
         # bumpers
-        self._port_bmp_pin     = _config.get('port_bmp_pin')     # pin connected to port bumper
-        self._center_bmp_pin   = _config.get('center_bmp_pin')   # pin connected to center bumper
-        self._stbd_bmp_pin     = _config.get('stbd_bmp_pin')     # pin connected to starboard bumper
+        self._port_bmp_pin = _config.get('port_bmp_pin')  # pin connected to port bumper
+        self._center_bmp_pin = _config.get('center_bmp_pin')  # pin connected to center bumper
+        self._stbd_bmp_pin = _config.get('stbd_bmp_pin')  # pin connected to starboard bumper
         self._log.info('BMP pin assignments: port: {:d}; center: {:d}; stbd: {:d}.'.format(\
-                self._port_ir_pin, self._center_ir_pin, self._stbd_ir_pin ))
+                self._port_ir_pin, self._center_ir_pin, self._stbd_ir_pin))
 
         # configure board
         self._ioe = io.IOE(i2c_addr=0x18)
-        self.board = self._ioe # TEMP
+        self.board = self._ioe  # TEMP
         self._ioe.set_adc_vref(3.3)  # input voltage of IO Expander, this is 3.3 on Breakout Garden
         # analog infrared sensors
         self._ioe.set_mode(self._port_side_ir_pin, io.ADC)
@@ -120,7 +123,7 @@ class IoExpander():
         self._log.info('ready.')
 
     def get_port_side_ir_value(self):
-        return int(round(self._ioe.input(self._port_side_ir_pin ) * 100.0))
+        return int(round(self._ioe.input(self._port_side_ir_pin) * 100.0))
 
     def get_port_ir_value(self):
         return int(round(self._ioe.input(self._port_ir_pin) * 100.0))
@@ -171,53 +174,53 @@ class IntegratedFrontSensor():
         self._config = config['ros'].get('integrated_front_sensor')
         self._queue = queue
         self._log = Logger("ifs", level)
-        self._device_id                  = self._config.get('device_id') # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
-        self._channel                    = self._config.get('channel')
-        self._ignore_duplicates = False # TODO set from config
+        self._device_id = self._config.get('device_id')  # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        self._channel = self._config.get('channel')
+        self._ignore_duplicates = False  # TODO set from config
         # hardware pin assignments
-        self._port_side_ir_pin           = self._config.get('port_side_ir_pin')
-        self._port_ir_pin                = self._config.get('port_ir_pin')
-        self._center_ir_pin              = self._config.get('center_ir_pin')
-        self._stbd_ir_pin                = self._config.get('stbd_ir_pin')
-        self._stbd_side_ir_pin           = self._config.get('stbd_side_ir_pin')
-        self._port_bmp_pin               = self._config.get('port_bmp_pin')
-        self._center_bmp_pin             = self._config.get('center_bmp_pin')
-        self._stbd_bmp_pin               = self._config.get('stbd_bmp_pin')
+        self._port_side_ir_pin = self._config.get('port_side_ir_pin')
+        self._port_ir_pin = self._config.get('port_ir_pin')
+        self._center_ir_pin = self._config.get('center_ir_pin')
+        self._stbd_ir_pin = self._config.get('stbd_ir_pin')
+        self._stbd_side_ir_pin = self._config.get('stbd_side_ir_pin')
+        self._port_bmp_pin = self._config.get('port_bmp_pin')
+        self._center_bmp_pin = self._config.get('center_bmp_pin')
+        self._stbd_bmp_pin = self._config.get('stbd_bmp_pin')
         # short distance:
         self._port_side_trigger_distance = self._config.get('port_side_trigger_distance')
-        self._port_trigger_distance      = self._config.get('port_trigger_distance')
-        self._center_trigger_distance    = self._config.get('center_trigger_distance')
-        self._stbd_trigger_distance      = self._config.get('stbd_trigger_distance')
+        self._port_trigger_distance = self._config.get('port_trigger_distance')
+        self._center_trigger_distance = self._config.get('center_trigger_distance')
+        self._stbd_trigger_distance = self._config.get('stbd_trigger_distance')
         self._stbd_side_trigger_distance = self._config.get('stbd_side_trigger_distance')
         self._log.info('event thresholds:' \
-                + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance, self._port_trigger_distance) \
-                + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance) \
-                + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance ))
+                +Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance, self._port_trigger_distance) \
+                +Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance) \
+                +Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance))
         # long distance:
         self._port_side_trigger_distance_far = self._config.get('port_side_trigger_distance_far')
-        self._port_trigger_distance_far      = self._config.get('port_trigger_distance_far')
-        self._center_trigger_distance_far    = self._config.get('center_trigger_distance_far')
-        self._stbd_trigger_distance_far      = self._config.get('stbd_trigger_distance_far')
+        self._port_trigger_distance_far = self._config.get('port_trigger_distance_far')
+        self._center_trigger_distance_far = self._config.get('center_trigger_distance_far')
+        self._stbd_trigger_distance_far = self._config.get('stbd_trigger_distance_far')
         self._stbd_side_trigger_distance_far = self._config.get('stbd_side_trigger_distance_far')
         self._log.info('long distance event thresholds:' \
-                + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance_far, self._port_trigger_distance_far) \
-                + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance_far) \
-                + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance_far, self._stbd_side_trigger_distance_far ))
-        self._loop_delay_sec                 = self._config.get('loop_delay_sec')
+                +Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance_far, self._port_trigger_distance_far) \
+                +Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance_far) \
+                +Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance_far, self._stbd_side_trigger_distance_far))
+        self._loop_delay_sec = self._config.get('loop_delay_sec')
         if message_factory:
             self._message_factory = message_factory
         else:
             self._message_factory = MessageFactory(level)
         self._log.debug('initialising integrated front sensor...')
-        self._loop_counter     = itertools.count()
+        self._loop_counter = itertools.count()
         self._callback_counter = itertools.count()
         self._callback_count = 0
         self._last_event = None
-        self._thread  = None
+        self._thread = None
         self._enabled = False
         self._suppressed = False
         self._closing = False
-        self._closed  = False
+        self._closed = False
         self._ioe = IoExpander(config, Level.INFO)
         self._log.info('ready.')
 
@@ -259,7 +262,7 @@ class IntegratedFrontSensor():
                 _event = Event.INFRARED_STBD
             elif value > self._stbd_trigger_distance_far:
                 _event = Event.INFRARED_STBD_FAR
-        elif pin == 5: #self._stbd_side_ir_pin:
+        elif pin == 5:  # self._stbd_side_ir_pin:
             if value > self._stbd_side_trigger_distance:
                 _event = Event.INFRARED_STBD_SIDE
             elif value > self._stbd_side_trigger_distance_far:
@@ -301,13 +304,13 @@ class IntegratedFrontSensor():
             _start_time = dt.datetime.now()
 
             _port_side_data = self.get_input_for_event_type(Event.INFRARED_PORT_SIDE)
-            _port_data      = self.get_input_for_event_type(Event.INFRARED_PORT)
-            _cntr_data      = self.get_input_for_event_type(Event.INFRARED_CNTR)
-            _stbd_data      = self.get_input_for_event_type(Event.INFRARED_STBD)
+            _port_data = self.get_input_for_event_type(Event.INFRARED_PORT)
+            _cntr_data = self.get_input_for_event_type(Event.INFRARED_CNTR)
+            _stbd_data = self.get_input_for_event_type(Event.INFRARED_STBD)
             _stbd_side_data = self.get_input_for_event_type(Event.INFRARED_STBD_SIDE)
-            _port_bmp_data  = self.get_input_for_event_type(Event.BUMPER_PORT)
-            _cntr_bmp_data  = self.get_input_for_event_type(Event.BUMPER_CNTR)
-            _stbd_bmp_data  = self.get_input_for_event_type(Event.BUMPER_STBD)
+            _port_bmp_data = self.get_input_for_event_type(Event.BUMPER_PORT)
+            _cntr_bmp_data = self.get_input_for_event_type(Event.BUMPER_CNTR)
+            _stbd_bmp_data = self.get_input_for_event_type(Event.BUMPER_STBD)
 
             _delta = dt.datetime.now() - _start_time
             _elapsed_ms = int(_delta.total_seconds() * 1000) 
@@ -315,43 +318,43 @@ class IntegratedFrontSensor():
             self._log.info(Fore.WHITE + '[{:04d}] acquisition time elapsed: {:d}ms'.format(_count, _elapsed_ms))
 
             # pin 1: analog infrared sensor ................
-            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 1) + ( Fore.RED if ( _port_side_data > 100.0 ) else Fore.YELLOW ) \
-                    + Style.BRIGHT + '{:d}'.format(_port_side_data) + Style.DIM + '\t(analog value 0-255)')
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 1) + (Fore.RED if (_port_side_data > 100.0) else Fore.YELLOW) \
+                    +Style.BRIGHT + '{:d}'.format(_port_side_data) + Style.DIM + '\t(analog value 0-255)')
             self._callback(1, PinType.ANALOG_INPUT, _port_side_data)
 
             # pin 2: analog infrared sensor ................
-            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 2) + ( Fore.RED if ( _port_data > 100.0 ) else Fore.YELLOW ) \
-                    + Style.BRIGHT + '{:d}'.format(_port_data) + Style.DIM + '\t(analog value 0-255)')
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 2) + (Fore.RED if (_port_data > 100.0) else Fore.YELLOW) \
+                    +Style.BRIGHT + '{:d}'.format(_port_data) + Style.DIM + '\t(analog value 0-255)')
             self._callback(2, PinType.ANALOG_INPUT, _port_data)
 
             # pin 3: analog infrared sensor ................
-            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 3) + ( Fore.RED if ( _cntr_data > 100.0 ) else Fore.YELLOW ) \
-                    + Style.BRIGHT + '{:d}'.format(_cntr_data) + Style.DIM + '\t(analog value 0-255)')
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 3) + (Fore.RED if (_cntr_data > 100.0) else Fore.YELLOW) \
+                    +Style.BRIGHT + '{:d}'.format(_cntr_data) + Style.DIM + '\t(analog value 0-255)')
             self._callback(3, PinType.ANALOG_INPUT, _cntr_data)
 
             # pin 4: analog infrared sensor ................
-            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 4) + ( Fore.RED if ( _stbd_data > 100.0 ) else Fore.YELLOW ) \
-                    + Style.BRIGHT + '{:d}'.format(_stbd_data) + Style.DIM + '\t(analog value 0-255)')
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 4) + (Fore.RED if (_stbd_data > 100.0) else Fore.YELLOW) \
+                    +Style.BRIGHT + '{:d}'.format(_stbd_data) + Style.DIM + '\t(analog value 0-255)')
             self._callback(4, PinType.ANALOG_INPUT, _stbd_data)
 
             # pin 5: analog infrared sensor ................
-            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 5) + ( Fore.RED if ( _stbd_side_data > 100.0 ) else Fore.YELLOW ) \
-                    + Style.BRIGHT + '{:d}'.format(_stbd_side_data) + Style.DIM + '\t(analog value 0-255)')
+            self._log.debug('[{:04d}] ANALOG IR ({:d}):       \t'.format(_count, 5) + (Fore.RED if (_stbd_side_data > 100.0) else Fore.YELLOW) \
+                    +Style.BRIGHT + '{:d}'.format(_stbd_side_data) + Style.DIM + '\t(analog value 0-255)')
             self._callback(5, PinType.ANALOG_INPUT, _stbd_side_data)
 
             # pin 9: digital bumper sensor .................
-            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 9) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_port_bmp_data) \
-                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 9) + Fore.GREEN + Style.BRIGHT + '{:d}'.format(_port_bmp_data) \
+                    +Style.DIM + '\t(displays digital pup value 0|1)')
             self._callback(9, PinType.DIGITAL_INPUT_PULLUP, _port_bmp_data)
 
             # pin 10: digital bumper sensor ................
-            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 10) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_cntr_bmp_data) \
-                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 10) + Fore.GREEN + Style.BRIGHT + '{:d}'.format(_cntr_bmp_data) \
+                    +Style.DIM + '\t(displays digital pup value 0|1)')
             self._callback(10, PinType.DIGITAL_INPUT_PULLUP, _cntr_bmp_data)
 
             # pin 11: digital bumper sensor ................
-            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 11) + Fore.GREEN + Style.BRIGHT  + '{:d}'.format(_stbd_bmp_data) \
-                    + Style.DIM + '\t(displays digital pup value 0|1)')
+            self._log.debug('[{:04d}] DIGITAL IR ({:d}):      \t'.format(_count, 11) + Fore.GREEN + Style.BRIGHT + '{:d}'.format(_stbd_bmp_data) \
+                    +Style.DIM + '\t(displays digital pup value 0|1)')
             self._callback(11, PinType.DIGITAL_INPUT_PULLUP, _stbd_bmp_data)
 
 #           self._log.info(Fore.WHITE + Style.DIM + '[{:04d}] loop end.'.format(_count))
@@ -450,4 +453,4 @@ class IntegratedFrontSensor():
         else:
             self._log.debug('already closed.')
 
-#EOF
+# EOF

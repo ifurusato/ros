@@ -38,7 +38,7 @@ try:
 except ImportError as ie:
     _lib = 'elasticsearch'
     sys.exit("This script requires the {lib} module.\n"\
-           + "Install with: sudo pip3 install {lib}".format(lib=_lib))
+           +"Install with: sudo pip3 install {lib}".format(lib=_lib))
 
 from colorama import init, Fore, Style
 init()
@@ -46,6 +46,7 @@ init()
 from lib.config_loader import ConfigLoader
 from lib.jsonnd import JsonNdParser, JsonNdParserException
 from lib.logger import Logger, Level
+
 
 # ..............................................................................
 class Elastic(object):
@@ -60,11 +61,11 @@ class Elastic(object):
         if config is None:
             raise ValueError('no configuration provided.')
         _config = config['ros'].get('elastic')
-        self._host     = _config.get('host')
-        self._port     = _config.get('port')
+        self._host = _config.get('host')
+        self._port = _config.get('port')
         self._log.info('service address: {}:{}'.format(self._host, self._port))
-        self._schema   = _config.get('schema')
-        self._index    = _config.get('index')
+        self._schema = _config.get('schema')
+        self._index = _config.get('index')
         self._doc_type = _config.get('doc_type')
         self._log.info('schema: \'{}\';\tindex: \'{}\';\tdoctype: \'{}\t'.format(self._schema, self._index, self._doc_type))
         self._log.info('connecting to elastic search cluster...')
@@ -81,7 +82,7 @@ class Elastic(object):
         self._log.info('ready.')
 
     # ..........................................................................
-    def ping(self ):
+    def ping(self):
         if self._es.ping():
             self._log.info('successfully pinged server.')
             return True
@@ -142,7 +143,7 @@ class Elastic(object):
         self._log.info('message: {}'.format(message))
         pass
 
-#data = {
+# data = {
 #        "author": "Chestermo",
 #        "gender": "male",
 #        "age": "24",
@@ -150,8 +151,10 @@ class Elastic(object):
 #        "interest": ["couch potato", "eat and sleep"]
 #    }
 
+
 # main .........................................................................
 _log = Logger("test", Level.INFO)
+
 
 def main(argv):
 
@@ -186,7 +189,7 @@ def main(argv):
         _log.info('parsing file: {}...'.format(_filename))
         # returns a List of strings
         _response = _jnp.parse_file(_filename)
-        _log.info('parsed CSV document to {:d} records.'.format(len(_response)) )
+        _log.info('parsed CSV document to {:d} records.'.format(len(_response)))
 
         _pp = pprint.PrettyPrinter(indent=4)
 
@@ -226,7 +229,6 @@ def main(argv):
         _response = _elastic.get_index()
         _log.info(Fore.YELLOW + 'get_index response: {}'.format(_pp.pprint(_response)))
 
-
         '''
 {   '_id': '1',
     '_index': 'kr01',
@@ -242,8 +244,9 @@ def main(argv):
     except Exception as e:
         _log.error('error uploading to elasticsearch: {}\n{}'.format(e, traceback.format_exc()))
 
+
 # call main ....................................................................
-if __name__== "__main__":
+if __name__ == "__main__":
     main(sys.argv[1:])
 
-#EOF
+# EOF

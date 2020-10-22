@@ -14,19 +14,20 @@ import time, sys, signal, traceback
 from colorama import init, Fore, Style
 init()
 
-#try:
+# try:
 #    import numpy
-#except ImportError:
+# except ImportError:
 #    exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
 
 from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.devnull import DevNull
-#rom lib.player import Player
+# rom lib.player import Player
 from lib.lidar import Lidar
 
 _lidar = None
+
 
 # exception handler ............................................................
 def signal_handler(signal, frame):
@@ -51,12 +52,12 @@ def main():
         _i2c_scanner = I2CScanner(Level.WARN)
         _addresses = _i2c_scanner.getAddresses()
         hexAddresses = _i2c_scanner.getHexAddresses()
-        _addrDict = dict(list(map(lambda x, y:(x,y), _addresses, hexAddresses)))
+        _addrDict = dict(list(map(lambda x, y:(x, y), _addresses, hexAddresses)))
         for i in range(len(_addresses)):
             _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]))
 
-        vl53l1x_available = ( 0x29 in _addresses )
-        ultraborg_available = ( 0x36 in _addresses )
+        vl53l1x_available = (0x29 in _addresses)
+        ultraborg_available = (0x36 in _addresses)
 
         if not vl53l1x_available:
             raise OSError('VL53L1X hardware dependency not available.')
@@ -75,21 +76,21 @@ def main():
         values = _lidar.scan()
 
         _angle_at_min = values[0]
-        _min_mm       = values[1]
+        _min_mm = values[1]
         _angle_at_max = values[2]
-        _max_mm       = values[3]
+        _max_mm = values[3]
         _log.info(Fore.CYAN + Style.BRIGHT + 'min. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_min, _min_mm))
         _log.info(Fore.CYAN + Style.BRIGHT + 'max. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_max, _max_mm))
         time.sleep(1.0)
         _lidar.close()
         _log.info(Fore.CYAN + Style.BRIGHT + 'test complete.')
 
-
     except Exception:
         _log.info(traceback.format_exc())
         sys.exit(1)
 
-if __name__== "__main__":
+
+if __name__ == "__main__":
     main()
 
-#EOF
+# EOF

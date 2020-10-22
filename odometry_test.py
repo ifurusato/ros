@@ -6,7 +6,6 @@
 # Please see the LICENSE file included as part of this package.
 #
 
-# Import library functions we need
 import os, sys, signal, time, threading
 from fractions import Fraction
 from colorama import init, Fore, Style
@@ -27,6 +26,7 @@ def signal_handler(signal, frame):
     sys.stderr = DevNull()
     print('exit.')
     sys.exit(0)
+
 
 # ..............................................................................
 def main():
@@ -51,10 +51,10 @@ def main():
         filename = 'config.yaml'
         _config = _loader.configure(filename)
  
-        _port_speed  = 0.0
+        _port_speed = 0.0
         _stbdt_speed = 50.0
-        _port_steps  = 0
-        _stbd_steps  = 0
+        _port_steps = 0
+        _stbd_steps = 0
 
         _motors = Motors(_config, None, None, Level.INFO)
 #       _motors.step(_port_speed, _stbd_speed, _port_steps, _stbd_steps):
@@ -92,8 +92,8 @@ def main():
     finally:
         _motors.brake()
 
-if __name__== "__main__":
+
+if __name__ == "__main__":
     main()
 
-
-#EOF
+# EOF

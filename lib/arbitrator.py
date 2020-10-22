@@ -20,6 +20,7 @@ import datetime as dt
 from lib.logger import Logger 
 from lib.event import Event
 
+
 # ..............................................................................
 class Arbitrator(threading.Thread):
     '''
@@ -33,6 +34,7 @@ class Arbitrator(threading.Thread):
                                    act upon the current message, with
                                    a callback called upon completion
     '''
+
     def __init__(self, config, queue, controller, level):
         super().__init__()
         threading.Thread.__init__(self)
@@ -41,14 +43,14 @@ class Arbitrator(threading.Thread):
             raise ValueError('no configuration provided.')
         self._config = config['ros'].get('arbitrator')
         self._idle_loop_count = 0
-        self._loop_delay_sec            = self._config.get('loop_delay_sec')
-        self._ballistic_loop_delay_sec  = self._config.get('ballistic_loop_delay_sec')
+        self._loop_delay_sec = self._config.get('loop_delay_sec')
+        self._ballistic_loop_delay_sec = self._config.get('ballistic_loop_delay_sec')
         self._queue = queue
         self._controller = controller
         self._tasks = []
         self._is_enabled = True
-        self._closing    = False
-        self._closed     = False
+        self._closing = False
+        self._closed = False
         self._suppressed = False
         self._counter = itertools.count()
         self._log.debug('ready.')
@@ -91,7 +93,7 @@ class Arbitrator(threading.Thread):
                 for i in range(len(next_messages)):
                     next_message = next_messages[i]
                     if first_message:
-                        self._idle_loop_count = 0 # reset
+                        self._idle_loop_count = 0  # reset
                         self.accept_highest_priority_message(next_message)
                     else:
                         self._log.debug('{}: message #{:07d};\tpriority #{}: {}.'.format(i, \
@@ -103,17 +105,17 @@ class Arbitrator(threading.Thread):
                 if _current_message is not None:
                     if _current_message.get_event() == Event.STANDBY:
                         self._log.debug('{:06d} : current event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
-                        if ( self._loop_count % 10 ) == 0:
+                        if (self._loop_count % 10) == 0:
                             self._log.info('{:06d} : standing by...'.format(self._loop_count))
                     else:
                         self._log.info('{:06d} : event: {}; queue: {} elements.'.format(self._loop_count, _current_message.get_event().description, self._queue.size()))
-                else: # no messages: we're idle.
+                else:  # no messages: we're idle.
                     self._idle_loop_count += 1
                     if self._idle_loop_count <= 500:
-                        if ( self._loop_count % 50 ) == 0:
+                        if (self._loop_count % 50) == 0:
                             self._log.info('{:06d} : idle.'.format(self._loop_count))
-                    else: # after being idle for a long time, dim the message
-                        if ( self._loop_count % 500 ) == 0:
+                    else:  # after being idle for a long time, dim the message
+                        if (self._loop_count % 500) == 0:
                             self._log.info('{:06d} : idle...'.format(self._loop_count))
             time.sleep(self._loop_delay_sec)
             _delta = dt.datetime.now() - _start_time
@@ -121,7 +123,6 @@ class Arbitrator(threading.Thread):
             self._log.info('elapsed: {}ms'.format(_elapsed_ms))
 
         self._log.info('loop end.')
-
 
     # ..........................................................................
     def interrupt(self, message):
@@ -201,7 +202,7 @@ class Arbitrator(threading.Thread):
                 self._log.warning('message already complete.')
                 return
             elif current_power[0] is not None and current_power[1] is not None:
-                self._log.info('event {} complete with current power levels at {:>5.1f}, {:>5.1f}.'.format(_current_message.get_event().name, current_power[0], current_power[1] ))
+                self._log.info('event {} complete with current power levels at {:>5.1f}, {:>5.1f}.'.format(_current_message.get_event().name, current_power[0], current_power[1]))
             else:
                 self._log.info('event {} complete with current power levels at zero.'.format(_current_message.get_event().name))
             _current_message.complete()
@@ -209,7 +210,7 @@ class Arbitrator(threading.Thread):
             self._log.critical('cannot complete callback: no current message.')
 
     # ..........................................................................
-    def add_task(self,task):
+    def add_task(self, task):
         self._tasks.append(task)
         task.start()
 
@@ -224,7 +225,7 @@ class Arbitrator(threading.Thread):
             return
         self._closing = False
         if len(self._tasks) > 0:
-            self._log.info('closing {} tasks...'.format(len(self._tasks)) )
+            self._log.info('closing {} tasks...'.format(len(self._tasks)))
             for task in self._tasks:
                 task.disable()
                 task.close()
@@ -235,4 +236,4 @@ class Arbitrator(threading.Thread):
         self._closed = False
         self._log.info('closed.')
 
-#EOF
+# EOF

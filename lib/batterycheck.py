@@ -21,12 +21,12 @@ try:
     from ads1015 import ADS1015
     print('import            :' + Fore.BLACK + ' INFO  : successfully imported ads1015.' + Style.RESET_ALL)
 except ImportError:
-    print('import            :' + Fore.RED + ' ERROR : failed to import ads1015, using mock...' + Style.RESET_ALL)
-    from lib.mock_ads1015 import ADS1015
+    sys.exit("This script requires the ads1015 module\nInstall with: sudo pip3 install ads1015")
+#   from lib.mock_ads1015 import ADS1015
 
 from lib.logger import Level, Logger
 from lib.event import Event
-from lib.message import Message
+from lib.message import Message, MessageFactory
 from lib.feature import Feature
 
 class BatteryCheck(Feature): 
@@ -58,7 +58,7 @@ class BatteryCheck(Feature):
     '''
 
     # ..........................................................................
-    def __init__(self, config, queue, level):
+    def __init__(self, config, queue, message_factory, level):
         self._log = Logger("battery", level)
         if config is None:
             raise ValueError('no configuration provided.')
@@ -91,6 +91,7 @@ class BatteryCheck(Feature):
         self._tb = TB
 
         self._queue = queue
+        self._message_factory = message_factory
         self._battery_voltage       = 0.0
         self._regulator_a_voltage   = 0.0
         self._regulator_b_voltage   = 0.0
@@ -244,19 +245,21 @@ class BatteryCheck(Feature):
                     if self._battery_voltage < self._raw_battery_threshold:
                         self._log.warning('battery low: {:>5.2f}v'.format(self._battery_voltage))
                         if self._enable_messaging:
-                            self._queue.add(Message(Event.BATTERY_LOW))
+                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
                     elif self._regulator_a_voltage < self._five_volt_threshold:
                         self._log.warning('5V regulator A low:  {:>5.2f}v'.format(self._regulator_a_voltage))
                         if self._enable_messaging:
-                            self._queue.add(Message(Event.BATTERY_LOW))
+                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
                     elif self._regulator_b_voltage < self._five_volt_threshold:
                         self._log.warning('5V regulator B low:  {:>5.2f}v'.format(self._regulator_b_voltage))
                         if self._enable_messaging:
-                            self._queue.add(Message(Event.BATTERY_LOW))
+                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
                     else:
-                        self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v'.format(self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
+                        self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v'.format(\
+                                self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
                 else:
-                    self._log.debug('battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v (stabilising)'.format(self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
+                    self._log.debug('battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v (stabilising)'.format(\
+                            self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
 
             time.sleep(self._loop_delay_sec_div_10)
 

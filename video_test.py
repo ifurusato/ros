@@ -20,6 +20,7 @@ init()
 
 from lib.config_loader import ConfigLoader
 from lib.logger import Level
+from lib.lux import Lux
 from lib.video import Video
 
 # main .........................................................................
@@ -35,7 +36,9 @@ def main(argv):
         filename = 'config.yaml'
         _config = _loader.configure(filename)
         
-        _video = Video(_config, Level.INFO)
+        _lux   = Lux(Level.INFO)
+        _matrix11x7_stbd_available = True
+        _video = Video(_config, _lux, _matrix11x7_stbd_available, Level.INFO)
         _video.start()
 
         while True:

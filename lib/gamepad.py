@@ -10,7 +10,8 @@
 # modified: 2020-08-06
 #
 # This class interprets the signals arriving from the 8BitDo N30 Pro gamepad,
-# a paired Bluetooth device.
+# a paired Bluetooth device. Note that supporting classes are found at the
+# bottom of this file.
 #
 
 import os, sys, itertools, time, threading, traceback
@@ -49,148 +50,6 @@ from lib.rate import Rate
 
       https://core-electronics.com.au/tutorials/using-usb-and-bluetooth-controllers-with-python.html
 '''
-
-# ..............................................................................
-class GamepadControl(Enum):
-    '''
-        An enumeration of the controls available on the 8BitDo N30 Pro Gamepad,
-        or any similar/compatible model. The numeric values for 'code' may need
-        to be modified for different devices, but the basic functionality of this
-        Enum should hold.
-
-        This also includes an Event variable, which provides the mapping between
-        a specific gamepad control and its corresponding action.
-
-        The @property annotations make sure the respective variable is read-only.
-
-    control            num  code  id          control descripton     event
-    '''
-    A_BUTTON        = ( 1,  304,  'cross',    'A (Cross) Button',    Event.SNIFF)
-    B_BUTTON        = ( 2,  305,  'circle',   'B (Circle) Button',   Event.STOP)
-    X_BUTTON        = ( 3,  307,  'triangle', 'X (Triangle) Button', Event.ROAM)
-    Y_BUTTON        = ( 4,  308,  'square',   'Y ((Square) Button',  Event.BRAKE)
-
-    L1_BUTTON       = ( 5,  310,  'l1',       'L1 Video',            Event.VIDEO)
-    L2_BUTTON       = ( 6,  312,  'l2',       'L2 Event',            Event.EVENT_L2) # unassigned
-    R1_BUTTON       = ( 8,  311,  'r1',       'R1 Lights On',        Event.EVENT_R1) # unassigned
-    R2_BUTTON       = ( 7,  313,  'r2',       'R2 Lights Off',       Event.LIGHTS)
-#   L1_BUTTON       = ( 5,  310,  'l1',       'L1 Button',           Event.BUMPER_PORT)
-#   L2_BUTTON       = ( 6,  312,  'l2',       'L2 Button',           Event.BUMPER_CNTR)
-#   R2_BUTTON       = ( 7,  313,  'r2',       'R2 Button',           Event.BUMPER_CNTR)
-#   R1_BUTTON       = ( 8,  311,  'r1',       'R1 Button',           Event.BUMPER_STBD)
-
-    START_BUTTON    = ( 9,  315,  'start',    'Start Button',        Event.NO_ACTION)
-    SELECT_BUTTON   = ( 10, 314,  'select',   'Select Button',       Event.STANDBY)
-    HOME_BUTTON     = ( 11, 306,  'home',     'Home Button',         Event.SHUTDOWN)
-    DPAD_HORIZONTAL = ( 12, 16,   'dph',      'D-PAD Horizontal',    Event.THETA)
-    DPAD_VERTICAL   = ( 13, 17,   'dpv',      'D-PAD Vertical',      Event.FORWARD_VELOCITY)
-
-    L3_VERTICAL     = ( 14, 1,    'l3v',      'L3 Vertical',         Event.PORT_VELOCITY)
-    L3_HORIZONTAL   = ( 15, 0,    'l3h',      'L3 Horizontal',       Event.PORT_THETA)
-    R3_VERTICAL     = ( 16, 5,    'r3v',      'R3 Vertical',         Event.STBD_VELOCITY)
-    R3_HORIZONTAL   = ( 17, 2,    'r3h',      'R3 Horizontal',       Event.STBD_THETA)
-
-    # ignore the first param since it's already set by __new__
-    def __init__(self, num, code, name, label, event):
-        self._code = code
-        self._name = name
-        self._label = label
-        self._event = event
-
-    @property
-    def code(self):
-        return self._code
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def label(self):
-        return self._label
-
-    @property
-    def event(self):
-        return self._event
-
-    # ..........................................................................
-    @staticmethod
-    def get_by_code(self, code):
-        for ctrl in GamepadControl:
-            if ctrl.code == code:
-#               print(Fore.WHITE + Style.BRIGHT + 'ctrl code: {}'.format(code) + Style.RESET_ALL)
-                return ctrl
-        return None
-
-# ..............................................................................
-class GamepadConnectException(Exception):
-    '''
-        Exception raised when unable to connect to Gamepad.
-    '''
-    pass
-
-# ..............................................................................
-class GamepadScan(object):
-    '''
-       Returns the device with the most recently changed status from /dev/input/event{n}
-       This can help you figure out which device is your gamepad, if if was connected
-       after everything else in the system had settled.
-    '''
-    def __init__(self, config, level):
-        self._log = Logger("gamepad-scan", level)
-        if config is None:
-            raise ValueError("no configuration provided.")
-        _config = config['ros'].get('gamepad')
-        self._device_path = _config.get('device_path')
-        self._log.debug('device path: {}'.format(self._device_path))
-        self._log.info('ready')
-
-    # ..........................................................................
-    def check_gamepad_device(self):
-        '''
-           Checks that the configured device matches the device with the most
-           recently changed status, returning True if matched.
-        '''
-        _latest_device = self.get_latest_device()
-        if self._device_path == _latest_device:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'matches:             ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
-            return True
-        else:
-            self._log.info(Fore.RED + Style.NORMAL   + 'does not match:      ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
-            return False
-
-    # ..........................................................................
-    def _get_ctime(self, path):
-        try:
-            _device_stat = os.stat(path)
-            return _device_stat.st_ctime
-        except OSError:
-            return -1.0
-
-    # ..........................................................................
-    def get_latest_device(self):
-        '''
-            Build a dictionary of available devices, return the one with the
-            most recent status change.
-        '''
-        _dict = {}
-        for i in range(10):
-            _path = '/dev/input/event{}'.format(i)
-            try:
-                _device_stat = os.stat(_path)
-                _ctime = _device_stat.st_ctime
-            except OSError:
-                break
-            self._log.debug('device: {}'.format(_path) + Fore.BLUE + Style.NORMAL + '\tstatus changed: {}'.format(dt.datetime.fromtimestamp(_ctime)))
-            _dict[_path] = _ctime
-        # find most recent by sorting the dictionary on ctime
-        _sorted = sorted(_dict.items(), key=lambda x:x[1])
-        _latest_devices = _sorted[len(_sorted)-1]
-        _latest_device = _latest_devices[0]
-        self._log.info(Style.BRIGHT + 'device path:         ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(self._device_path))
-        self._log.info(Style.BRIGHT + 'most recent device:  ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
-        return _latest_device
-
 
 # ..............................................................................
 class Gamepad():
@@ -247,7 +106,7 @@ class Gamepad():
 
     # ..........................................................................
     def _connect(self):
-        self._log.info('connecting...')
+        self._log.header('gamepad','Connecting Gamepad...',None)
         try:
             self._gamepad = InputDevice(self._device_path)
             # display device info
@@ -451,40 +310,184 @@ class Gamepad():
             self._queue.add(_message)
 
 
+# ..............................................................................
+class GamepadControl(Enum):
+    '''
+        An enumeration of the controls available on the 8BitDo N30 Pro Gamepad,
+        or any similar/compatible model. The numeric values for 'code' may need
+        to be modified for different devices, but the basic functionality of this
+        Enum should hold.
+
+        This also includes an Event variable, which provides the mapping between
+        a specific gamepad control and its corresponding action.
+
+        The @property annotations make sure the respective variable is read-only.
+
+    control            num  code  id          control descripton     event
+    '''
+    A_BUTTON        = ( 1,  304,  'cross',    'A (Cross) Button',    Event.SNIFF)
+    B_BUTTON        = ( 2,  305,  'circle',   'B (Circle) Button',   Event.STOP)
+    X_BUTTON        = ( 3,  307,  'triangle', 'X (Triangle) Button', Event.ROAM)
+    Y_BUTTON        = ( 4,  308,  'square',   'Y ((Square) Button',  Event.BRAKE)
+
+    L1_BUTTON       = ( 5,  310,  'l1',       'L1 Video',            Event.VIDEO)
+    L2_BUTTON       = ( 6,  312,  'l2',       'L2 Event',            Event.EVENT_L2) # unassigned
+    R1_BUTTON       = ( 8,  311,  'r1',       'R1 Lights On',        Event.EVENT_R1) # unassigned
+    R2_BUTTON       = ( 7,  313,  'r2',       'R2 Lights Off',       Event.LIGHTS)
+#   L1_BUTTON       = ( 5,  310,  'l1',       'L1 Button',           Event.BUMPER_PORT)
+#   L2_BUTTON       = ( 6,  312,  'l2',       'L2 Button',           Event.BUMPER_CNTR)
+#   R2_BUTTON       = ( 7,  313,  'r2',       'R2 Button',           Event.BUMPER_CNTR)
+#   R1_BUTTON       = ( 8,  311,  'r1',       'R1 Button',           Event.BUMPER_STBD)
+
+    START_BUTTON    = ( 9,  315,  'start',    'Start Button',        Event.NO_ACTION)
+    SELECT_BUTTON   = ( 10, 314,  'select',   'Select Button',       Event.STANDBY)
+    HOME_BUTTON     = ( 11, 306,  'home',     'Home Button',         Event.SHUTDOWN)
+    DPAD_HORIZONTAL = ( 12, 16,   'dph',      'D-PAD Horizontal',    Event.THETA)
+    DPAD_VERTICAL   = ( 13, 17,   'dpv',      'D-PAD Vertical',      Event.FORWARD_VELOCITY)
+
+    L3_VERTICAL     = ( 14, 1,    'l3v',      'L3 Vertical',         Event.PORT_VELOCITY)
+    L3_HORIZONTAL   = ( 15, 0,    'l3h',      'L3 Horizontal',       Event.PORT_THETA)
+    R3_VERTICAL     = ( 16, 5,    'r3v',      'R3 Vertical',         Event.STBD_VELOCITY)
+    R3_HORIZONTAL   = ( 17, 2,    'r3h',      'R3 Horizontal',       Event.STBD_THETA)
+
+    # ignore the first param since it's already set by __new__
+    def __init__(self, num, code, name, label, event):
+        self._code = code
+        self._name = name
+        self._label = label
+        self._event = event
+
+    @property
+    def code(self):
+        return self._code
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def event(self):
+        return self._event
+
+    # ..........................................................................
+    @staticmethod
+    def get_by_code(self, code):
+        for ctrl in GamepadControl:
+            if ctrl.code == code:
+#               print(Fore.WHITE + Style.BRIGHT + 'ctrl code: {}'.format(code) + Style.RESET_ALL)
+                return ctrl
+        return None
+
+
+# ..............................................................................
+class GamepadScan(object):
+    '''
+       Returns the device with the most recently changed status from /dev/input/event{n}
+       This can help you figure out which device is your gamepad, if if was connected
+       after everything else in the system had settled.
+    '''
+    def __init__(self, config, level):
+        self._log = Logger("gamepad-scan", level)
+        if config is None:
+            raise ValueError("no configuration provided.")
+        _config = config['ros'].get('gamepad')
+        self._device_path = _config.get('device_path')
+        self._log.debug('device path: {}'.format(self._device_path))
+        self._log.info('ready')
+
+    # ..........................................................................
+    def _get_ctime(self, path):
+        try:
+            _device_stat = os.stat(path)
+            return _device_stat.st_ctime
+        except OSError:
+            return -1.0
+
+    # ..........................................................................
+    def get_latest_device(self):
+        '''
+            Build a dictionary of available devices, return the one with the
+            most recent status change.
+        '''
+        _dict = {}
+        for i in range(10):
+            _path = '/dev/input/event{}'.format(i)
+            try:
+                _device_stat = os.stat(_path)
+                _ctime = _device_stat.st_ctime
+            except OSError:
+                break
+            self._log.debug('device: {}'.format(_path) + Fore.BLUE + Style.NORMAL + '\tstatus changed: {}'.format(dt.datetime.fromtimestamp(_ctime)))
+            _dict[_path] = _ctime
+        # find most recent by sorting the dictionary on ctime
+        _sorted = sorted(_dict.items(), key=lambda x:x[1])
+        _latest_devices = _sorted[len(_sorted)-1]
+        _latest_device = _latest_devices[0]
+        self._log.info('device path:       \t' + Fore.YELLOW + ('{}'.format(self._device_path)).rjust(20))
+        self._log.info('most recent device:\t' + Fore.YELLOW + ('{}'.format(_latest_device)).rjust(20))
+        return _latest_device
+
+    # ..........................................................................
+    def check_gamepad_device(self):
+        '''
+           Checks that the configured device matches the device with the most
+           recently changed status, returning True if matched.
+        '''
+        _latest_device = self.get_latest_device()
+        if self._device_path == _latest_device:
+            self._log.info(Style.BRIGHT + 'matches:           \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(self._device_path)).rjust(20))
+            return True
+        else:
+            self._log.info(Style.BRIGHT + 'does not match:    \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(_latest_device)).rjust(20))
+#           self._log.error(Style.BRIGHT + 'does not match:    \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(self._latest_device)).rjust(20))
+#           self._log.error(Style.NORMAL + 'does not match:      ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
+            return False
+
+# ..............................................................................
+class GamepadConnectException(Exception):
+    '''
+        Exception raised when unable to connect to Gamepad.
+    '''
+    pass
+
+
 # main .........................................................................
 
-_gamepad = None
-
-def main(argv):
-
-    try:
-
-        _loader  = ConfigLoader(Level.INFO)
-        filename = 'config.yaml'
-        _config  = _loader.configure(filename)
-
-        _gamepad = Gamepad(_config, _queue, Level.INFO)
-        _gamepad.enable()
-
-        while _gamepad.is_enabled():
-            time.sleep(1.0)
-
-    except KeyboardInterrupt:
-        print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
-        if _gamepad:
-            _gamepad.disable()
-        sys.exit(0)
-
-    except Exception:
-        print(Fore.RED + Style.BRIGHT + 'error processing gamepad events: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-        if _gamepad:
-            _gamepad.disable()
-        sys.exit(1)
-
-
-# call main ....................................................................
-if __name__== "__main__":
-    main(sys.argv[1:])
-
+#_gamepad = None
+#
+#def main(argv):
+#
+#    try:
+#
+#        _loader  = ConfigLoader(Level.INFO)
+#        filename = 'config.yaml'
+#        _config  = _loader.configure(filename)
+#
+#        _gamepad = Gamepad(_config, _queue, Level.INFO)
+#        _gamepad.enable()
+#
+#        while _gamepad.is_enabled():
+#            time.sleep(1.0)
+#
+#    except KeyboardInterrupt:
+#        print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
+#        if _gamepad:
+#            _gamepad.disable()
+#        sys.exit(0)
+#
+#    except Exception:
+#        print(Fore.RED + Style.BRIGHT + 'error processing gamepad events: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
+#        if _gamepad:
+#            _gamepad.disable()
+#        sys.exit(1)
+#
+#
+## call main ....................................................................
+#if __name__== "__main__":
+#    main(sys.argv[1:])
 
 # EOF

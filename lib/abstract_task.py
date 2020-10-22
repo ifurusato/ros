@@ -21,6 +21,7 @@ from lib.logger import Logger, Level
 
 level = Level.INFO
 
+
 class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
     '''
         An abstract task class implemented as a Finite State Machine (FSM),
@@ -32,7 +33,7 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         The _enabled variable is controlled by enable() and disable().
     '''
 
-    sleep_delay = 1 # seconds
+    sleep_delay = 1  # seconds
 
     def __init__(self, task_name, queue, GPIO, priority, mutex):
         super().__init__(task_name)
@@ -45,62 +46,51 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         # initialise logger
         self.task_name = task_name
         self._log = Logger(task_name, level)
-        self._log.debug(task_name+'__init__() initialising...')
+        self._log.debug(task_name + '__init__() initialising...')
         # initialise GPIO
         self._gpio = GPIO
-        if ( GPIO is not None ):
+        if (GPIO is not None):
             self._gpio.setmode(GPIO.BCM)
         self._priority = priority
-        self._mutex    = mutex
-        self._active   = True    # set False only when closing task
-        self._enabled  = False  # enabled/disabled toggle
-        self._closing  = False
-        self._number   = -1
-        self._log.debug(task_name+'__init__() ready.')
-
+        self._mutex = mutex
+        self._active = True  # set False only when closing task
+        self._enabled = False  # enabled/disabled toggle
+        self._closing = False
+        self._number = -1
+        self._log.debug(task_name + '__init__() ready.')
 
     def get_queue(self):
         return self._queue
 
-
     def set_number(self, number):
         self._number = number
-
 
     def get_number(self):
         return self._number
 
-
     def get_priority(self):
         return self._priority
-
 
     def get_task_name(self):
         return self.task_name
 
-
     def __cmp__(self, other):
         return cmp(self._priority, other._priority)
-
 
     def __lt__(self, other):
         return self._priority < other._priority
 
-
     def is_active(self):
         return self._active and self.is_alive()
 
-
     def is_enabled(self):
         return self._enabled
-
 
     @abstractmethod
     def run(self):
         super(FiniteStateMachine, self).run()
         self._log.debug('started ' + self.task_name + '.')
         pass
-
 
     @abstractmethod
     def enable(self):
@@ -110,7 +100,6 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         self._enabled = True
         pass
 
-
     @abstractmethod
     def disable(self):
         super().disable()
@@ -119,13 +108,12 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         self._log.debug('disabled ' + self.task_name + '.')
         pass
 
-
     @abstractmethod
     def close(self):
         super().close()
         if not self._closing:
             self._closing = True
-            self._active  = False
+            self._active = False
             self._enabled = False
             self._log.critical('closing ' + self.task_name + '...')
             _n = 0
@@ -137,7 +125,7 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
                     self._log.error(Fore.RED + Style.BRIGHT + 'waited too long: forced termination...')
                     sys.stderr = DevNull()
                     sys.exit()
-                self._log.info('waiting ({:d}) for {} to terminate...'.format(_n,self.task_name))
+                self._log.info('waiting ({:d}) for {} to terminate...'.format(_n, self.task_name))
                 time.sleep(0.25)
     
 #           self._gpio.cleanup()
@@ -146,5 +134,4 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         else:
             self._log.error('already closing ' + self.task_name + '.')
 
-
-#EOF
+# EOF

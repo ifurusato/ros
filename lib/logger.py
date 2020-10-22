@@ -6,7 +6,7 @@
 # Please see the LICENSE file included as part of this package.
 #
 
-import logging, traceback, threading
+import logging, math, traceback, threading
 from logging.handlers import RotatingFileHandler
 from datetime import datetime as dt
 from enum import Enum
@@ -122,5 +122,53 @@ class Logger:
         '''
         with self._mutex:
             self.__log.info(message)
+
+    # headings .................................................................
+
+
+    def header(self, title, message, info):
+        '''
+           Print a formatted, titled message to info(), inspired by maven console messaging.
+
+           :param title:    the required title of the heading.
+           :param message:  the optional message to display; if None only the title will be displayed.
+           :param info:     an optional second message to display right-justified; ignored if None.
+        '''
+        MAX_WIDTH = 80
+        MARGIN = 27
+        if title is None or len(title) == 0:
+            raise ValueError('no title parameter provided (required)')
+        _available_width = MAX_WIDTH - MARGIN
+        self.info(self._get_title_bar(title, _available_width))
+        if message:
+            if info is None:
+                info = ''
+            _min_msg_width = len(message) + 1 + len(info)
+            if _min_msg_width >= _available_width:
+                # if total length is greater than available width, just print
+                self.info(Fore.WHITE + Style.BRIGHT + '{} {}'.format(message, info))
+            else:
+                _message_2_right = info.rjust(_available_width - len(message) - 2)
+                self.info(Fore.WHITE + Style.BRIGHT + '{} {}'.format(message, _message_2_right))
+            # print footer
+            self.info(Fore.WHITE + Style.BRIGHT + Logger._repeat('-', _available_width-1))
+        # print spacer
+        self.info('')
+
+    def _get_title_bar(self, message, MAX_WIDTH):
+        _carrier_width = len(message) + 4
+        _hyphen_width = math.floor( ( MAX_WIDTH - _carrier_width ) / 2 )
+        if _hyphen_width <= 0:
+            return message
+        elif len(message) % 2 == 0: # message is even length
+            return Fore.WHITE + Style.BRIGHT + Logger._repeat('-', _hyphen_width) + '< ' + Fore.CYAN + Style.NORMAL\
+                    + message + Fore.WHITE + Style.BRIGHT + ' >' + Logger._repeat('-', _hyphen_width)
+        else:
+            return Fore.WHITE + Style.BRIGHT + Logger._repeat('-', _hyphen_width) + '< ' + Fore.CYAN + Style.NORMAL\
+                    + message + Fore.WHITE + Style.BRIGHT + ' >' + Logger._repeat('-', _hyphen_width-1)
+
+    @staticmethod
+    def _repeat(s, wanted):
+        return (s * (wanted//len(s) + 1))[:wanted]
 
 #EOF

@@ -35,19 +35,22 @@ def main():
 
     try:
 
-        _log = Logger("batterycheck test", Level.INFO)
-        _log.info('starting test...')
-        _log.info(Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.')
+        _log = Logger("batcheck test", Level.INFO)
+        _log.header('battery check', 'Starting test...', '[1/3]')
+        _log.info(Fore.RED + 'Press Ctrl+C to exit.')
 
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
 
+        _log.header('battery check', 'Creating objects...', '[2/3]')
         _queue = MessageQueue(Level.INFO)
-        _battery_check = BatteryCheck(_config, _queue, Level.INFO)
-        _battery_check.set_enable_messaging(True)
+        _message_factory = MessageFactory(Level.INFO)
+        _battery_check = BatteryCheck(_config, _queue, _message_factory, Level.INFO)
         _battery_check.enable()
+        _battery_check.set_enable_messaging(True)
+        _log.header('battery check', 'Enabling battery check...', '[3/3]')
 
         _log.info('ready? {}'.format(_battery_check.is_ready()))
 
@@ -65,7 +68,7 @@ def main():
     except KeyboardInterrupt:
         _log.info('Ctrl-C caught: complete.')
     except Exception as e:
-        _log.error('error closing master: {}'.format(e))
+        _log.error('error closing: {}\n{}'.format(e, traceback.format_exc()))
     finally:
         sys.exit(0)
 

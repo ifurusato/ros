@@ -15,16 +15,19 @@ from .logger import Logger, Level
 
 level = Level.INFO
 
+
 class State(Enum):
-    NONE     = 0
-    INITIAL  = 1
-    STARTED  = 2
-    ENABLED  = 3
+    NONE = 0
+    INITIAL = 1
+    STARTED = 2
+    ENABLED = 3
     DISABLED = 4
-    CLOSED   = 5
+    CLOSED = 5
+
 
 class IllegalStateError(RuntimeError):
     pass
+
 
 class FiniteStateMachine():
     '''
@@ -35,17 +38,16 @@ class FiniteStateMachine():
     '''
 
     # ..........................................................................
-    def __init__(self,task_name):
+    def __init__(self, task_name):
         self.state = State.NONE
         self.task_name = task_name
         logger_name = "fsm:" + task_name
         self._log = Logger(logger_name, level)
-        FiniteStateMachine.__transition__(self,State.INITIAL)
+        FiniteStateMachine.__transition__(self, State.INITIAL)
         self._log.debug('fsm initialised.')
-        
 
     # ..........................................................................
-    def __transition__(self,next_state):
+    def __transition__(self, next_state):
         '''
             This method provides the functionality of a transition table, throwing
             exceptions or logging warnings if the transition is either invalid or
@@ -86,28 +88,24 @@ class FiniteStateMachine():
             raise IllegalStateError('invalid transition in {} from {} to {} (already CLOSED).'.format(self.task_name, self.state, next_state))
         self.state = next_state
 
-
     # ..........................................................................
     def run(self):
         self._log.debug('run.')
-        FiniteStateMachine.__transition__(self,State.STARTED)
-
+        FiniteStateMachine.__transition__(self, State.STARTED)
 
     # ..........................................................................
     def enable(self):
         self._log.debug('enable.')
-        FiniteStateMachine.__transition__(self,State.ENABLED)
-
+        FiniteStateMachine.__transition__(self, State.ENABLED)
 
     # ..........................................................................
     def disable(self):
         self._log.debug('disable.')
-        FiniteStateMachine.__transition__(self,State.DISABLED)
-
+        FiniteStateMachine.__transition__(self, State.DISABLED)
 
     # ..........................................................................
     def close(self):
         self._log.debug('close.')
-        FiniteStateMachine.__transition__(self,State.CLOSED)
+        FiniteStateMachine.__transition__(self, State.CLOSED)
 
-#EOF
+# EOF
