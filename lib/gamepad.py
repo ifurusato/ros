@@ -162,7 +162,8 @@ class Gamepad():
         self._log.info('exited event loop.')
 
     # ..........................................................................
-    def is_enabled(self):
+    @property
+    def enabled(self):
         return self._enabled
 
     # ..........................................................................
@@ -178,7 +179,7 @@ class Gamepad():
         elif not self._closed:
             if self._thread is None:
                 enabled = True
-                self._thread = threading.Thread(target=Gamepad._gamepad_loop, args=[self, lambda: self.is_enabled(), ])
+                self._thread = threading.Thread(target=Gamepad._gamepad_loop, args=[self, lambda: self.enabled ])
                 self._thread.setDaemon(True)
                 self._thread.start()
                 self._log.info('started.')
@@ -454,40 +455,5 @@ class GamepadConnectException(Exception):
     '''
     pass
 
-
-# main .........................................................................
-
-#_gamepad = None
-#
-#def main(argv):
-#
-#    try:
-#
-#        _loader  = ConfigLoader(Level.INFO)
-#        filename = 'config.yaml'
-#        _config  = _loader.configure(filename)
-#
-#        _gamepad = Gamepad(_config, _queue, Level.INFO)
-#        _gamepad.enable()
-#
-#        while _gamepad.is_enabled():
-#            time.sleep(1.0)
-#
-#    except KeyboardInterrupt:
-#        print(Fore.RED + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
-#        if _gamepad:
-#            _gamepad.disable()
-#        sys.exit(0)
-#
-#    except Exception:
-#        print(Fore.RED + Style.BRIGHT + 'error processing gamepad events: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-#        if _gamepad:
-#            _gamepad.disable()
-#        sys.exit(1)
-#
-#
-## call main ....................................................................
-#if __name__== "__main__":
-#    main(sys.argv[1:])
 
 # EOF

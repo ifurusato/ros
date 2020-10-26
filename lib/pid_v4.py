@@ -60,6 +60,7 @@ class PID(object):
         self._max_output   = _config.get('max_output')
         self._setpoint     = setpoint
         self._orientation  = orientation
+        self._max_velocity = None
         self._log = Logger('pid:{}'.format(orientation.label), level)
         self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self.ki, self.kd, self._min_output, self._max_output))
         if sample_time is None:
@@ -110,15 +111,33 @@ class PID(object):
         '''
            Setter for the velocity (PID set point).
         '''
+        self._log.debug(Fore.BLACK + 'set velocity: {:5.2f}'.format(velocity))
         self._setpoint = velocity
+
+    def set_max_velocity(self, max_velocity):
+        '''
+           Setter for the maximum velocity. Set to None (the default) to
+           disable this feature. Note that this doesn't affect the setting
+           of the velocity but rather the getting of the setpoint.
+        '''
+        if max_velocity:
+            self._log.debug(Fore.CYAN + 'max velocity: {:5.2f}'.format(max_velocity))
+        else:
+            self._log.debug(Fore.CYAN + Style.DIM + 'max velocity: DISABLED')
+        self._max_velocity = max_velocity
 
     # ..........................................................................
     @property
     def setpoint(self):
         '''
            The setpoint used by the controller as a tuple: (Kp, Ki, Kd)
+           If a maximum velocity has been set the returned value is 
+           limited by the set value.
         '''
-        return self._setpoint
+        if self._max_velocity:
+            return min(self._max_velocity, self._setpoint)
+        else:
+            return self._setpoint
 
     @setpoint.setter
     def setpoint(self, setpoint):
@@ -150,7 +169,7 @@ class PID(object):
             return self._last_output
 
         # compute error terms
-        error = self._setpoint - target
+        error = self.setpoint - target
         d_input = target - (self._last_input if self._last_input is not None else target)
 
         # compute the proportional term
@@ -340,6 +359,7 @@ class PIDController(object):
 
     # ..........................................................................
     def reset(self):
+        self._pid.velocity = 0.0
         self._pid.reset()
 #       self._motor.reset_steps()
         self._motor.stop()
@@ -389,6 +409,15 @@ class PIDController(object):
         if self._enable_slew:
             velocity = self._slewlimiter.slew(self.velocity, velocity)
         self._pid.velocity = velocity
+
+    # ..........................................................................
+    def set_max_velocity(self, max_velocity):
+        '''
+           Setter for the maximum velocity of both PID controls. Set
+           to None (the default) to disable this feature.
+        '''
+        self._log.info(Fore.YELLOW + 'max velocity: {:5.2f}'.format(max_velocity))
+        self._pid.set_max_velocity(max_velocity)
 
     # ..........................................................................
     @property

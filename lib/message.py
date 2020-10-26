@@ -7,6 +7,7 @@
 #
 
 import itertools
+from datetime import datetime as dt
 from colorama import init, Fore, Style
 init()
 
@@ -40,19 +41,9 @@ class Message(object):
         self._event       = event
         self._description = event.description
         self._priority    = event.priority
+        self._timestamp   = dt.now()
         self._state       = ActionState.INIT
         self._value       = value
-
-    # ......................................................
-    def __cmp__(self, other):
-        return cmp(self._priority, other._priority)
-
-    # ......................................................
-    def __eq__(self, other): 
-        if not isinstance(other, Message):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-        return self._event == other._event and self._priority == other._priority and self._value == other._value
 
     # state transitions ........................................................
 
@@ -83,16 +74,17 @@ class Message(object):
         return self._state is ActionState.COMPLETED or self._state is ActionState.CLOSED
 
     # ......................................................
+    def get_state(self):
+        return self._state
+
+    # ......................................................
     @property
     def eid(self):
         return self._eid
 
     # ......................................................
-    def get_state(self):
-        return self._state
-
-    # ......................................................
-    def get_event(self):
+    @property
+    def event(self):
         return self._event
 
     # ......................................................
@@ -102,20 +94,27 @@ class Message(object):
         '''
         self._value = value
 
-    # ......................................................
     def get_value(self):
         '''
             Return the message's value, if it has been set.
         '''
         return self._value
 
-    # ......................................................
-    def set_number(self, number):
-        self._number = number
+    @property
+    def value(self):
+        '''
+            Return the message's value, if it has been set.
+        '''
+        return self._value
 
     # ......................................................
-    def get_number(self):
+    @property
+    def number(self):
         return self._number
+
+    @number.setter
+    def number(self, number):
+        self._number = number
 
     # ......................................................
     @property
@@ -123,15 +122,28 @@ class Message(object):
         return self._priority
 
     # ......................................................
-    def get_priority(self):
-        return self._priority
+    @property
+    def timestamp(self):
+        return self._timestamp
 
     # ......................................................
-    def get_description(self):
+    @property
+    def description(self):
         return '{}/{}'.format(self._event.name, self._description)
 
     # ......................................................
     def __lt__(self, other):
         return self._priority < other._priority
+
+    # ......................................................
+    def __cmp__(self, other):
+        return cmp(self._priority, other._priority)
+
+    # ......................................................
+    def __eq__(self, other): 
+        if not isinstance(other, Message):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+        return self._event == other._event and self._priority == other._priority and self._value == other._value
 
 #EOF

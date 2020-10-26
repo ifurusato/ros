@@ -37,6 +37,8 @@ ros:
     behaviours:
         accel_range_cm:    250.0                 # the distance used for acceleration and deceleration (cm)
         targeting_velocity: 10.0                 # low velocity from which we're prepared to immediately halt upon reaching a step target
+    cruise_behaviour:
+        accel_range_cm:    250.0                 # the distance used for acceleration and deceleration (cm)
         cruising_velocity:  50.0                 # velocity used for long distance steady cruising
     temperature:
         warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
@@ -144,8 +146,9 @@ ros:
         loop_delay: 0.01                         # main loop delay
         loop_freq_hz: 20                         # main loop frequency
     gamepad_demo:
-        enable_compass: False                    # if True, enable Compass
-        enable_ifs: False                        # if True, enable IntegratedFrontSensor
+        enable_compass:        False             # if True, enable Compass
+        enable_indicator:      False             # if True, enable RGB Indicator
+        enable_ifs:            True              # if True, enable IntegratedFrontSensor
         controller:
             log_to_file:       False             # if True, log PID data to file
             log_to_console:    False             # if True, log PID data to console
@@ -163,9 +166,9 @@ ros:
         max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
-            enable_slew:    False
+            enable_slew:    True
             sample_freq_hz: 20
-            pot_ctrl:        True                # if True enable potentiometer for setting PID terms
+            pot_ctrl:       False                # if True enable potentiometer for setting PID terms
         pid:
             kp:             0.09500
             ki:             0.00000
@@ -182,12 +185,12 @@ ros:
     potentiometer:                               # potentiometer connected as voltage divider
         pin:             14                      # pin connected to wiper
         in_min:           0                      # minimum analog value from IO Expander
-        in_max:         330                      # maximum analog value from IO Expander
+        in_max:         255                      # maximum analog value from IO Expander
 #       out_min:       -100.0                    # minimum scaled output value
 #       out_max:        100.0                    # VEL: maximum scaled output value
 #       out_max:          1.0                    # KP:  maximum scaled output value
-        out_min:          0.0                    # minimum scaled output value
-        out_max:          0.001                  # KD:  maximum scaled output value
+        out_min:          0.5                    # minimum scaled output value
+        out_max:          1.5                    # KD:  maximum scaled output value
     slew:
         minimum_output: 0.00                     # lower limit of permitted output values
         maximum_output: 100.00                   # upper limit of permitted output values
@@ -219,18 +222,12 @@ ros:
         port_bmp_pin:       9                    # pin connected to port bumper
         center_bmp_pin:    10                    # pin connected to center bumper
         stbd_bmp_pin:      11                    # pin connected to starboard bumper
-        # the analog sensor value used as event trigger thresholds:
-        port_side_trigger_distance:     70.0     # port side analog IR sensor
-        port_trigger_distance:          90.0     # port analog IR sensor
-        center_trigger_distance:        60.0     # center analog IR sensor
-        stbd_trigger_distance:          90.0     # starboard analog IR sensor
-        stbd_side_trigger_distance:     70.0     # starboard side analog IR sensor
-        # long distance:
-        port_side_trigger_distance_far: 65.0     # port side analog IR sensor (far)
-        port_trigger_distance_far:      60.0     # port analog IR sensor (far)
-        center_trigger_distance_far:    60.0     # center analog IR sensor (far)
-        stbd_trigger_distance_far:      60.0     # starboard analog IR sensor (far)
-        stbd_side_trigger_distance_far: 65.0     # starboard side analog IR sensor (far)
+        # the analog sensor distances (cm) used as event trigger thresholds:
+        port_side_trigger_distance:      30.0    # port side analog IR sensor
+        port_trigger_distance:           40.0    # port analog IR sensor
+        center_trigger_distance:         50.0    # center analog IR sensor
+        stbd_trigger_distance:           40.0    # starboard analog IR sensor
+        stbd_side_trigger_distance:      30.0    # starboard side analog IR sensor
 
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS

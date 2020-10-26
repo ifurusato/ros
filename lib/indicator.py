@@ -66,38 +66,38 @@ class Indicator():
 
         if event is Event.INFRARED_PORT_SIDE:
             self.set_ir_sensor_port_side(True, False)
-            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
         elif event is Event.INFRARED_PORT_SIDE_FAR:
             self.set_ir_sensor_port_side(True, True)
-            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
 
         elif event is Event.INFRARED_PORT:
             self.set_ir_sensor_port(True, False)
-            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
         elif event is Event.INFRARED_PORT_FAR:
             self.set_ir_sensor_port(True, True)
-            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.RED + Style.BRIGHT   + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
 
         elif event is Event.INFRARED_CNTR:
             self.set_ir_sensor_center(True, False)
-            self._log.debug(Fore.BLUE + Style.BRIGHT  + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.BLUE + Style.BRIGHT  + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
         elif event is Event.INFRARED_CNTR_FAR:
             self.set_ir_sensor_center(True, True)
-            self._log.debug(Fore.BLUE + Style.BRIGHT  + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.BLUE + Style.BRIGHT  + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
 
         elif event is Event.INFRARED_STBD:
             self.set_ir_sensor_stbd(True, False)
-            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
         elif event is Event.INFRARED_STBD_FAR:
             self.set_ir_sensor_stbd(True, True)
-            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
 
         elif event is Event.INFRARED_STBD_SIDE:
             self.set_ir_sensor_stbd_side(True, False)
-            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
         elif event is Event.INFRARED_STBD_SIDE_FAR:
             self.set_ir_sensor_stbd_side(True, True)
-            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:d}'.format(event.description, message.get_value()))
+            self._log.debug(Fore.GREEN + Style.BRIGHT + 'event: {};\tvalue: {:5.2f}'.format(event.description, message.get_value()))
 
         elif event is Event.BUMPER_PORT:
             self.set_bumper_port(True)

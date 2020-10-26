@@ -45,6 +45,11 @@ class PIDMotorController(object):
         return self._port_pid, self._stbd_pid
 
     # ..........................................................................
+    def set_max_velocity(self, max_velocity):
+        self._port_pid.set_max_velocity(max_velocity)
+        self._stbd_pid.set_max_velocity(max_velocity)
+
+    # ..........................................................................
     @property
     def enabled(self):
         return self._port_pid.enabled or self._stbd_pid.enabled

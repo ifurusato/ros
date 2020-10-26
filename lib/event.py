@@ -44,16 +44,11 @@ class Event(Enum):
     BUMPER_CNTR            = ( 11, "bumper center",           10,    True)
     BUMPER_STBD            = ( 12, "bumper starboard",        10,    True)
     # infrared .........................
+    INFRARED_PORT_SIDE     = ( 20, "infrared port side",      20,    True)
     INFRARED_PORT          = ( 20, "infrared port",           20,    True)
-    INFRARED_PORT_FAR      = ( 21, "infrared port far",       40,    True)
-    INFRARED_CNTR          = ( 22, "infrared cntr",           20,    True)
-    INFRARED_CNTR_FAR      = ( 23, "infrared cntr far",       40,    True)
-    INFRARED_STBD          = ( 24, "infrared stbd",           20,    True)
-    INFRARED_STBD_FAR      = ( 25, "infrared stbd far",       40,    True)
-    INFRARED_PORT_SIDE     = ( 26, "infrared port side",      20,    True)
-    INFRARED_PORT_SIDE_FAR = ( 27, "infrared port side far",  40,    True)
-    INFRARED_STBD_SIDE     = ( 28, "infrared stbd side",      20,    True)
-    INFRARED_STBD_SIDE_FAR = ( 29, "infrared stbd side far",  40,    True)
+    INFRARED_CNTR          = ( 21, "infrared cntr",           20,    True)
+    INFRARED_STBD          = ( 22, "infrared stbd",           20,    True)
+    INFRARED_STBD_SIDE     = ( 24, "infrared stbd side",      20,    True)
 
     # emergency movements ..............
     EMERGENCY_ASTERN       = ( 30, "emergency astern",        15,    True)
@@ -85,11 +80,11 @@ class Event(Enum):
     TURN_AHEAD_STBD        = ( 83, "turn ahead starboard",    100,   False)
     # high level behaviours ............
     ROAM                   = ( 90, "roam",                    100,   False)
-    SNIFF                  = ( 91, "sniff",                   100,    True) # A Button
-    VIDEO                  = ( 92, "video",                   150,   False) # L1 Button
-    EVENT_L2               = ( 93, "event L2",                150,   False) # L2 Button
-    EVENT_R1               = ( 94, "event R1",                150,   False) # R1 Button
-    LIGHTS                 = ( 95, "lights off",              150,   False) # R2 Button
+    SNIFF                  = ( 91, "A: sniff",                100,    True) # A Button
+    VIDEO                  = ( 92, "L1: video",               150,   False) # L1 Button
+    EVENT_L2               = ( 93, "L2",                      150,   False) # L2 Button
+    EVENT_R1               = ( 94, "R1: cruise",              150,   False) # R1 Button
+    LIGHTS                 = ( 95, "R2: lights",              150,   False) # R2 Button
 
     # movement directives ..............
     FORWARD_VELOCITY       = ( 101, "forward velocity",       200,   False)

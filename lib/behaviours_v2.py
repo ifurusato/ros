@@ -25,7 +25,7 @@ class Behaviours():
 
         This version uses the PID controller rathen than directly driving the motors.
     '''
-    def __init__(self, config, port_pid, stbd_pid, ifs, level):
+    def __init__(self, config, pid_motor_controller, level):
         self._log = Logger("behave", level)
         if config is None:
             raise ValueError('null configuration argument.')
@@ -34,13 +34,23 @@ class Behaviours():
         self._accel_range_cm     = _config.get('accel_range_cm')
         self._cruising_velocity  = _config.get('cruising_velocity') 
         self._targeting_velocity = _config.get('targeting_velocity') 
-        self._port_pid = port_pid
-        self._stbd_pid = stbd_pid
-        self._ifs = ifs
+        self._ifs = None # set later
+        self._pid_motor_controller = pid_motor_controller
+        _pid_controllers = pid_motor_controller.get_pid_controllers()
+        self._port_pid = _pid_controllers[0]
+        self._stbd_pid = _pid_controllers[1]
         self._rgbmatrix = RgbMatrix(Level.INFO)
         self._fast_speed = 99.0
         self._slow_speed = 50.0
         self._log.info('ready.')
+
+    # ..........................................................................
+    def set_ifs(self, ifs):
+        self._ifs = ifs
+
+    # ..........................................................................
+    def get_cruising_velocity(self):
+        return self._cruising_velocity
 
     # ..........................................................................
     def back_up(self, duration_sec):
@@ -280,7 +290,6 @@ class Behaviours():
         _tp.join()
         _ts.join()
         self._log.info('complete.')
-
         pass
 
 
