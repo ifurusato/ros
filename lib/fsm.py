@@ -11,7 +11,7 @@
 
 from enum import Enum
 
-from .logger import Logger, Level
+from lib.logger import Logger, Level
 
 level = Level.INFO
 

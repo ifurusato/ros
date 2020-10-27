@@ -96,6 +96,8 @@ class Event(Enum):
 
     # other behaviours .................
     NO_ACTION              = ( 500, "no action",              500,   False)
+    CLOCK_TICK             = ( 501, "tick",                   500,   False)
+    CLOCK_TOCK             = ( 502, "tock",                   500,   False)
 
     # ..................................
     def __new__(cls, *args, **kwds):

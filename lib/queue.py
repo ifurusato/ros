@@ -12,7 +12,7 @@
 # https://github.com/python/cpython/blob/3.8/Lib/heapq.py
 # https://docs.python.org/3/library/heapq.html
 
-from flask import jsonify
+#from flask import jsonify
 import queue, itertools
 from queue import Empty
 from colorama import init, Fore, Style
@@ -121,17 +121,17 @@ class MessageQueue():
         self._log.debug('returning {} messages.'.format(len(messages)))
         return messages
 
-    # ......................................................
-    def respond(self, event):
-        '''
-            Responds to the Event by wrapping it in Message and adding it to the backing queue.
- 
-            This is only used by FlaskWrapper.
-        '''
-        self._log.info('RESPOND to event {}.'.format(event.name))
-        _message = self._message_factory.get_message(event, None)
-        self.add(_message)
-        return jsonify( [ { 'eid': _message.eid }, { 'event': event.name }, { 'priority': event.priority } ] )
+#   # ......................................................
+#   def respond(self, event):
+#       '''
+#           Responds to the Event by wrapping it in Message and adding it to the backing queue.
+#
+#           This is only used by FlaskWrapper.
+#       '''
+#       self._log.info('RESPOND to event {}.'.format(event.name))
+#       _message = self._message_factory.get_message(event, None)
+#       self.add(_message)
+#       return jsonify( [ { 'eid': _message.eid }, { 'event': event.name }, { 'priority': event.priority } ] )
 
     # ......................................................
     def clear(self):

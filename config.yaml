@@ -14,6 +14,9 @@ pi:
     sudo_name:    'sudo'
 
 ros:
+    clock:
+        loop_freq_hz: 20                         # main loop frequency
+        tock_modulo:  20                         # modulo value for tock frequency
     wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
     enable_player: False                         # enables sound player (disable if no hardware support)

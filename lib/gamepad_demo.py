@@ -25,6 +25,7 @@ from lib.i2c_scanner import I2CScanner
 from lib.message import MessageFactory
 from lib.gamepad import Gamepad
 from lib.gamepad_ctrl import GamepadController
+from lib.clock import Clock
 from lib.lux import Lux
 from lib.compass import Compass
 #rom lib.blob import BlobSensor
@@ -77,28 +78,31 @@ class GamepadDemo():
         self._lux        = Lux(Level.INFO) if ltr559_available else None
         self._video      = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
 
-        self._controller = GamepadController(_config, self._pid_motor_ctrl, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+        # in this application the gamepad controller is the message queue
+        self._queue = GamepadController(_config, self._pid_motor_ctrl, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+
+        self._clock = Clock(_config, self._queue, self._message_factory, Level.INFO)
 
         # attempt to find the gamepad
-        self._gamepad = Gamepad(_config, self._controller, self._message_factory, Level.INFO)
+        self._gamepad = Gamepad(_config, self._queue, self._message_factory, Level.INFO)
 
         if self._enable_indicator:
             self._indicator = Indicator(Level.INFO)
         if self._enable_compass:
-            self._compass = Compass(_config, self._controller, self._indicator, Level.INFO)
+            self._compass = Compass(_config, self._queue, self._indicator, Level.INFO)
             self._video.set_compass(self._compass)
 
         self._log.info('starting battery check thread...')
-        self._battery_check = BatteryCheck(_config, self._controller, self._message_factory, Level.INFO)
+        self._battery_check = BatteryCheck(_config, self._queue, self._message_factory, Level.INFO)
 
         if self._enable_ifs:
             self._log.info('integrated front sensor enabled.')
-            self._ifs  = IntegratedFrontSensor(_config, self._controller, self._message_factory, Level.INFO)
+            self._ifs  = IntegratedFrontSensor(_config, self._queue, self._message_factory, Level.INFO)
             # add indicator as message consumer
             if self._enable_indicator:
-                self._controller.add_consumer(self._indicator)
+                self._queue.add_consumer(self._indicator)
             # ifs must be added later, chicken and egg problem...
-            self._controller.set_ifs(self._ifs) 
+            self._queue.set_ifs(self._ifs) 
         else:
             self._ifs  = None
             self._log.info('integrated front sensor disabled.')
@@ -119,7 +123,7 @@ class GamepadDemo():
             self._log.warning('already enabled.')
             return
         self._log.info('enabling...')
-        self._controller.enable()
+        self._queue.enable()
         self._gamepad.enable()
         if self._enable_compass:
             self._compass.enable()
@@ -148,7 +152,7 @@ class GamepadDemo():
     # ..........................................................................
     def _close_demo_callback(self):
         self._log.info('close demo callback...')
-#       self._controller.disable()
+#       self._queue.disable()
         self.disable()
         self.close()
 

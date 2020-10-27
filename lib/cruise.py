@@ -108,8 +108,8 @@ class CruiseBehaviour():
             if self._port_cruise_thread or self._stbd_cruise_thread:
                 raise Exception('can\'t start cruise: threads still exist.')
             self._cruise_enable = True
-            self._port_cruise_thread = threading.Thread(target=Behaviours._cruise, args=[self, self._port_pid, lambda: self._cruise_enable ])
-            self._stbd_cruise_thread = threading.Thread(target=Behaviours._cruise, args=[self, self._stbd_pid, lambda: self._cruise_enable ])
+            self._port_cruise_thread = threading.Thread(target=CruiseBehaviour._cruise, args=[self, self._port_pid, lambda: self._cruise_enable ])
+            self._stbd_cruise_thread = threading.Thread(target=CruiseBehaviour._cruise, args=[self, self._stbd_pid, lambda: self._cruise_enable ])
             self._port_cruise_thread.start()
             self._stbd_cruise_thread.start()
             self._port_cruise_thread.join()
