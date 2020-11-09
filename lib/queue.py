@@ -39,19 +39,11 @@ class MessageQueue():
         super().__init__()
         self._log = Logger('queue', level)
         self._log.debug('initialised MessageQueue...')
-        heap = []
         self._counter = itertools.count()
         self._message_factory = message_factory
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
         self._consumers = []
         self._log.info('MessageQueue ready.')
-
-    # ......................................................
-#   def get_queue(self):
-#       '''
-#           Return the backing queue.
-#       '''
-#       return self._queue
 
     # ..........................................................................
     def add_consumer(self, consumer):
@@ -61,20 +53,30 @@ class MessageQueue():
         return self._consumers.append(consumer)
 
     # ..........................................................................
+    def remove_consumer(self, consumer):
+        '''
+        Remove the consumer from the list of message consumers.
+        '''
+        try:
+            self._consumers.remove(consumer)
+        except ValueError:
+            self._log.warn('message consumer was not in list.')
+
+    # ..........................................................................
     def add(self, message):
         '''
-            Add a new Message to the queue, then additionally to any consumers.
+        Add a new Message to the queue, then additionally to any consumers.
         '''
         if self._queue.full():
             try:
                 _dumped = self._queue.get()
-                self._log.debug('dumping old message eid#{}/msg#{}: {}'.format(_dumped.eid, _dumped.get_number(), _dumped.get_description()))
+                self._log.debug('dumping old message eid#{}/msg#{}: {}'.format(_dumped.eid, _dumped.number, _dumped.description))
             except Empty:
                 pass
-        message.set_number(next(self._counter))
+        message.number = next(self._counter)
         self._queue.put(message);
-        self._log.debug('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.get_number(), message.get_priority(), message.get_description()))
-        # we're finished, now add to any consumers
+        self._log.debug('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
+        # add to any consumers
         for consumer in self._consumers:
             consumer.add(message);
 
@@ -101,7 +103,7 @@ class MessageQueue():
             message = self._queue.get()
         except Empty:
             pass
-        self._log.debug('returning message: {} of priority {}.'.format(message.get_description(), message.get_priority()))
+        self._log.info(Fore.BLACK + 'returning message: {} of priority {}; queue size: {:d}'.format(message.description, message.priority, self._queue.qsize()))
         return message
 
     # ......................................................
@@ -114,7 +116,7 @@ class MessageQueue():
             messages = []
             while len(messages) < count and not self._queue.empty():
                 message = self._queue.get()
-                self._log.debug('adding message {} of priority {} to returned list...'.format(message.get_description(), message.get_priority()))
+                self._log.debug('adding message {} of priority {} to returned list...'.format(message.description, message.priority))
                 messages.append(message)
         except Empty:
             pass

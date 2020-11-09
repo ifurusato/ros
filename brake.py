@@ -9,28 +9,36 @@
 from colorama import init, Fore, Style
 init()
 
-from lib.logger import Level
+from lib.logger import Level, Logger
 from lib.motors_v2 import Motors
 from lib.config_loader import ConfigLoader
 
+def brake():
+    _log.info('braking...')
+    _motors.brake()
+    _motors.stop()
+    _motors.close()
+    _log.info('done.')
+
 # ..............................................................................
+_motors = None
+_log = Logger('brake', Level.INFO)
+
 try:
 
-    print('brake             :' + Fore.CYAN + Style.BRIGHT + ' INFO  : braking...' + Style.RESET_ALL)
-
+    _log.info('configuring...')
     # read YAML configuration
     _loader = ConfigLoader(Level.WARN)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
-
     _motors = Motors(_config, None, Level.WARN)
-    _motors.brake()
 
 except KeyboardInterrupt:
-    print(Fore.RED + 'Ctrl-C caught in main: exiting...' + Style.RESET_ALL)
+    _log.error('Ctrl-C caught in main: exiting...')
 finally:
-    _motors.stop()
-    _motors.close()
-    print('brake             :' + Fore.CYAN + Style.BRIGHT + ' INFO  : complete.' + Style.RESET_ALL)
+    _log.info('complete.')
+
+if __name__ == '__main__':
+    brake()
 
 #EOF

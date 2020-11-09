@@ -26,13 +26,6 @@ from lib.event import Event
 from lib.enums import Direction, Orientation
 from lib.slew import SlewRate
 
-try:
-    from lib.motor_v2 import Motor
-    print('import            :' + Fore.BLACK + ' INFO  : imported Motor.' + Style.RESET_ALL)
-except Exception:
-    traceback.print_exc(file=sys.stdout)
-    print('import            :' + Fore.RED + ' ERROR : failed to import Motor, exiting...' + Style.RESET_ALL)
-    sys.exit(1)
 
 # ..............................................................................
 class Motors():
@@ -50,6 +43,13 @@ class Motors():
         self._tb = tb
         self._set_max_power_ratio()
         self._pi = pigpio.pi()
+        try:
+            from lib.motor_v2 import Motor
+            self._log.info('imported Motor.')
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+            self._log.error('failed to import Motor, exiting...')
+            sys.exit(1)
         self._port_motor = Motor(config, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
         self._stbd_motor = Motor(config, self._tb, self._pi, Orientation.STBD, level)

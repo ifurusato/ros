@@ -136,7 +136,7 @@ class SlewLimiter():
 
     # ..........................................................................
     def disable(self):
-        self._log.info('disabled.')
+        self._log.info(Fore.MAGENTA + 'slew disabled.')
         self._enabled = False
 
     # ..........................................................................

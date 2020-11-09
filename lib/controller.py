@@ -317,12 +317,6 @@ class Controller():
             self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.RED + ' port side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
-        # INFRARED_PORT_SIDE_FAR      ..........................................
-        elif _event is Event.INFRARED_PORT_SIDE_FAR:
-            _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value))
-            pass
-
         # INFRARED_PORT           ..............................................
         elif _event is Event.INFRARED_PORT:
             _value = message.get_value()
@@ -332,17 +326,6 @@ class Controller():
                 self._log.info('action complete: port infrared.')
             else:
                 self._log.info('no action required (not moving): port infrared.')
-            pass
-
-        # INFRARED_PORT_FAR           ..........................................
-        elif _event is Event.INFRARED_PORT_FAR:
-            _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.RED + ' port infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
-            if self._motors.is_in_motion():  # if we're moving then avoid
-                self._slow_down(Orientation.PORT)
-                self._log.info('action complete: port infrared far.')
-            else:
-                self._log.info('no action required (not moving): port infrared far.')
             pass
 
         # INFRARED_CNTR         ..............................................
@@ -356,17 +339,6 @@ class Controller():
                 self._log.info('no action required (not moving): center infrared.')
             pass
 
-        # INFRARED_CNTR_FAR         ..........................................
-        elif _event is Event.INFRARED_CNTR_FAR:
-            _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.BLUE + ' center infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
-            if self._motors.is_in_motion():  # if we're moving then avoid
-                self._slow_down(Orientation.CNTR)
-                self._log.info('action complete: center infrared far.')
-            else:
-                self._log.info('no action required (not moving): center infrared far.')
-            pass
-
         # INFRARED_STBD      ...................................................
         elif _event is Event.INFRARED_STBD:
             _value = message.get_value()
@@ -378,27 +350,10 @@ class Controller():
                 self._log.info('no action required (not moving): starboard infrared.')
             pass
 
-        # INFRARED_STBD_FAR      ...................................................
-        elif _event is Event.INFRARED_STBD_FAR:
-            _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard infrared FAR; ' + Fore.YELLOW + 'value: {}'.format(_value))
-            if self._motors.is_in_motion():  # if we're moving then avoid
-                self._slow_down(Orientation.STBD)
-                self._log.info('action complete: starboard infrared far.')
-            else:
-                self._log.info('no action required (not moving): starboard infrared far.')
-            pass
-
         # INFRARED_STBD_SIDE         ...........................................
         elif _event is Event.INFRARED_STBD_SIDE:
             _value = message.get_value()
             self._log.info(Style.BRIGHT + 'event:' + Style.NORMAL + Fore.GREEN + ' starboard side infrared; ' + Fore.YELLOW + 'value: {}'.format(_value))
-            pass
-
-        # INFRARED_STBD_SIDE_FAR         .......................................
-        elif _event is Event.INFRARED_STBD_SIDE_FAR:
-            _value = message.get_value()
-            self._log.info(Style.BRIGHT + 'event:' + Style.DIM + Fore.GREEN + ' starboard side infrared far; ' + Fore.YELLOW + 'value: {}'.format(_value))
             pass
 
         # EVENT UNKNOWN: FAILURE ...............................................

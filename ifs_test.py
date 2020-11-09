@@ -52,7 +52,7 @@ def main():
         # add indicator as message consumer
         _queue.add_consumer(_indicator)
 
-        _ifs.enable() 
+        _ifs.enable()
 
         while True:
             time.sleep(1.0)

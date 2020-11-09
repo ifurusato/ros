@@ -17,6 +17,7 @@ ros:
     clock:
         loop_freq_hz: 20                         # main loop frequency
         tock_modulo:  20                         # modulo value for tock frequency
+        bus_first:    False                      # if True messages are passed to bus first, then consumers
     wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
     enable_player: False                         # enables sound player (disable if no hardware support)
@@ -35,13 +36,12 @@ ros:
         battery_channel:       0                 # AD channel for raw battery voltage
         raw_battery_threshold: 17.74             # raw and 5v regulator thresholds set from known measurements:
         low_5v_threshold:      4.75              # really 4.82v
-        settle_count:          3                 # how many times should we sample before accepting a first value?
         loop_delay_sec:       15                 # loop delay (sec)
     behaviours:
         accel_range_cm:    250.0                 # the distance used for acceleration and deceleration (cm)
         targeting_velocity: 10.0                 # low velocity from which we're prepared to immediately halt upon reaching a step target
     cruise_behaviour:
-        accel_range_cm:    250.0                 # the distance used for acceleration and deceleration (cm)
+        active_range_cm:    90.0                 # the maximum distance in which this behaviour is active
         cruising_velocity:  50.0                 # velocity used for long distance steady cruising
     temperature:
         warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
@@ -213,9 +213,20 @@ ros:
         center_bmp_pin:     3                    # pin connected to center bumper
         stbd_bmp_pin:       5                    # pin connected to starboard bumper
     integrated_front_sensor:
-        device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
-        channel:       1                         # SMBus channel
-        loop_delay_sec: 0.05                     # the loop delay for the integrated front sensor
+        device_id:       0x08                    # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
+        channel:            1                    # SMBus channel
+        ignore_duplicates:  False                # don't fire messages for duplicate events
+        max_workers:        5                    # thread pool executor maximum number of worker threads
+        tick_modulo:        5                    # controls how often the queue is polled (TICK % modulo)
+        # the analog sensor distances (cm) used as event trigger thresholds:
+        callback_center_minimum_trigger: 35      # below this raw value we don't execute callback on center IR
+        callback_side_minimum_trigger:   45      # below this raw value we don't execute callback on side IRs
+        callback_minimum_trigger:        45      # below this raw value we don't execute callback on PORT & STBD IRs
+        port_side_trigger_distance:     100.0    # port side analog IR sensor
+        port_trigger_distance:          100.0    # port analog IR sensor
+        center_trigger_distance:        100.0    # center analog IR sensor
+        stbd_trigger_distance:          100.0    # starboard analog IR sensor
+        stbd_side_trigger_distance:     100.0    # starboard side analog IR sensor
         # hardware pin assignments:
         port_side_ir_pin:   1                    # pin connected to port side infrared
         port_ir_pin:        2                    # pin connected to port infrared
@@ -225,12 +236,6 @@ ros:
         port_bmp_pin:       9                    # pin connected to port bumper
         center_bmp_pin:    10                    # pin connected to center bumper
         stbd_bmp_pin:      11                    # pin connected to starboard bumper
-        # the analog sensor distances (cm) used as event trigger thresholds:
-        port_side_trigger_distance:      30.0    # port side analog IR sensor
-        port_trigger_distance:           40.0    # port analog IR sensor
-        center_trigger_distance:         50.0    # center analog IR sensor
-        stbd_trigger_distance:           40.0    # starboard analog IR sensor
-        stbd_side_trigger_distance:      30.0    # starboard side analog IR sensor
 
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS

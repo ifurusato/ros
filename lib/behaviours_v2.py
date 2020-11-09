@@ -12,7 +12,6 @@ init()
 
 from lib.enums import Speed, Orientation
 from lib.logger import Level, Logger
-from lib.ifs import IntegratedFrontSensor
 from lib.rgbmatrix import RgbMatrix, Color, DisplayType
 from lib.pid_v4 import PIDController
 from lib.slew import SlewRate
@@ -34,7 +33,6 @@ class Behaviours():
         self._accel_range_cm     = _config.get('accel_range_cm')
         self._cruising_velocity  = _config.get('cruising_velocity') 
         self._targeting_velocity = _config.get('targeting_velocity') 
-        self._ifs = None # set later
         self._pid_motor_controller = pid_motor_controller
         _pid_controllers = pid_motor_controller.get_pid_controllers()
         self._port_pid = _pid_controllers[0]
@@ -43,10 +41,6 @@ class Behaviours():
         self._fast_speed = 99.0
         self._slow_speed = 50.0
         self._log.info('ready.')
-
-    # ..........................................................................
-    def set_ifs(self, ifs):
-        self._ifs = ifs
 
     # ..........................................................................
     def get_cruising_velocity(self):
@@ -300,23 +294,6 @@ class Behaviours():
         '''
         self._log.info(Fore.CYAN + 'avoid {}.'.format(orientation.name))
         
-#        if orientation is Orientation.CNTR:
-#            orientation = Orientation.PORT if random.choice((True, False)) else Orientation.STBD
-#            self._log.info(Fore.YELLOW + 'randomly avoiding to {}.'.format(orientation.name))
-#
-#        self._ifs.suppress(True)
-#        self._motors.halt()
-#        self.back_up(0.5)
-#        if orientation is Orientation.PORT:
-#            self._motors.spin_port(self._fast_speed)
-#        elif orientation is Orientation.STBD:
-#            self._motors.spin_starboard(self._fast_speed)
-#        else:
-#            raise Exception('unexpected center orientation.')
-#        time.sleep(2.0)
-#        self._motors.brake()
-#        self._ifs.suppress(False)
-
         self._log.info('action complete: avoid.')
 
     # sniff ....................................................................

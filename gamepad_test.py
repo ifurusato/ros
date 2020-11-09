@@ -17,6 +17,7 @@ import sys, time, traceback
 from colorama import init, Fore, Style
 init()
 
+import brake
 from lib.logger import Logger, Level
 from lib.gamepad_demo import GamepadDemo
 
@@ -33,12 +34,14 @@ try:
 
 except KeyboardInterrupt:
     _log.info('caught Ctrl-C; exiting...')
+    brake.brake()
     sys.exit(0)
 except OSError:
     _log.error('unable to connect to gamepad')
     sys.exit(1)
 except Exception:
     _log.error('error processing gamepad events: {}'.format(traceback.format_exc()))
+    brake.brake()
     sys.exit(1)
 
 # EOF

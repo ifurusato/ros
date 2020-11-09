@@ -14,18 +14,16 @@
 # bottom of this file.
 #
 
-import os, sys, itertools, time, threading, traceback
+import os, sys, time
+from threading import Thread
 import datetime as dt
 from enum import Enum
-from evdev import InputDevice, categorize, ecodes
+from evdev import InputDevice, ecodes
 from colorama import init, Fore, Style
 init()
 
-from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
-from lib.enums import Orientation
 from lib.event import Event
-from lib.message import Message
 from lib.rate import Rate
 
 '''
@@ -78,8 +76,7 @@ class Gamepad():
         self._device_path  = _config.get('device_path')
         self._queue   = queue
         self._message_factory = message_factory
-        self._counter = itertools.count()
-        self._closing = False
+        self._gamepad_closed = False
         self._closed  = False
         self._enabled = False
         self._thread  = None
@@ -88,17 +85,16 @@ class Gamepad():
     # ..........................................................................
     def connect(self):
         '''
-           Scan for likely gamepad device, and if found, connect.
-           Otherwise we raise an OSError.
+        Scan for likely gamepad device, and if found, connect.
+        Otherwise we raise an OSError.
         '''
-        _gp_scan = GamepadScan(self._config, self._level)
-        _matches = _gp_scan.check_gamepad_device()
+        _scan = GamepadScan(self._config, self._level)
+        _matches = _scan.check_gamepad_device()
         if not _matches:
             self._log.warning('no connection attempted: gamepad is not the most recent device (configured at: {}).'.format(self._device_path ))
             raise OSError('no gamepad available.')
         else:
             self._connect()
-
 
     # ..........................................................................
     def has_connection(self):
@@ -113,7 +109,6 @@ class Gamepad():
             self._log.info(Fore.GREEN + "gamepad: {}".format(self._gamepad))
             self._log.info('connected.')
         except Exception as e:
-#           self._log.error('unable to connect to gamepad: {}/{}'.format(e, traceback.format_exc()))
             self._enabled = False
             self._gamepad = None
             raise GamepadConnectException('unable to connect to input device path {}: {}'.format(self._device_path, e))
@@ -135,7 +130,7 @@ class Gamepad():
     # ..........................................................................
     def in_loop(self):
         '''
-            Returns true if the main loop is active (the thread is alive).
+        Returns true if the main loop is active (the thread is alive).
         '''
         return self._thread != None and self._thread.is_alive()
 
@@ -147,18 +142,38 @@ class Gamepad():
     # ..........................................................................
     def _gamepad_loop(self, f_is_enabled):
         self._log.info('starting event loop...')
-        while f_is_enabled():
-            if self._gamepad is None:
-                self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [2]')
-                sys.exit(3)
-            _count = next(self._counter)
-            # loop and filter by event code and print the mapped label
-            for event in self._gamepad.read_loop():
-                self._handleEvent(event)
-                if not f_is_enabled():
-                    break
+        __enabled = True
+        while __enabled and f_is_enabled():
+            try:
+                if self._gamepad is None:
+                    raise Exception(Gamepad._NOT_AVAILABLE_ERROR + ' [gamepad no longer available]')
+                # loop and filter by event code and print the mapped label
+                for event in self._gamepad.read_loop():
+                    self._handleEvent(event)
+                    if not f_is_enabled():
+                        self._log.info(Fore.BLACK + 'event loop.')
+                        break
+            except Exception as e:
+                self._log.error('gamepad device error: {}'.format(e))
+            except OSError as e:
+                self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [lost connection to gamepad]')
+            finally:
+                '''
+                Note that closing the InputDevice is a bit tricky, and we're currently
+                masking an exception that's always thrown. As there is no data loss on
+                a gamepad event loop being closed suddenly this is not an issue.
+                '''
+                try:
+                    self._log.info(Fore.YELLOW + 'closing gamepad device...')
+                    self._gamepad.close()
+                    self._log.info(Fore.YELLOW + 'gamepad device closed.')
+                except Exception as e:
+                    self._log.debug('error closing gamepad device: {}'.format(e))
+                finally:
+                    __enabled = False
+                    self._gamepad_closed = True
+
             self._rate.wait()
-            self._log.info(Fore.BLACK + 'loop [{}]'.format(_count))
         self._log.info('exited event loop.')
 
     # ..........................................................................
@@ -169,18 +184,18 @@ class Gamepad():
     # ..........................................................................
     def _start_gamepad_loop(self):
         '''
-            This is the method to call to actually start the loop.
+        This is the method to call to actually start the loop.
         '''
         if not self._enabled:
             self._log.error('attempt to start gamepad event loop while disabled.')
         elif self._gamepad is None:
-            self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [3]')
+            self._log.error(Gamepad._NOT_AVAILABLE_ERROR + ' [no gamepad found]')
             sys.exit(3)
         elif not self._closed:
             if self._thread is None:
-                enabled = True
-                self._thread = threading.Thread(target=Gamepad._gamepad_loop, args=[self, lambda: self.enabled ])
-                self._thread.setDaemon(True)
+                self._enabled = True
+                self._thread = Thread(name='gamepad', target=Gamepad._gamepad_loop, args=[self, lambda: self._enabled], daemon=True)
+#               self._thread.setDaemon(False)
                 self._thread.start()
                 self._log.info('started.')
             else:
@@ -190,43 +205,40 @@ class Gamepad():
 
     # ..........................................................................
     def disable(self):
-        self._log.info('disabled gamepad.')
-        self._enabled = False
+        if self._closed:
+            self._log.warning('can\'t disable: already closed.')
+        elif not self._enabled:
+            self._log.warning('already disabled.')
+        else:
+            self._enabled = False
+            time.sleep(0.2)
+            # we'll wait a bit for the gamepad device to close...
+            _i = 0
+            while not self._gamepad_closed and _i < 20:
+                _i += 1
+                self._log.info('_i: {:d}'.format(_i))
+                time.sleep(0.1)
+            self._log.info('disabled.')
 
     # ..........................................................................
     def close(self):
         '''
-            Permanently close and disable the gamepad.
+        Permanently close and disable the gamepad.
         '''
-        self._enabled = False
-        if self._closing:
-            self._log.info('already closing.')
-            return
-        if self._closed:
-            self._log.debug('already closed.')
-            return
-        self._closing = True
-        self._enabled = False # assumed already done
-        self._log.info('closing gamepad...')
-#       try:
-#           if self._thread is not None:
-#               self._thread.join(timeout=1.0)
-#               self._log.info('gamepad thread joined.')
-#           else:
-#               self._log.warning('gamepad thread was already joined!')
-#           self._thread = None
-#       except Exception as e:
-#           self._log.error('error closing gamepad: {}/{}'.format(e, traceback.format_exc()))
-        # anything?
-        self._closed = True
-        self._log.info('closed.')
+        if self._enabled:
+            self.disable()
+        if not self._closed:
+            self._closed = True
+            self._log.info('closed.')
+        else:
+            self._log.warning('already closed.')
 
     # ..........................................................................
     def _handleEvent(self, event):
         '''
-            Handles the incoming event by filtering on event type and code.
-            There's possibly a more elegant way of doing this but for now this
-            works just fine.
+        Handles the incoming event by filtering on event type and code.
+        There's possibly a more elegant way of doing this but for now this
+        works just fine.
         '''
         _message = None
         _control = None
@@ -314,15 +326,15 @@ class Gamepad():
 # ..............................................................................
 class GamepadControl(Enum):
     '''
-        An enumeration of the controls available on the 8BitDo N30 Pro Gamepad,
-        or any similar/compatible model. The numeric values for 'code' may need
-        to be modified for different devices, but the basic functionality of this
-        Enum should hold.
+    An enumeration of the controls available on the 8BitDo N30 Pro Gamepad,
+    or any similar/compatible model. The numeric values for 'code' may need
+    to be modified for different devices, but the basic functionality of this
+    Enum should hold.
 
-        This also includes an Event variable, which provides the mapping between
-        a specific gamepad control and its corresponding action.
+    This also includes an Event variable, which provides the mapping between
+    a specific gamepad control and its corresponding action.
 
-        The @property annotations make sure the respective variable is read-only.
+    The @property annotations make sure the respective variable is read-only.
 
     control            num  code  id          control descripton     event
     '''
@@ -387,9 +399,9 @@ class GamepadControl(Enum):
 # ..............................................................................
 class GamepadScan(object):
     '''
-       Returns the device with the most recently changed status from /dev/input/event{n}
-       This can help you figure out which device is your gamepad, if if was connected
-       after everything else in the system had settled.
+    Returns the device with the most recently changed status from /dev/input/event{n}
+    This can help you figure out which device is your gamepad, if if was connected
+    after everything else in the system had settled.
     '''
     def __init__(self, config, level):
         self._log = Logger("gamepad-scan", level)
@@ -411,8 +423,8 @@ class GamepadScan(object):
     # ..........................................................................
     def get_latest_device(self):
         '''
-            Build a dictionary of available devices, return the one with the
-            most recent status change.
+        Build a dictionary of available devices, return the one with the
+        most recent status change.
         '''
         _dict = {}
         for i in range(10):
@@ -428,30 +440,28 @@ class GamepadScan(object):
         _sorted = sorted(_dict.items(), key=lambda x:x[1])
         _latest_devices = _sorted[len(_sorted)-1]
         _latest_device = _latest_devices[0]
-        self._log.info('device path:       \t' + Fore.YELLOW + ('{}'.format(self._device_path)).rjust(20))
-        self._log.info('most recent device:\t' + Fore.YELLOW + ('{}'.format(_latest_device)).rjust(20))
+        self._log.info('device path:        {}'.format(self._device_path))
+        self._log.info('most recent device: {}'.format(_latest_device))
         return _latest_device
 
     # ..........................................................................
     def check_gamepad_device(self):
         '''
-           Checks that the configured device matches the device with the most
-           recently changed status, returning True if matched.
+        Checks that the configured device matches the device with the most
+        recently changed status, returning True if matched.
         '''
         _latest_device = self.get_latest_device()
         if self._device_path == _latest_device:
-            self._log.info(Style.BRIGHT + 'matches:           \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(self._device_path)).rjust(20))
+            self._log.info(Style.BRIGHT + 'matches:            {}'.format(self._device_path))
             return True
         else:
-            self._log.info(Style.BRIGHT + 'does not match:    \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(_latest_device)).rjust(20))
-#           self._log.error(Style.BRIGHT + 'does not match:    \t' + Fore.YELLOW + Style.NORMAL + ('{}'.format(self._latest_device)).rjust(20))
-#           self._log.error(Style.NORMAL + 'does not match:      ' + Fore.YELLOW + Style.NORMAL + '\t{}'.format(_latest_device))
+            self._log.info(Style.BRIGHT + 'does not match:     {}'.format(_latest_device))
             return False
 
 # ..............................................................................
 class GamepadConnectException(Exception):
     '''
-        Exception raised when unable to connect to Gamepad.
+    Exception raised when unable to connect to Gamepad.
     '''
     pass
 

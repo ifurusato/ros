@@ -68,16 +68,6 @@ class IntegratedFrontSensor():
                 + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance, self._port_trigger_distance) \
                 + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance) \
                 + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance, self._stbd_side_trigger_distance ))
-        # long distance:
-        self._port_side_trigger_distance_far = self._config.get('port_side_trigger_distance_far')
-        self._port_trigger_distance_far      = self._config.get('port_trigger_distance_far')
-        self._center_trigger_distance_far    = self._config.get('center_trigger_distance_far')
-        self._stbd_trigger_distance_far      = self._config.get('stbd_trigger_distance_far')
-        self._stbd_side_trigger_distance_far = self._config.get('stbd_side_trigger_distance_far')
-        self._log.info('long distance event thresholds:' \
-                + Fore.RED + ' port side={:>5.2f}; port={:>5.2f};'.format(self._port_side_trigger_distance_far, self._port_trigger_distance_far) \
-                + Fore.BLUE + ' center={:>5.2f};'.format(self._center_trigger_distance_far) \
-                + Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._stbd_trigger_distance_far, self._stbd_side_trigger_distance_far ))
         self._loop_delay_sec = self._config.get('loop_delay_sec')
         self._log.debug('initialising integrated front sensor...')
         self._counter = itertools.count()
@@ -110,28 +100,18 @@ class IntegratedFrontSensor():
         if pin == 1:
             if value > self._port_side_trigger_distance:
                 _message = Message(Event.INFRARED_PORT_SIDE)
-            elif value > self._port_side_trigger_distance_far:
-                _message = Message(Event.INFRARED_PORT_SIDE)
         elif pin == 2:
             if value > self._port_trigger_distance:
                 _message = Message(Event.INFRARED_PORT)
-            elif value > self._port_trigger_distance_far:
-                _message = Message(Event.INFRARED_PORT_FAR)
         elif pin == 3:
             if value > self._center_trigger_distance:
                 _message = Message(Event.INFRARED_CNTR)
-            elif value > self._center_trigger_distance_far:
-                _message = Message(Event.INFRARED_CNTR_FAR)
         elif pin == 4:
             if value > self._stbd_trigger_distance:
                 _message = Message(Event.INFRARED_STBD)
-            elif value > self._stbd_trigger_distance_far:
-                _message = Message(Event.INFRARED_STBD_FAR)
         elif pin == 5:
             if value > self._stbd_side_trigger_distance:
                 _message = Message(Event.INFRARED_STBD_SIDE)
-            elif value > self._stbd_side_trigger_distance_far:
-                _message = Message(Event.INFRARED_STBD_SIDE_FAR)
         elif pin == 9:
             if value == 1:
                 _message = Message(Event.BUMPER_PORT)
@@ -285,15 +265,15 @@ class IntegratedFrontSensor():
         '''
             Return the hardwired pin corresponding to the Event type.
         '''
-        if event is Event.INFRARED_PORT_SIDE or event is Event.INFRARED_PORT_SIDE_FAR:
+        if event is Event.INFRARED_PORT_SIDE:
             return 1
-        elif event is Event.INFRARED_PORT or event is Event.INFRARED_PORT_FAR:
+        elif event is Event.INFRARED_PORT:
             return 2
-        elif event is Event.INFRARED_CNTR or event is Event.INFRARED_CNTR_FAR:
+        elif event is Event.INFRARED_CNTR:
             return 3
-        elif event is Event.INFRARED_STBD or event is Event.INFRARED_STBD_FAR:
+        elif event is Event.INFRARED_STBD:
             return 4
-        elif event is Event.INFRARED_STBD_SIDE or event is Event.INFRARED_STBD_SIDE_FAR:
+        elif event is Event.INFRARED_STBD_SIDE:
             return 5
         elif event is Event.BUMPER_PORT:
             return 9

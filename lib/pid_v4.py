@@ -339,12 +339,15 @@ class PIDController(object):
         _sample_time = self._rate.get_period_sec()
         self._pid = PID(config, self._motor.orientation, sample_time=_sample_time, level=level)
 
-#       Velocity.CONFIG.configure(_config)
-
-        self._enable_slew = _config.get('enable_slew')
+        self._enable_slew = True #_config.get('enable_slew')
         self._slewlimiter = SlewLimiter(config, orientation=self._motor.orientation, level=Level.INFO)
         _slew_rate = SlewRate.NORMAL # TODO _config.get('slew_rate')
         self._slewlimiter.set_rate_limit(_slew_rate)
+        if self._enable_slew:
+            self._log.info('slew limiter enabled, set to {:7.4f}.'.format(_slew_rate.limit))
+            self._slewlimiter.enable()
+        else:
+            self._log.info('slew limiter disabled.')
 
         self._power      = 0.0
         self._last_power = 0.0
@@ -416,7 +419,10 @@ class PIDController(object):
            Setter for the maximum velocity of both PID controls. Set
            to None (the default) to disable this feature.
         '''
-        self._log.info(Fore.YELLOW + 'max velocity: {:5.2f}'.format(max_velocity))
+        if max_velocity == None:
+            self._log.info(Fore.YELLOW + 'max velocity: NONE')
+        else:
+            self._log.info(Fore.YELLOW + 'max velocity: {:5.2f}'.format(max_velocity))
         self._pid.set_max_velocity(max_velocity)
 
     # ..........................................................................
@@ -430,7 +436,6 @@ class PIDController(object):
         cp, ci, cd = self._pid.components
         return kp, ki, kd, cp, ci, cd, self._last_power, self._motor.get_current_power_level(), self._power, self._motor.velocity, self._pid.setpoint, self._motor.steps
             
-
     # ..........................................................................
     def _loop(self):
         '''
@@ -442,12 +447,6 @@ class PIDController(object):
         _last_velocity = 0.0
         _counter = itertools.count()
 
-        if self._enable_slew:
-            if not self._slewlimiter.is_enabled():
-                self._log.info('slew enabled.')
-                self._slewlimiter.enable()
-        else:
-            self._log.info('slew disabled.')
         while self._enabled:
             _count = next(_counter)
             _current_power = self._motor.get_current_power_level()
@@ -527,6 +526,9 @@ class PIDController(object):
     # ..........................................................................
     def enable(self):
         if not self._closed:
+            if self._enabled:
+                self._log.warning('PID loop already enabled.')
+                return
             self._log.info('enabling PID loop...')
             self._enabled = True
             # if we haven't started the thread yet, do so now...
@@ -548,13 +550,13 @@ class PIDController(object):
             self._log.warning('already closed.')
             return
         self._disabling = True
-        self._enabled = False
         time.sleep(0.06) # just a bit more than 1 loop in 20Hz
         if self._thread is not None:
             self._thread.join(timeout=1.0)
             self._log.debug('pid thread joined.')
             self._thread = None
         self._disabling = False
+        self._enabled = False
         self._log.info('disabled.')
 
     # ..........................................................................

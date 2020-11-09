@@ -10,7 +10,7 @@
 # modified: 2020-06-12
 #
 
-import sys, time, threading, itertools, traceback
+import sys, itertools, traceback
 from enum import Enum
 from colorama import init, Fore, Style
 init()
@@ -73,7 +73,6 @@ class BatteryCheck(Feature):
         self._battery_channel       = _CHANNELS[_battery_config.get('battery_channel')]
         self._raw_battery_threshold = _battery_config.get('raw_battery_threshold')
         self._five_volt_threshold   = _battery_config.get('low_5v_threshold')
-        self._settle_count          = _battery_config.get('settle_count')
         _loop_delay_sec             = _battery_config.get('loop_delay_sec')
         self._loop_delay_sec_div_10 = _loop_delay_sec / 10
         self._log.info('battery check loop delay: {:>5.2f} sec'.format(_loop_delay_sec))
@@ -91,6 +90,8 @@ class BatteryCheck(Feature):
         self._tb = TB
 
         self._queue = queue
+        self._queue.add_consumer(self)
+
         self._message_factory = message_factory
         self._battery_voltage       = 0.0
         self._regulator_a_voltage   = 0.0
@@ -107,25 +108,13 @@ class BatteryCheck(Feature):
             raise RuntimeError('error configuring AD converter: {}'.format(traceback.format_exc()))
 
         self._counter = itertools.count()
-        self._count = 0
-        self._is_ready = False
-        self._closed = False
-        self._thread = None
+        self._enabled = False
+        self._closed  = False
         self._log.info('ready.')
 
     # ..........................................................................
     def name(self):
         return 'BatteryCheck'
-
-    # ..........................................................................
-    def get_count(self):
-        '''
-            Return the number of times the counter has ticked over.
-
-            Note that the counter runs 10x faster than the specified rate,
-            processing each 10th loop.
-        '''
-        return self._count
 
     # ..........................................................................
     def set_enable_messaging(self, enable):
@@ -161,14 +150,6 @@ class BatteryCheck(Feature):
         return self._regulator_b_voltage
 
     # ..........................................................................
-    def is_ready(self):
-        '''
-            Returns true after the battery check has ran a few times, which seems
-            to stabilise its output. This also may be used as a sanity check.
-        '''
-        return self._is_ready
-
-    # ..........................................................................
     def _read_tb_voltage(self):
         '''
             Reads the ThunderBorg motor voltage, then displays a log message as
@@ -182,13 +163,13 @@ class BatteryCheck(Feature):
         else:
             _color = BatteryCheck._get_color_for_voltage(_tb_voltage)
             if _color is Color.RED or _color is Color.ORANGE:
-                self._log.info(Fore.RED + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                self._log.debug(Fore.RED + 'main battery: {:>5.2f}V'.format(_tb_voltage))
             elif _color is Color.AMBER or _color is Color.YELLOW:
-                self._log.info(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                self._log.debug(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_tb_voltage))
             elif _color is Color.GREEN or _color is Color.TURQUOISE:
-                self._log.info(Fore.GREEN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                self._log.debug(Fore.GREEN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
             elif _color is Color.CYAN:
-                self._log.info(Fore.CYAN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                self._log.debug(Fore.CYAN + 'main battery: {:>5.2f}V'.format(_tb_voltage))
         self._tb.SetLed1( _color.red, _color.green, _color.blue )
         return _tb_voltage
 
@@ -211,85 +192,69 @@ class BatteryCheck(Feature):
             return Color.RED
     
     # ..........................................................................
-    def _battery_check(self):
+    def add(self, message):
         '''
+            This receives a TOCK message, and reacts only to the 1000th of these.
             The function that checks the raw battery and 5v regulator voltages in a loop.
             Note that this doesn't immediately send BATTERY_LOW messages until after the
             loop has run a few times, as it seems the first check after starting tends to
             measure a bit low.
         '''
-        self._log.info('battery check started...')
-        # disable ThunderBorg RGB LED mode so we can set it
-        self._tb.SetLedShowBattery(False)
-        count = 0
-        while self._enabled:
-            self._count = next(self._counter)
-            if self._count % 10 == 0: # process every 10th loop
-                _motor_voltage = self._read_tb_voltage()
-                self._log.info('battery channel: {}; reference: {:<5.2f}v'.format(self._battery_channel, self._reference))
-                self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel,     reference_voltage=self._reference)
-                if self._battery_voltage is None or _motor_voltage is None:
-                    _motor_voltage = 0.0
-                    self._battery_voltage = 0.0
-                    self._log.warning('raw battery or thunderborg motor voltage is NA')
-                else:
-                    self._log.info('raw battery voltage: {:<5.2f}v; thunderborg motor voltage: {:>5.2f}v'.format(self._battery_voltage, _motor_voltage))
- 
-                self._regulator_a_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_a_channel, reference_voltage=self._reference)
-                self._regulator_b_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_b_channel, reference_voltage=self._reference)
-                self._log.info('five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))
-                self._log.info('voltage A: {}; B: {}.'.format( self._regulator_a_voltage, self._regulator_b_voltage))
-    #           return
-                self._is_ready = self._count > self._settle_count
-                if self._is_ready:
-                    if self._battery_voltage < self._raw_battery_threshold:
-                        self._log.warning('battery low: {:>5.2f}v'.format(self._battery_voltage))
-                        if self._enable_messaging:
-                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
-                    elif self._regulator_a_voltage < self._five_volt_threshold:
-                        self._log.warning('5V regulator A low:  {:>5.2f}v'.format(self._regulator_a_voltage))
-                        if self._enable_messaging:
-                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
-                    elif self._regulator_b_voltage < self._five_volt_threshold:
-                        self._log.warning('5V regulator B low:  {:>5.2f}v'.format(self._regulator_b_voltage))
-                        if self._enable_messaging:
-                            self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
-                    else:
-                        self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v'.format(\
-                                self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
-                else:
-                    self._log.debug('battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v (stabilising)'.format(\
-                            self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
+        if self._enabled and message.event is Event.CLOCK_TOCK:
+            event = message.event
+            _count = message.value
+            if _count % 1000 != 0: # process only every 1000th loop
+                return
+            self._log.info('battery check started...')
+            _motor_voltage = self._read_tb_voltage()
+            self._log.debug('battery channel: {}; reference: {:<5.2f}v'.format(self._battery_channel, self._reference))
+            self._battery_voltage     = self._ads1015.get_compensated_voltage(channel=self._battery_channel,     reference_voltage=self._reference)
+            if self._battery_voltage is None or _motor_voltage is None:
+                _motor_voltage = 0.0
+                self._battery_voltage = 0.0
+                self._log.warning('raw battery or thunderborg motor voltage is NA')
+            else:
+                self._log.info(Fore.GREEN + 'raw battery voltage: {:<5.2f}v; thunderborg motor voltage: {:>5.2f}v'.format(self._battery_voltage, _motor_voltage))
 
-            time.sleep(self._loop_delay_sec_div_10)
+            self._regulator_a_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_a_channel, reference_voltage=self._reference)
+            self._regulator_b_voltage = self._ads1015.get_compensated_voltage(channel=self._five_volt_b_channel, reference_voltage=self._reference)
+            self._log.info(Fore.GREEN + 'five volt A channel: {}; B channel {}.'.format( self._five_volt_a_channel, self._five_volt_b_channel ))
+            self._log.debug('voltage A: {}; B: {}.'.format( self._regulator_a_voltage, self._regulator_b_voltage))
 
-        _color = Color.BLACK
-        self._tb.SetLed1( _color.red, _color.green, _color.blue )
-        self._tb.SetLedShowBattery(True)
-        self._log.info('battery check ended.')
+            if self._battery_voltage < self._raw_battery_threshold:
+                self._log.warning('battery low: {:>5.2f}v'.format(self._battery_voltage))
+                if self._enable_messaging:
+                    self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
+            elif self._regulator_a_voltage < self._five_volt_threshold:
+                self._log.warning('5V regulator A low:  {:>5.2f}v'.format(self._regulator_a_voltage))
+                if self._enable_messaging:
+                    self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
+            elif self._regulator_b_voltage < self._five_volt_threshold:
+                self._log.warning('5V regulator B low:  {:>5.2f}v'.format(self._regulator_b_voltage))
+                if self._enable_messaging:
+                    self._queue.add(self._message_factory.get_message(Event.BATTERY_LOW, None))
+            else:
+                self._log.info(Style.DIM + 'battery: {:>5.2f}v; regulator A: {:>5.2f}v; regulator B: {:>5.2f}v'.format(\
+                        self._battery_voltage, self._regulator_a_voltage, self._regulator_b_voltage))
+
+            self._log.info('battery check ended.')
 
     # ..........................................................................
     def enable(self):
         if not self._closed:
             self._enabled = True
-            # if we haven't started the thread yet, do so now...
-            if self._thread is None:
-                self._thread = threading.Thread(target=BatteryCheck._battery_check, args=[self])
-                self._thread.start()
-                self._log.info('enabled.')
-            else:
-                self._log.warning('cannot enable: thread already exists.')
+            # disable ThunderBorg RGB LED mode so we can set it
+            self._tb.SetLedShowBattery(False)
+            self._log.info('enabled.')
         else:
             self._log.warning('cannot enable: already closed.')
 
     # ..........................................................................
     def disable(self):
         self._enabled = False
-        time.sleep(self._loop_delay_sec_div_10)
-        if self._thread is not None:
-            self._thread.join(timeout=1.0)
-            self._log.debug('battery check thread joined.')
-            self._thread = None
+        _color = Color.BLACK
+        self._tb.SetLed1( _color.red, _color.green, _color.blue )
+        self._tb.SetLedShowBattery(True)
         self._log.info('disabled.')
 
     # ..........................................................................

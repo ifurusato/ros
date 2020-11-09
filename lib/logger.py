@@ -60,7 +60,7 @@ class Logger:
                 sh = logging.StreamHandler()
                 sh.setLevel(level.value)
                 if self._include_timestamp:
-                    sh.setFormatter(logging.Formatter(Fore.BLACK + '%(asctime)s.%(msecs)03fZ\t:' + Fore.RESET + '\t%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
+                    sh.setFormatter(logging.Formatter(Fore.BLACK + '%(asctime)s.%(msecs)03fZ\t:' + Fore.RESET + ' %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
 #                   sh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)06f  %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
                 else:
                     sh.setFormatter(logging.Formatter('%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s'))
