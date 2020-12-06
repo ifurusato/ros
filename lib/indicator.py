@@ -116,7 +116,11 @@ class Indicator():
             Converts a hue value into an RGB value and displays it on the heading portion of the pixels.
 
             The hue value should be in degrees from 0-360, as colors on a color wheel.
+            If the value goes negative it's expected that the 181-360 degree values are simply
+            negated, so we convert the argument accordingly.
         '''
+        if hue < 0:
+            hue = 360.0 - hue
         _offset = 0
         if hue < 0:
             r, g, b = [ Color.VERY_DARK_GREY.red, Color.VERY_DARK_GREY.green, Color.VERY_DARK_GREY.blue ]

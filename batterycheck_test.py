@@ -8,15 +8,19 @@
 # author:  Murray Altheim
 # created: 2020-03-16
 
-import time, sys, signal
+import pytest
+import time, sys, signal, traceback
 from colorama import init, Fore, Style
 init()
 
 from lib.devnull import DevNull
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
+from lib.message_bus import MessageBus
+from lib.message_factory import MessageFactory
 from lib.queue import MessageQueue
-from lib.batterycheck import BatteryCheck
+from lib.battery import BatteryCheck
+from lib.clock import Clock, Tick, Tock
 
 INDEFINITE = True
 
@@ -27,50 +31,84 @@ def signal_handler(signal, frame):
     print(Fore.CYAN + 'exit.' + Style.RESET_ALL)
     sys.exit(0)
 
+# ..............................................................................
+class MockConsumer():
+    def __init__(self):
+        self._log = Logger("consumer", Level.INFO)
+        self._log.info('ready.')
+        self._count = 0
+
+    def add(self, message):
+        if message:
+            self._log.info(Fore.MAGENTA + 'event type: {}; message: {}'.format(message.event, message.value))
+            self._count += 1
+        else:
+            self._log.warning('null message')
+
+    @property
+    def count(self):
+        return self._count
+
+# ..............................................................................
+@pytest.mark.unit
+def test_battery_check():
+
+    _log = Logger("batcheck test", Level.INFO)
+    _log.header('battery check', 'Starting test...', '[1/3]')
+    _log.info(Fore.RED + 'Press Ctrl+C to exit.')
+
+    # read YAML configuration
+    _loader = ConfigLoader(Level.INFO)
+    filename = 'config.yaml'
+    _config = _loader.configure(filename)
+
+    _log.header('battery check', 'Creating objects...', '[2/3]')
+
+    _log.info('creating message factory...')
+    _message_factory = MessageFactory(Level.INFO)
+    _log.info('creating message queue...')
+    _queue = MessageQueue(_message_factory, Level.INFO)
+    _consumer = MockConsumer()
+    _queue.add_consumer(_consumer)
+
+    _log.info('creating message bus...')
+    _message_bus = MessageBus(Level.INFO)
+
+    _log.info('creating clock...')
+    _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
+
+    _log.info('creating battery check...')
+    _battery_check = BatteryCheck(_config, _clock, _queue, _message_factory, Level.INFO)
+    _battery_check.enable()
+#   _battery_check.set_enable_messaging(True)
+    _log.header('battery check', 'Enabling battery check...', '[3/3]')
+
+    _clock.enable()
+
+    while _battery_check.count < 40:
+        time.sleep(0.5)
+
+    _battery_check.close()
+    _log.info('consumer received {:d} messages.'.format(_consumer.count))
+    _log.info('complete.')
+
+    # we don't expect any error messages to come through
+    assert _consumer.count == 0
+
 
 # ..............................................................................
 def main():
 
     signal.signal(signal.SIGINT, signal_handler)
-
     try:
-
-        _log = Logger("batcheck test", Level.INFO)
-        _log.header('battery check', 'Starting test...', '[1/3]')
-        _log.info(Fore.RED + 'Press Ctrl+C to exit.')
-
-        # read YAML configuration
-        _loader = ConfigLoader(Level.INFO)
-        filename = 'config.yaml'
-        _config = _loader.configure(filename)
-
-        _log.header('battery check', 'Creating objects...', '[2/3]')
-        _queue = MessageQueue(Level.INFO)
-        _message_factory = MessageFactory(Level.INFO)
-        _battery_check = BatteryCheck(_config, _queue, _message_factory, Level.INFO)
-        _battery_check.enable()
-        _battery_check.set_enable_messaging(True)
-        _log.header('battery check', 'Enabling battery check...', '[3/3]')
-
-        _log.info('ready? {}'.format(_battery_check.is_ready()))
-
-        count = 0
-        while not _battery_check.is_ready() and count < 10:
-            count += 1
-            time.sleep(0.5)
-
-        while _battery_check.get_count() < 30:
-            time.sleep(0.5)
-
-        _battery_check.close()
-        _log.info('complete.')
-
+        test_battery_check()
     except KeyboardInterrupt:
-        _log.info('Ctrl-C caught: complete.')
+        print(Fore.RED + 'Ctrl-C caught: complete.')
     except Exception as e:
-        _log.error('error closing: {}\n{}'.format(e, traceback.format_exc()))
+        print(Fore.RED + 'error closing: {}\n{}'.format(e, traceback.format_exc()))
     finally:
-        sys.exit(0)
+#       sys.exit(0)
+        pass
 
 if __name__== "__main__":
     main()

@@ -54,12 +54,12 @@ class Gamepad():
 
     _NOT_AVAILABLE_ERROR = 'gamepad device not found (not configured, paired, powered or otherwise available)'
 
-    def __init__(self, config, queue, message_factory, level):
+    def __init__(self, config, message_bus, message_factory, level):
         '''
         Parameters:
 
            config:           the YAML-based application configuration
-           queue:            the message queue to receive messages from this task
+           message_bus:      the message bus to receive messages from this task
            message_factory:  the factory for creating messages
            mutex:            vs godzilla
         '''
@@ -73,10 +73,10 @@ class Gamepad():
         # config
         _loop_freq_hz = _config.get('loop_freq_hz')
         self._rate = Rate(_loop_freq_hz)
-        self._device_path  = _config.get('device_path')
-        self._queue   = queue
+        self._device_path     = _config.get('device_path')
+        self._message_bus     = message_bus
         self._message_factory = message_factory
-        self._gamepad_closed = False
+        self._gamepad_closed  = False
         self._closed  = False
         self._enabled = False
         self._thread  = None
@@ -151,7 +151,7 @@ class Gamepad():
                 for event in self._gamepad.read_loop():
                     self._handleEvent(event)
                     if not f_is_enabled():
-                        self._log.info(Fore.BLACK + 'event loop.')
+                        self._log.info(Fore.BLACK + 'breaking from event loop.')
                         break
             except Exception as e:
                 self._log.error('gamepad device error: {}'.format(e))
@@ -164,7 +164,7 @@ class Gamepad():
                 a gamepad event loop being closed suddenly this is not an issue.
                 '''
                 try:
-                    self._log.info(Fore.YELLOW + 'closing gamepad device...')
+                    self._log.info('closing gamepad device...')
                     self._gamepad.close()
                     self._log.info(Fore.YELLOW + 'gamepad device closed.')
                 except Exception as e:
@@ -208,16 +208,16 @@ class Gamepad():
         if self._closed:
             self._log.warning('can\'t disable: already closed.')
         elif not self._enabled:
-            self._log.warning('already disabled.')
+            self._log.debug('already disabled.')
         else:
             self._enabled = False
-            time.sleep(0.2)
             # we'll wait a bit for the gamepad device to close...
-            _i = 0
-            while not self._gamepad_closed and _i < 20:
-                _i += 1
-                self._log.info('_i: {:d}'.format(_i))
-                time.sleep(0.1)
+            time.sleep(2.0)
+#           _i = 0
+#           while not self._gamepad_closed and _i < 20:
+#               _i += 1
+#               self._log.debug('_i: {:d}'.format(_i))
+#               time.sleep(0.1)
             self._log.info('disabled.')
 
     # ..........................................................................
@@ -231,7 +231,7 @@ class Gamepad():
             self._closed = True
             self._log.info('closed.')
         else:
-            self._log.warning('already closed.')
+            self._log.debug('already closed.')
 
     # ..........................................................................
     def _handleEvent(self, event):
@@ -285,7 +285,6 @@ class Gamepad():
                 pass
         elif event.type == ecodes.EV_ABS:
             _control = GamepadControl.get_by_code(self, event.code)
-
             if event.code == GamepadControl.DPAD_HORIZONTAL.code:
                 if event.value == 1:
                     self._log.info(Fore.CYAN + Style.BRIGHT + "D-Pad Horizontal(Right) {}".format(event.value))
@@ -300,13 +299,12 @@ class Gamepad():
                     self._log.info(Fore.CYAN + Style.BRIGHT + "D-Pad Vertical(Down) {}".format(event.value))
                 else:
                     self._log.info(Fore.BLACK + "D-Pad Vertical(N) {}".format(event.value))
-
             elif event.code == GamepadControl.L3_VERTICAL.code:
                 self._log.debug(Fore.MAGENTA + "L3 Vertical {}".format(event.value))
             elif event.code == GamepadControl.L3_HORIZONTAL.code:
                 self._log.debug(Fore.YELLOW + "L3 Horizontal {}".format(event.value))
             elif event.code == GamepadControl.R3_VERTICAL.code:
-                self._log.debug(Fore.CYAN + "R3 Vertical {}".format(event.value))
+                self._log.debug(Fore.GREEN + "R3 Vertical {}".format(event.value))
 #               _control = GamepadControl.R3_VERTICAL
             elif event.code == GamepadControl.R3_HORIZONTAL.code:
                 self._log.debug(Fore.GREEN + "R3 Horizontal {}".format(event.value))
@@ -320,7 +318,7 @@ class Gamepad():
         if _control != None:
             _message = self._message_factory.get_message(_control.event, event.value)
             self._log.debug(Fore.CYAN + Style.BRIGHT + "triggered control with message {}".format(_message))
-            self._queue.add(_message)
+            self._message_bus.handle(_message)
 
 
 # ..............................................................................

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import sys, time, colorsys, threading
+import sys, time, colorsys
+from threading import Thread
 from enum import Enum
 from colorama import init, Fore, Style
 init()
@@ -93,9 +94,9 @@ class RgbMatrix(Feature):
         if not self._closed and not self._closing:
             if self._thread_PORT is None and self._thread_STBD is None:
                 enabled = True
-                self._thread_PORT = threading.Thread(target=self._get_target(), args=[self, self._rgbmatrix5x5_PORT])
+                self._thread_PORT = Thread(name='rgb-port', target=self._get_target(), args=[self, self._rgbmatrix5x5_PORT])
+                self._thread_STBD = Thread(name='rgb-stbd', target=self._get_target(), args=[self, self._rgbmatrix5x5_STBD])
                 self._thread_PORT.start()
-                self._thread_STBD = threading.Thread(target=self._get_target(), args=[self, self._rgbmatrix5x5_STBD])
                 self._thread_STBD.start()
                 self._log.debug('enabled.')
             else:

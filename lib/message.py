@@ -5,6 +5,10 @@
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
 #
+# author:   Murray Altheim
+# created:  2020-05-09
+# modified: 2020-11-06
+#
 
 import itertools
 from datetime import datetime as dt
@@ -17,21 +21,9 @@ from lib.enums import ActionState
 from lib.fsm import IllegalStateError
 
 # ..............................................................................
-class MessageFactory(object):
-
-    def __init__(self, level):
-        self._log = Logger("mf", level)
-        self._counter = itertools.count()
-        self._log.info('ready.')
- 
-    # ..........................................................................
-    def get_message(self, event, value):
-        return Message(next(self._counter), event, value)
-
-# ..............................................................................
-class Message(object):
+class Message():
     '''
-        Don't create one of these directly: use the MessageFactory!
+        Don't create one of these directly: use the factory MessageFactory class.
 
         Wraps an Event in a Message indicating the intention to execute an Action.
     '''

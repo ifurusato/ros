@@ -15,7 +15,7 @@ class MotorConfigurer():
     '''
         Configures the Thunderborg motor controller. 
     '''
-    def __init__(self, ros,  config, level):
+    def __init__(self, config, level):
         self._log = Logger("mtrconf", level)
         if config is None:
             raise ValueError('null configuration argument.')

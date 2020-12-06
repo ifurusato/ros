@@ -13,20 +13,19 @@ from enum import Enum
 
 class Event(Enum):
     '''
-        Ballistic behaviours cannot be interrupted, and are not therefore
-        implemented as a separate thread.
+    Ballistic behaviours cannot be interrupted, and are not therefore
+    implemented as a separate thread.
 
-        The specific response for a behaviour is provided by the Controller,
-        which receives an Event-laden Message from the Arbitrator, which
-        prioritises the Messages it receives from the MessageQueue.
+    The specific response for a behaviour is provided by the Controller,
+    which receives an Event-laden Message from the Arbitrator, which
+    prioritises the Messages it receives from the MessageQueue.
 
-        For non-ballistic behaviours the response is generally an ongoing
-        setting a pair of motor speeds.
+    For non-ballistic behaviours the response is generally an ongoing
+    setting a pair of motor speeds.
 
-        For ballistic behaviours the Controller's script for a given
-        behaviour is meant to be uninterruptable. The goal here is to
-        permit interruptions from *higher* priority events.
-
+    For ballistic behaviours the Controller's script for a given
+    behaviour is meant to be uninterruptable. The goal here is to
+    permit interruptions from *higher* priority events.
     '''
     # name                     n   description             priority  ballistic?
     # system events ....................
@@ -45,9 +44,9 @@ class Event(Enum):
     BUMPER_STBD            = ( 12, "bumper starboard",        10,    True)
     # infrared .........................
     INFRARED_PORT_SIDE     = ( 20, "infrared port side",      20,    True)
-    INFRARED_PORT          = ( 20, "infrared port",           20,    True)
-    INFRARED_CNTR          = ( 21, "infrared cntr",           20,    True)
-    INFRARED_STBD          = ( 22, "infrared stbd",           20,    True)
+    INFRARED_PORT          = ( 21, "infrared port",           20,    True)
+    INFRARED_CNTR          = ( 22, "infrared cntr",           20,    True)
+    INFRARED_STBD          = ( 23, "infrared stbd",           20,    True)
     INFRARED_STBD_SIDE     = ( 24, "infrared stbd side",      20,    True)
 
     # emergency movements ..............
@@ -94,10 +93,18 @@ class Event(Enum):
     STBD_VELOCITY          = ( 105, "starboard velocity",     200,   False)
     STBD_THETA             = ( 106, "starboard theta",        200,   False)
 
-    # other behaviours .................
+    # other behaviours (> 500) .........
     NO_ACTION              = ( 500, "no action",              500,   False)
     CLOCK_TICK             = ( 501, "tick",                   500,   False)
     CLOCK_TOCK             = ( 502, "tock",                   500,   False)
+
+    @property
+    def is_ignoreable(self):
+        '''
+        Returns true if the priority of this event is 500 or greater.
+        By definition this includes NO_ACTION, CLOCK_TICK and CLOCK_TOCK.
+        '''
+        return self._priority >= 500
 
     # ..................................
     def __new__(cls, *args, **kwds):

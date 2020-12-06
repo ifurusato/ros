@@ -13,7 +13,7 @@
 import time, threading
 import RPi.GPIO as GPIO
 #from .import_gpio import *
-import lib.import_gpio
+#import lib.import_gpio
 from lib.logger import Level, Logger
 
 # ..............................................................................

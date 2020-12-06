@@ -81,10 +81,36 @@ class Convert:
 
     # ..........................................................................
     @staticmethod
+    def convert_to_degrees(x, y, z):
+        '''
+        Provided a x,y,z magnetometer reading returns a heading value in degrees.
+    
+        source:  https://cdn-shop.adafruit.com/datasheets/AN203_Compass_Heading_Using_Magnetometers.pdf
+        '''
+        if y == 0.0:
+            if x < 0.0:
+                return 180.0
+            elif x >= 0.0:
+                return 0.0
+        elif y > 0.0:
+            return 90.0 - math.atan( x / y ) * ( 180.0 / math.pi )
+        elif y < 0.0:
+            return 270.0 - math.atan( x / y ) * ( 180.0 / math.pi )
+
+    # ..........................................................................
+    @staticmethod
+    def rotate_90_degrees(degrees):
+        ''' 
+        Return the argument rotated 90 degrees.
+        '''
+        return Convert.to_degrees(Convert.to_radians(degrees) - ( math.pi / 2.0 )) 
+
+    # ..........................................................................
+    @staticmethod
     def in_range(p, q, error_range):
         '''
-            Returns True if the first two numbers are within the supplied range
-            of each other.
+        Returns True if the first two numbers are within the supplied range
+        of each other.
         '''
         return p >= ( q - error_range ) and p <= ( q + error_range )
 

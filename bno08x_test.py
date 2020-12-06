@@ -22,18 +22,16 @@ init()
 
 from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader
-from lib.queue import MessageQueue
 from lib.message_factory import MessageFactory
+from lib.queue import MessageQueue
 
 from lib.bno08x import BNO08x
-from lib.nxp9dof import NXP9DoF
-from lib.nxp import NXP
 
 _bno = None
 
 # ..............................................................................
 @pytest.mark.unit
-def test_imu():
+def test_bno08x():
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
@@ -42,17 +40,11 @@ def test_imu():
     _queue = MessageQueue(_message_factory, Level.INFO)
     _bno = BNO08x(_config, _queue, Level.INFO)
 
-    _nxp9dof = NXP9DoF(_config, _queue, Level.INFO)
-    _nxp = NXP(_nxp9dof, Level.INFO)
-
     # begin ............
     _bno.enable()
-    _nxp.ahrs2(True)
     print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
     while True:
         _bno.read()
-        _nxp.ahrs2(False)
-#       _nxp.heading()
         print(Fore.BLACK + '.' + Style.RESET_ALL)
         time.sleep(1.0)
 
@@ -60,7 +52,7 @@ def test_imu():
 def main():
 
     try:
-        test_imu()
+        test_bno08x()
     except KeyboardInterrupt:
         if _bno:
             _bno.close()

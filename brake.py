@@ -10,7 +10,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Level, Logger
-from lib.motors_v2 import Motors
+from lib.motors import Motors
 from lib.config_loader import ConfigLoader
 
 def brake():

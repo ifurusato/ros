@@ -14,6 +14,9 @@ pi:
     sudo_name:    'sudo'
 
 ros:
+    current:
+        port_address:  0x40                      # I2C address for port INA260
+        stbd_address:  0x41                      # I2C address for starboard INA260
     clock:
         loop_freq_hz: 20                         # main loop frequency
         tock_modulo:  20                         # modulo value for tock frequency
@@ -30,7 +33,9 @@ ros:
         loop_delay_sec: 0.01                     # arbitrator loop delay (sec)
         ballistic_loop_delay_sec: 0.2            # loop delay for ballistic tasks (sec)
     battery:
-        enable_messaging:   True                 # if True we enable low battery messages to be sent
+        enable_battery_messaging:    True        # if True we enable low battery messages to be sent
+        enable_channel_a_messaging:  False       # if True we enable low regulator on channel A messages to be sent
+        enable_channel_b_messaging:  True        # if True we enable low regulator on channel B messages to be sent
         five_volt_a_channel:   2                 # AD channel for power supply A
         five_volt_b_channel:   1                 # AD channel for power supply B
         battery_channel:       0                 # AD channel for raw battery voltage
@@ -83,11 +88,18 @@ ros:
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
     bno055:
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
-        i2c_device: 1                            # I2C device bus number, equivalent to '/dev/i2c-1'
-        pitch_trim:   0.00                       # trim adjustment on pitch
-        roll_trim:    0.00                       # trim adjustment on roll
-        heading_trim: 0.00                       # trim adjustment on heading
-        sample_rate: 20                          # sample rate in Hz
+        i2c_device:       1                      # I2C device bus number, equivalent to '/dev/i2c-1'
+        pitch_trim:    0.00                      # trim adjustment on pitch
+        roll_trim:     0.00                      # trim adjustment on roll
+        heading_trim:  0.00                      # trim adjustment on heading
+        sample_rate:     20                      # sample rate in Hz
+    bno085:
+        loop_delay_sec: 0.1                      # sensor loop delay (seconds)
+        pitch_trim:    0.00                      # trim adjustment on pitch
+        roll_trim:     0.00                      # trim adjustment on roll
+        heading_trim:  0.00                      # trim adjustment on heading
+        rotate_90:     True                      # if true rotate output by 90 degrees
+        sample_rate:      2                      # sample rate in Hz
     accelerometer:
         jitter_limit: 0.1                        # how much jitter is permitted whilst considered at rest
     lidar:
@@ -151,17 +163,17 @@ ros:
     gamepad_demo:
         enable_compass:        False             # if True, enable Compass
         enable_indicator:      False             # if True, enable RGB Indicator
-        enable_ifs:            True              # if True, enable IntegratedFrontSensor
+        enable_ifs:            False             # if True, enable IntegratedFrontSensor
         controller:
             log_to_file:       False             # if True, log PID data to file
             log_to_console:    False             # if True, log PID data to console
             min_loop_time_ms:  5                 # gamepad loop time (ms)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
-        rotary_encoder_a1_port: 22
-        rotary_encoder_b1_port: 23
-        rotary_encoder_a2_stbd: 17
-        rotary_encoder_b2_stbd: 18
+        motor_encoder_a1_port:  22
+        motor_encoder_b1_port:  23
+        motor_encoder_a2_stbd:  17
+        motor_encoder_b2_stbd:  18
         reverse_motor_orientation:   False       # in case you wire something up backwards
         reverse_encoder_orientation: False       # ditto
         sample_rate: 10                          # how many pulses per encoder measurement?
@@ -169,8 +181,9 @@ ros:
         max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
-            enable_slew:    True
-            sample_freq_hz: 20
+            enable_slew:     True
+            sample_freq_hz:    20
+            hyst_queue_len:    20                # size of queue used for running average for hysteresis
             pot_ctrl:       False                # if True enable potentiometer for setting PID terms
         pid:
             kp:             0.09500
@@ -204,29 +217,27 @@ ros:
         gnuplot_template_file: 'settings_slew_template.gp'  # template for gnuplot settings
         gnuplot_output_file: 'settings_slew.gp'  # output file for gnuplot settings
     io_expander:
-        port_side_ir_pin:  10                    # pin connected to port side infrared
-        port_ir_pin:        8                    # pin connected to port infrared
+        port_side_ir_pin:   8                    # pin connected to port side infrared
+        port_ir_pin:       10                    # pin connected to port infrared
         center_ir_pin:     11                    # pin connected to center infrared
-        stbd_ir_pin:        7                    # pin connected to starboard infrared
-        stbd_side_ir_pin:   9                    # pin connected to starboard side infrared
+        stbd_ir_pin:        9                    # pin connected to starboard infrared
+        stbd_side_ir_pin:   7                    # pin connected to starboard side infrared
         port_bmp_pin:       6                    # pin connected to port bumper
         center_bmp_pin:     3                    # pin connected to center bumper
         stbd_bmp_pin:       5                    # pin connected to starboard bumper
     integrated_front_sensor:
-        device_id:       0x08                    # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
-        channel:            1                    # SMBus channel
+        use_potentiometer:  False                # use potentiometer to adjust distance setting
         ignore_duplicates:  False                # don't fire messages for duplicate events
-        max_workers:        5                    # thread pool executor maximum number of worker threads
-        tick_modulo:        5                    # controls how often the queue is polled (TICK % modulo)
-        # the analog sensor distances (cm) used as event trigger thresholds:
-        callback_center_minimum_trigger: 35      # below this raw value we don't execute callback on center IR
-        callback_side_minimum_trigger:   45      # below this raw value we don't execute callback on side IRs
-        callback_minimum_trigger:        45      # below this raw value we don't execute callback on PORT & STBD IRs
-        port_side_trigger_distance:     100.0    # port side analog IR sensor
-        port_trigger_distance:          100.0    # port analog IR sensor
-        center_trigger_distance:        100.0    # center analog IR sensor
-        stbd_trigger_distance:          100.0    # starboard analog IR sensor
-        stbd_side_trigger_distance:     100.0    # starboard side analog IR sensor
+        max_workers:        4                    # thread pool executor maximum number of worker threads
+        loop_freq_hz:      20                    # optional loop frequency (Hz); if set doesn't use ticks
+        tick_modulo:        3                    # controls how often the queue is polled (TICK % modulo)
+        # the analog sensor distances (raw or cm) used as event trigger thresholds:
+        cntr_raw_min_trigger:              35    # below this raw value we don't execute callback on center IR
+        oblq_raw_min_trigger:              43    # below this raw value we don't execute callback on PORT & STBD IRs
+        side_raw_min_trigger:              50    # below this raw value we don't execute callback on side IRs
+        cntr_trigger_distance_cm:        90.0    # center analog IR sensor max distance before triggering
+        oblq_trigger_distance_cm:        70.0    # port or starboard oblique analog IR sensor max distance before triggering
+        side_trigger_distance_cm:        70.0    # port or starboard side analog IR sensor max distance before triggering
         # hardware pin assignments:
         port_side_ir_pin:   1                    # pin connected to port side infrared
         port_ir_pin:        2                    # pin connected to port infrared
@@ -252,6 +263,9 @@ ros:
             10: 'DNP'
             11: 'DNP'
 #           12: 'DNP'
+    rotary_encoder:
+        i2c_address:   0x19                      # the I²C address for the device
+        brightness:     1.0                      # the brightness of the RGB LED (0.0-1.0)
     features:
         ht0740: False
         placeholder: ''

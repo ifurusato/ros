@@ -20,6 +20,7 @@ from lib.config_loader import ConfigLoader
 from lib.devnull import DevNull
 from lib.logger import Level, Logger
 from lib.queue import MessageQueue
+from lib.message_factory import MessageFactory
 from lib.indicator import Indicator
 from lib.compass import Compass
 
@@ -44,13 +45,15 @@ def main():
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
-        _queue = MessageQueue(Level.INFO)
+        _message_factory = MessageFactory(Level.INFO)
+        _queue = MessageQueue(_message_factory, Level.INFO)
         _indicator = Indicator(Level.INFO)
-        _compass = Compass(_config, _queue, _indicator, Level.INFO)
+        _compass = Compass(_config, _queue, None, Level.INFO)
+#       _compass = Compass(_config, _queue, _indicator, Level.INFO)
         _compass.enable()
 
         _counter = itertools.count()
-        print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
+        print(Fore.WHITE + Style.BRIGHT + '\nwave robot in air until it beeps...' + Style.RESET_ALL + '\n\n')
         while True:
             _count = next(_counter)
             _heading = _compass.get_heading()

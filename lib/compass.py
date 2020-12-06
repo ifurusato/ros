@@ -19,16 +19,16 @@ init()
 
 from lib.logger import Level, Logger
 from lib.enums import Color
-from lib.bno055_v3 import Calibration, BNO055
+from lib.bno055 import Calibration, BNO055
 
 # ..............................................................................
 class Compass():
     '''
         A simplifying wrapper around a BNO055 used as a compass. This reads
         the heading and ignores pitch and roll, assuming the robot is on 
-        flat ground.
+        flat ground. The Indicator is optional.
 
-        It must be first enabled to function.
+        To function in a loop it must be enabled; otherwise just call get_heading().
     '''
     def __init__(self, config, queue, indicator, level):
         super().__init__()
@@ -39,10 +39,11 @@ class Compass():
         self._indicator = indicator
         self._enabled   = False
         self._thread    = None
-        self._bno055 = BNO055(config, queue, Level.INFO)
-        _config = config['ros'].get('compass')
         self._has_been_calibrated = False
+
+        self._bno055 = BNO055(config, queue, level)
         # any config?
+        _config = config['ros'].get('compass')
         self._log.info('ready.')
 
     # ..........................................................................
@@ -72,6 +73,7 @@ class Compass():
             The thread method that reads the heading from the BNO055 and 
             sends the value to the Indicator for display.
         '''
+        self._log.info('starting indicator thread...')
         while self._enabled:
             _result = self.get_heading()
             _calibration = _result[0]
@@ -79,19 +81,23 @@ class Compass():
 
             if _calibration is Calibration.NEVER:
                 self._log.info(Fore.BLACK + Style.NORMAL   + 'heading: {:5.2f}° (never);'.format(_heading))
-                self._indicator.set_heading(-1)
+                if self._indicator:
+                    self._indicator.set_heading(-1)
 
             elif _calibration is Calibration.LOST:
                 self._log.info(Fore.CYAN + Style.NORMAL    + 'heading: {:5.2f}° (lost);'.format(_heading))
-                self._indicator.set_heading(_heading) # last value read
+                if self._indicator:
+                    self._indicator.set_heading(_heading) # last value read
 
             elif _calibration is Calibration.CALIBRATED:
                 self._log.info(Fore.MAGENTA + Style.NORMAL + 'heading: {:5.2f}° (calibrated);'.format(_heading))
-                self._indicator.set_heading(_heading)
+                if self._indicator:
+                    self._indicator.set_heading(_heading)
 
             elif _calibration is Calibration.TRUSTED:
                 self._log.info(Fore.MAGENTA + Style.BRIGHT + 'heading: {:5.2f}° (trusted);'.format(_heading))
-                self._indicator.set_heading(_heading)
+                if self._indicator:
+                    self._indicator.set_heading(_heading)
 
             time.sleep(0.05)
 

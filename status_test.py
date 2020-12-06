@@ -5,46 +5,52 @@
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
 #
-#    This tests the Status task, which turns on and off the status LED.
+# This tests the Status task, which turns on and off the status LED.
 #
 
+import pytest
 import os, sys, signal, time, threading
-import RPi.GPIO as GPIO
+from colorama import init, Fore, Style
+init()
 
-from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
+from lib.logger import Level
 from lib.status import Status
 
-# call main ......................................
+_status = None
 
-def main():
+# ..............................................................................
+@pytest.mark.unit
+def test_status():
 
-    _log = Logger("status test", Level.INFO)
-
-    _log.info("status task run()")   
-
+    print(Fore.CYAN + "status task running...")   
     # read YAML configuration
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
     
-    _status = Status(_config, GPIO, Level.INFO)
+    _status = Status(_config, Level.INFO)
+    _status.blink(True)
+    for i in range(5):
+        print(Fore.CYAN + "blinking...")   
+        time.sleep(1)
+    _status.blink(False)
 
-    try: 
-        _status.blink(True)
-        for i in range(10):
-            _log.info("blinking...")   
-            time.sleep(1)
-        _status.blink(False)
+    _status.enable()
+    time.sleep(5)
+    _status.close()
 
-        _status.enable()
-        time.sleep(5)
 
+# call main ......................................
+
+def main():
+
+    try:
+        test_status()
     except KeyboardInterrupt:
-        _log.info('Ctrl-C caught: interrupted.')
+        print(Fore.RED + 'Ctrl-C caught: interrupted.')
     finally:
-        _log.info("status task close()")   
-        _status.close()
+        pass
 
 if __name__== "__main__":
     main()

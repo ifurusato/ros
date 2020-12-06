@@ -53,6 +53,7 @@ class GamepadController():
         self._log_to_file    = _config.get('log_to_file')
         self._log_to_console = _config.get('log_to_console')
         self._min_loop_ms    = _config.get('min_loop_time_ms') # minimum gamepad loop time (ms)
+        self._hysteresis_limit = 3.0
         self._pid_motor_ctrl = pid_motor_ctrl
         self._motors = self._pid_motor_ctrl.get_motors()
         _controllers = pid_motor_ctrl.get_pid_controllers()
@@ -176,7 +177,7 @@ class GamepadController():
 #           self._log.debug('TICK RECEIVED: {};\tcount: {:5.2f}'.format(event.description, message.value))
             _priority_message = self._queue.next()
             if _priority_message and not _priority_message.event.is_ignoreable:
-                self._handle_message(_priority_message)
+                self.handle_message(_priority_message)
 
         elif event is Event.CLOCK_TOCK:
 #           self._log.debug(Fore.YELLOW + Style.NORMAL + 'TOCK RECEIVED: {};\tcount: {:5.2f}'.format(event.description, message.value))
@@ -186,10 +187,17 @@ class GamepadController():
 #           self._log.debug(Fore.WHITE + Style.DIM + 'message RECEIVED with event type: {};\tcount: {:5.2f}'.format(event.description, message.value))
             pass
 
+    # ......................................................
+    def _hysteresis(self, value):
+        '''
+        If the value is less than the hysteresis limit returns zero, otherwise the argument.
+        This assumes the midpoint of the 0-255 range is 127.0.
+        '''
+#       return value
+        return 127.0 if abs(value - 127.0) < self._hysteresis_limit else value
 
     # ......................................................
-    def _handle_message(self, message):
-
+    def handle_message(self, message):
         message.number = next(self._counter)
         # show elapsed time
         _delta = dt.datetime.now() - self._start_time
@@ -201,11 +209,10 @@ class GamepadController():
             _delta = dt.datetime.now() - self._start_time
             _elapsed_ms = int(_delta.total_seconds() * 1000)
 #           self._log.debug('elapsed since last message: {}ms (padded)'.format(_elapsed_ms))
-            self._log.info(Fore.MAGENTA + 'handling message #{}: priority {}: {};\telapsed: {}ms'.format(message.number, message.priority, message.description, _elapsed_ms) + " (padded)")
+            self._log.debug(Fore.MAGENTA + 'handling message #{}: priority {}: {};\telapsed: {}ms'.format(message.number, message.priority, message.description, _elapsed_ms) + " (padded)")
         else:
 #           self._log.debug('elapsed since last message: {}ms'.format(_elapsed_ms))
-            self._log.info(Fore.MAGENTA + 'handling message #{}: priority {}: {};\telapsed: {}ms'.format(message.number, message.priority, message.description, _elapsed_ms) + "")
-
+            self._log.debug(Fore.MAGENTA + 'handling message #{}: priority {}: {};\telapsed: {}ms'.format(message.number, message.priority, message.description, _elapsed_ms) + "")
 
         # ........................................
         event = message.event
@@ -250,7 +257,7 @@ class GamepadController():
 #           if message.value == 0: # on push of button
             _value = message.value
             _velocity = Gamepad.convert_range(_value)
-#           self._log.info(Fore.WHITE + Style.BRIGHT + 'PORT: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
+            self._log.debug(Fore.RED + 'PORT: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
 #           self._motors.set_motor(Orientation.PORT, _velocity)
             self._port_pid.velocity = _velocity * 100.0
 
@@ -263,9 +270,9 @@ class GamepadController():
             if not self._stbd_pid.enabled:
                 self._stbd_pid.enable()
 #           if message.value == 0: # on push of button
-            _value = message.value
+            _value = self._hysteresis(message.value)
             _velocity = Gamepad.convert_range(_value)
-#           self._log.info(Fore.WHITE + Style.BRIGHT + 'STBD: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
+            self._log.debug(Fore.GREEN + 'STBD: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
 #           self._motors.set_motor(Orientation.STBD, _velocity)
             self._stbd_pid.velocity = _velocity * 100.0
 

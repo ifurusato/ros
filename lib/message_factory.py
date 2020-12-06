@@ -19,7 +19,7 @@ from lib.message import Message
 class MessageFactory(object):
 
     def __init__(self, level):
-        self._log = Logger("mf", level)
+        self._log = Logger("msgfactory", level)
         self._counter = itertools.count()
         self._log.info('ready.')
  

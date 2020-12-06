@@ -8,10 +8,13 @@
 # author:   Murray Altheim
 # created:  2020-01-19
 
-class DevNull:
+class DevNull(object):
     '''
         A sink for error messages.
     '''
+    def __init__(self):
+        pass
+
     def write(self, msg):
         pass
 

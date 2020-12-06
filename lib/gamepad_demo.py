@@ -24,21 +24,23 @@ from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.i2c_scanner import I2CScanner
 from lib.queue import MessageQueue
+from lib.message import Message
+from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
-#from lib.message import Message
 from lib.gamepad import Gamepad
 from lib.gamepad_ctrl import GamepadController
 from lib.clock import Clock
 from lib.lux import Lux
+#from lib.message import Message
 #from lib.compass import Compass
 #rom lib.blob import BlobSensor
 #from lib.video import Video
 #from lib.matrix import Matrix
 #from lib.indicator import Indicator
 from lib.ifs import IntegratedFrontSensor
-from lib.batterycheck import BatteryCheck
-from lib.motors_v2 import Motors
-from lib.pid_ctrl import PIDMotorController
+from lib.battery import BatteryCheck
+from lib.motors import Motors
+from lib.pid_motor_ctrl import PIDMotorController
 
 
 # ..............................................................................
@@ -81,13 +83,15 @@ class GamepadDemo():
         self._video      = None
 #       self._video      = Video(_config, self._lux, matrix11x7_stbd_available, Level.INFO)
 
-        # in this application the gamepad controller is the message queue
-        self._queue = MessageQueue(self._message_factory, Level.INFO)
+        self._message_bus = MessageBus(Level.INFO)
 
-        self._clock = Clock(_config, self._queue, self._message_factory, Level.INFO)
+        # in this application the gamepad controller is the message queue
+#       self._queue = MessageQueue(self._message_factory, Level.INFO)
+
+        self._clock = Clock(_config, self._message_bus, self._message_factory, Level.INFO)
 
         # attempt to find the gamepad
-        self._gamepad = Gamepad(_config, self._queue, self._message_factory, Level.INFO)
+        self._gamepad = Gamepad(_config, self._message_bus, self._message_factory, Level.INFO)
 
 #       if self._enable_indicator:
 #           self._indicator = Indicator(Level.INFO)
@@ -95,12 +99,16 @@ class GamepadDemo():
 #           self._compass = Compass(_config, self._queue, self._indicator, Level.INFO)
 #           self._video.set_compass(self._compass)
 
-        self._log.info('starting battery check thread...')
-        self._battery_check = BatteryCheck(_config, self._queue, self._message_factory, Level.INFO)
+        _enable_battery_check = False
+        if _enable_battery_check:
+            self._log.info('starting battery check thread...')
+            self._battery_check = BatteryCheck(_config, self._queue, self._message_factory, Level.INFO)
+        else:
+            self._battery_check = None
 
         if self._enable_ifs:
             self._log.info('integrated front sensor enabled.')
-            self._ifs = IntegratedFrontSensor(_config, self._queue, self._message_factory, Level.INFO)
+            self._ifs = IntegratedFrontSensor(_config, self._clock, self._message_bus, self._message_factory, Level.INFO)
             # add indicator as message consumer
             if self._enable_indicator:
                 self._queue.add_consumer(self._indicator)
@@ -108,7 +116,9 @@ class GamepadDemo():
             self._ifs  = None
             self._log.info('integrated front sensor disabled.')
 
-        self._ctrl = GamepadController(_config, self._queue, self._pid_motor_ctrl, self._ifs, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+#       self._ctrl = GamepadController(_config, self._queue, self._pid_motor_ctrl, self._ifs, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+        self._ctrl = GamepadController(_config, self._message_bus, self._pid_motor_ctrl, self._ifs, self._video, self._blob, matrix11x7_stbd_available, Level.INFO, self._close_demo_callback)
+        self._message_bus.add_handler(Message, self._ctrl.handle_message)
 
         self._enabled = False
         self._log.info('connecting gamepad...')
@@ -134,7 +144,8 @@ class GamepadDemo():
         self._clock.enable()
 #       if self._enable_compass:
 #           self._compass.enable()
-        self._battery_check.enable()
+        if self._battery_check:
+            self._battery_check.enable()
         if self._enable_ifs:
             self._ifs.enable()
         self._ctrl.enable()
@@ -155,7 +166,8 @@ class GamepadDemo():
         self._log.info('disabling...')
         self._enabled = False
         self._clock.disable()
-        self._battery_check.disable()
+        if self._battery_check:
+            self._battery_check.disable()
 #       if self._enable_compass:
 #           self._compass.disable()
         if self._enable_ifs:
@@ -163,17 +175,18 @@ class GamepadDemo():
         self._pid_motor_ctrl.disable()
         self._gamepad.disable()
 
-        for thread in threading.enumerate():
-            self._log.info(Fore.GREEN + 'thread "{}" is alive? {}; is daemon? {}\t😡'.format(thread.name, thread.is_alive(), thread.isDaemon()))
-            if thread is not None:
-                _position = self.get_thread_position(thread)
-                if _position:
-                    self._log.info(Fore.GREEN + '    thread "{}" filename: {}; co_name: {}; first_lineno: {}'.format(thread.name, _position[0], _position[1], _position[2]))
+        _show_thread_info = False
+        if _show_thread_info:
+            for thread in threading.enumerate():
+                self._log.info(Fore.GREEN + 'thread "{}" is alive? {}; is daemon? {}\t😡'.format(thread.name, thread.is_alive(), thread.isDaemon()))
+                if thread is not None:
+                    _position = self.get_thread_position(thread)
+                    if _position:
+                        self._log.info(Fore.GREEN + '    thread "{}" filename: {}; co_name: {}; first_lineno: {}'.format(thread.name, _position[0], _position[1], _position[2]))
+                    else:
+                        self._log.info(Fore.GREEN + '    thread "{}" position null.'.format(thread.name))
                 else:
-                    self._log.info(Fore.GREEN + '    thread "{}" position null.'.format(thread.name))
-            else:
-                self._log.info(Fore.GREEN + '    null thread.')
-
+                    self._log.info(Fore.GREEN + '    null thread.')
         self._log.info('disabled.')
 
     # ..........................................................................

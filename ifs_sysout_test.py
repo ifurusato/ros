@@ -19,15 +19,17 @@ init()
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.event import Event
-from lib.message import MessageFactory
+from lib.message import Message
+from lib.message_factory import MessageFactory
+from lib.message_bus import MessageBus
 from lib.queue import MessageQueue
+from lib.clock import Clock
 from lib.ifs import IntegratedFrontSensor
-from lib.indicator import Indicator
+#rom lib.indicator import Indicator
 from lib.rate import Rate
 from lib.slew import SlewRate
-
-from lib.motors_v2 import Motors
-from lib.pid_ctrl import PIDMotorController
+from lib.motors import Motors
+from lib.pid_motor_ctrl import PIDMotorController
 
 # ..............................................................................
 class MotorController():
@@ -114,8 +116,25 @@ class MockMessageQueue():
         super().__init__()
         self._counter = itertools.count()
         self._log = Logger("queue", Level.INFO)
+        self._listeners = []
         self._log.info('ready.')
 
+    # ..........................................................................
+    def add_listener(self, listener):
+        '''
+        Add a listener to the optional list of message listeners.
+        '''
+        return self._listeners.append(listener)
+
+    # ..........................................................................
+    def remove_listener(self, listener):
+        '''
+        Remove the listener from the list of message listeners.
+        '''
+        try:
+            self._listeners.remove(listener)
+        except ValueError:
+            self._log.warn('message listener was not in list.')
 
     # ......................................................
     def add(self, message):
@@ -135,13 +154,11 @@ class MockMessageQueue():
             self._log.debug(Fore.MAGENTA + Style.NORMAL + '> INFRARED_PORT_FAR: {}; value: {}'.format(_event.description, _value))
         # ..........................................................................................
 
-
         elif _event is Event.INFRARED_CNTR:
             self._log.info(Fore.BLUE + Style.BRIGHT + '> INFRARED_CNTR:     distance: {:>5.2f}cm'.format(_value))
 
         elif _event is Event.INFRARED_CNTR_FAR:
             self._log.info(Fore.BLUE + Style.NORMAL + '> INFRARED_CNTR_FAR: distance: {:5.2f}cm'.format(_value))
-
 
         # ..........................................................................................
         elif _event is Event.INFRARED_STBD:
@@ -163,6 +180,10 @@ class MockMessageQueue():
         else:
             self._log.debug(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
 
+        # we're finished, now add to any listeners
+        for listener in self._listeners:
+            listener.add(message);
+
 # ..............................................................................
 def main():
     try:
@@ -181,7 +202,11 @@ def main():
         _motor_ctrl.set_cruising_velocity(25.0)
 
         _message_factory = MessageFactory(Level.INFO)
-        _ifs = IntegratedFrontSensor(_config, _queue, _message_factory, Level.INFO)
+
+        _message_bus = MessageBus(Level.INFO)
+        _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
+
+        _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
 
         try:
 

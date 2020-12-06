@@ -76,11 +76,14 @@ class MessageBus():
         '''
 #       self._log.info(Fore.BLACK + 'handle message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
         self._message_bus.handle(message)
-        if message.event is Event.CLOCK_TICK:
-            # add to any consumers
-            for consumer in self._consumers:
+#       if message.event is Event.CLOCK_TICK:
+#           # add to any consumers
+#           for consumer in self._consumers:
 #               self._log.debug(Fore.BLACK + 'passing message: eid#{}; priority={}; description: {} to consumer: {}'.format(message.eid, message.priority, message.description, consumer))
-                consumer.add(message);
+#               consumer.add(message);
+        for consumer in self._consumers:
+            consumer.add(message);
+
 
     # ......................................................
     def empty(self):

@@ -73,7 +73,7 @@ class CruiseBehaviour():
         if not self._enabled:
             return
         event = message.event
-#       self._log.info(Fore.WHITE + Style.BRIGHT + 'EVENT RECEIVED: {};\tvalue: {:5.2f}cm'.format(event.description, message.value))
+        self._log.info(Fore.WHITE + Style.BRIGHT + 'EVENT RECEIVED: {};\tvalue: {:5.2f}cm'.format(event.description, message.value))
 
 #       if event is Event.CLOCK_TICK:
 #           pass
@@ -82,7 +82,8 @@ class CruiseBehaviour():
             if self._timeout_count <= 0:
                 self.set_cruising_velocity(self._cruising_velocity)
                 self.set_max_velocity(None)
-                self._log.info(Fore.GREEN + Style.NORMAL + 'TOCK RECEIVED;\tcount: {:5.2f};\ttimeout count: {:d}'.format(message.value, self._timeout_count) + Fore.RED + Style.NORMAL + '\tRESET MAX VELOCITY')
+                self._log.info(Fore.GREEN + Style.NORMAL + 'TOCK RECEIVED;\tcount: {:5.2f};\ttimeout count: {:d}'.format(message.value, self._timeout_count) \
+                        + Fore.RED + Style.NORMAL + '\tRESET MAX VELOCITY')
             else:
                 # timeout count down
                 self._timeout_count -= 1

@@ -471,8 +471,8 @@ class ROS(AbstractTask):
 #       self._bumpers.enable()
 
         self._indicator = Indicator(Level.INFO)
-        # add indicator as message consumer
-        self._queue.add_consumer(self._indicator)
+        # add indicator as message listener
+        self._queue.add_listener(self._indicator)
 
         self._log.info(Fore.MAGENTA + 'enabling integrated front sensor...')
         self._ifs.enable() 
