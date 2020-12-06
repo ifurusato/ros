@@ -9,6 +9,14 @@
 # created:  2020-03-27
 # modified: 2020-03-27
 #
+#  Beginnings of a possible replacement for the BNO055 as the source of
+#  heading information for the Compass class, instead using the Adafruit
+#  Precision NXP 9-DOF Breakout Board - FXOS8700 + FXAS21002, see:
+#
+#      https://www.adafruit.com/product/3463
+#
+#  This is very preliminary work and currently non-functional.
+#
 # see: https://www.allaboutcircuits.com/technical-articles/how-to-interpret-IMU-sensor-data-dead-reckoning-rotation-matrix-creation/
 #      https://roboticsclubiitk.github.io/2017/12/21/Beginners-Guide-to-IMU.html
 #      https://embeddedinventor.com/what-is-an-imu-sensor-a-complete-guide-for-beginners/
