@@ -13,6 +13,7 @@
 #
 
 import numpy, math
+from math import pi as PI
 
 # ..............................................................................
 class Convert:
@@ -31,6 +32,24 @@ class Convert:
     @staticmethod
     def rps_to_dps(rps):
         return rps * 57.29578 
+
+    # ..............................................................................
+    @staticmethod
+    def offset_in_degrees(angle, offset):
+        '''
+        Add two angles (provided in degrees), returning the result.
+        '''
+#       print('angle:\t{:>5.2f}°  \toffset: {:>5.2f}°'.format(angle, offset))
+        return ( angle + offset ) % 360.0
+    
+    # ..............................................................................
+    @staticmethod
+    def offset_in_radians(angle, offset):
+        '''
+        Add two angles (provided in radians), returning the result.
+        '''
+#       print('angle:\t{:>5.2f}rad\toffset: {:>5.2f}rad'.format(angle, offset))
+        return (angle + offset) % (2.0 * PI)
 
     # ..........................................................................
     @staticmethod
