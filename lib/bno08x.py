@@ -36,7 +36,7 @@ try:
     from adafruit_bno08x.i2c import BNO08X_I2C
 #   from adafruit_bno08x.i2c import BNO08X
     from adafruit_bno08x import (
-#       PacketError,
+        PacketError,
         BNO_REPORT_ACCELEROMETER,
         BNO_REPORT_GYROSCOPE,
         BNO_REPORT_MAGNETOMETER,
@@ -92,8 +92,12 @@ class BNO08x:
         self._bno = BNO08X_I2C(i2c, debug=False)
 #       self._bno = BNO08X()
 
-        self._enabled = False
-        self._closed  = False
+        self._min_calib_status  = 1
+        self._settle_sec        = 3.0
+        self._calibrated        = False
+        self._enabled           = False
+        self._closed            = False
+        self._verbose           = False # True for stack traces
         self._log.info('ready.')
 
     # ..........................................................................
@@ -101,75 +105,121 @@ class BNO08x:
         if not self._closed:
             self._enabled = True
             self._log.info('enabled.')
-            self._calibrate()
+            self._configure()
         else:
             self._log.warning('cannot enable: already closed.')
 
     # ..........................................................................
-    def _calibrate(self):
-        time.sleep(0.5) # settle before calibration
+    def _configure(self):
+        self._log.info('settle time... ({:1.0f}s)'.format(self._settle_sec))
+        time.sleep(self._settle_sec) # settle before calibration
+
+        self._log.info(Fore.YELLOW + 'begin configuration/calibration...')
+        self._bno.begin_calibration()
+        time.sleep(0.5)
 
         try:
-            self._bno.begin_calibration()
-#           self._bno.enable_feature(BNO_REPORT_MAGNETOMETER)
-#           self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR)
-
+            self._log.info(Fore.YELLOW + 'setting features...')
             self._bno.enable_feature(BNO_REPORT_ACCELEROMETER)
             self._bno.enable_feature(BNO_REPORT_GYROSCOPE)
             self._bno.enable_feature(BNO_REPORT_MAGNETOMETER)
             self._bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
             self._bno.enable_feature(BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR)
-            self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR)
+#           self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR)
             self._bno.enable_feature(BNO_REPORT_STABILITY_CLASSIFIER)
-#           self._bno.enable_feature(BNO_REPORT_ACTIVITY_CLASSIFIER)
+            self._bno.enable_feature(BNO_REPORT_ACTIVITY_CLASSIFIER)
 #           self._bno.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
 #           self._bno.enable_feature(BNO_REPORT_STEP_COUNTER)
 #           self._bno.enable_feature(BNO_REPORT_SHAKE_DETECTOR)
 #           self._bno.enable_feature(BNO_REPORT_RAW_ACCELEROMETER)
 #           self._bno.enable_feature(BNO_REPORT_RAW_GYROSCOPE)
 #           self._bno.enable_feature(BNO_REPORT_RAW_MAGNETOMETER)
+            self._log.info(Fore.YELLOW + 'features set.  ------------------- ')
+
+            time.sleep(0.5)
+
+            # now calibrate...
+            self._log.info(Fore.YELLOW + 'calibrating...')
+            start_time = time.monotonic()
+            _fail_count = 0
+            _confidence = 0
+            while not self._calibrated \
+                    and _confidence < 50 \
+                    and _fail_count < 30:
+                _fail_count += 1
+                try:
+
+                    _confidence = self._activity_report()
+                    self._stability_report()
+                    _calibration_status = self._calibration_report()
+    
+                    self._log.info("Magnetometer:")
+                    mag_x, mag_y, mag_z = self._bno.magnetic  # pylint:disable=no-member
+                    self._log.info("X: {:0.6f}  Y: {:0.6f} Z: {:0.6f} uT".format(mag_x, mag_y, mag_z))
+    
+#                   self._log.info("Game Rotation Vector Quaternion:")
+#                   ( game_quat_i, game_quat_j, game_quat_k, game_quat_real,) = self._bno.game_quaternion  # pylint:disable=no-member
+#                   self._log.info("I: {:0.6f}  J: {:0.6f} K: {:0.6f}  Real: {:0.6f}".format(game_quat_i, game_quat_j, game_quat_k, game_quat_real))
+    
+                    if _calibration_status >= self._min_calib_status: # we'll settle for Low Accuracy to start
+                        self._calibrated = True
+                        self._log.info(Fore.GREEN + "Calibrated.")
+                        if _calibration_status > 1: # but save it if better than Low.
+                            self._log.info(Fore.GREEN + Style.BRIGHT + "better than low quality calibration, saving status...")
+                            self._bno.save_calibration_data()
+                        break
+                    time.sleep(0.2)
+                except Exception as e:
+                    self._log.error("calibration error: {}".format(e))
+                finally:
+                    self._min_calib_status = 1
+                    self._calibrated = True
+
+                self._log.info(Fore.BLACK + "fail count: {:d}".format(_fail_count))
+
         except Exception as e:
             self._log.error('error setting features: {}'.format(e))
 
-        start_time = time.monotonic()
-        _calibrated = None
-        while True:
-            try:
-                _stability_classification = self._bno.stability_classification
-#               self._log.info(Fore.YELLOW + "Stability Classification: {}".format(BNO_REPORT_STABILITY_CLASSIFIER[_stability_classification]))
-                self._log.info(Fore.BLUE + "Stability Classification: {}.".format(_stability_classification))
-
-                _calibration_status = self._bno.calibration_status
-#               self._log.info(Fore.YELLOW + "Magnetometer Calibration quality: {}.".format(type(_calibration_status)))
-                self._log.info(Fore.BLUE + "Magnetometer Calibration quality: {} ({:d})".format(REPORT_ACCURACY_STATUS[_calibration_status], _calibration_status ))
-
-#               _activity_classification = self._bno.activity_classification
-#               self._log.info(Fore.YELLOW + "Activity Classification: {}.".format(_activity_classification))
-
-                self._log.info("Magnetometer:")
-                mag_x, mag_y, mag_z = self._bno.magnetic  # pylint:disable=no-member
-                self._log.info("X: {:0.6f}  Y: {:0.6f} Z: {:0.6f} uT".format(mag_x, mag_y, mag_z))
-
-                self._log.info("Game Rotation Vector Quaternion:")
-                ( game_quat_i, game_quat_j, game_quat_k, game_quat_real,) = self._bno.game_quaternion  # pylint:disable=no-member
-                self._log.info("I: {:0.6f}  J: {:0.6f} K: {:0.6f}  Real: {:0.6f}".format(game_quat_i, game_quat_j, game_quat_k, game_quat_real))
-
-                if not _calibrated and _calibration_status >= 2:
-                    _calibrated = time.monotonic()
-                    self._log.info(Fore.GREEN + "ALREADY CALIBRATED.  **********************************")
-                    break
-                if _calibrated and (time.monotonic() - _calibrated > 5.0):
-                    input_str = input("\n\nEnter S to save or anything else to continue: ")
-                    if input_str.strip().lower() == "s":
-                        self._bno.save_calibration_data()
-                        break
-                    _calibrated = None
-                self._log.info("**************************************************************")
-                time.sleep(0.1)
-            except Exception as e:
-                self._log.error("calibration error: {}".format(e))
-
         self._log.info("calibration done")
+
+    # ..........................................................................
+    @property
+    def calibrated(self):
+        return self._calibrated
+
+    # ..........................................................................
+    def _stability_report(self):
+        '''
+        Prints a report indicating the current stability status, returning 
+        a text string.
+        '''
+        _stability_classification = self._bno.stability_classification
+        self._log.info(Fore.BLUE + "Stability:  \t{}".format(_stability_classification))
+        pass
+
+    # ..........................................................................
+    def _activity_report(self):
+        '''
+        Prints a report indicating the current activity, returning an int 
+        indicating a confidence level from 0-100%.
+        '''
+        _activity_classification = self._bno.activity_classification
+        _most_likely = _activity_classification["most_likely"]
+        _confidence = _activity_classification[_most_likely]
+        self._log.info(Fore.BLUE + "Activity:   \t{}".format(_most_likely))
+        self._log.info(Fore.BLUE + "Confidence: \t{}%".format(_confidence))
+        return _confidence
+
+    # ..........................................................................
+    def _calibration_report(self):
+        '''
+        Prints a report indicating the current calibration status,
+        returning an int value from 0-3, as follows: "Accuracy Unreliable",
+        "Low Accuracy", "Medium Accuracy", or "High Accuracy".
+        '''
+        _calibration_status = self._bno.calibration_status
+        self._log.info(Fore.BLUE + "Calibration:\t{} ({:d})".format(REPORT_ACCURACY_STATUS[_calibration_status], _calibration_status))
+        return _calibration_status
 
     # ..........................................................................
     def _process_quaternion(self, color, title, quaternion):
@@ -196,21 +246,19 @@ class BNO08x:
 
         try:
 
-#           self._log.info(Fore.BLACK + 'self._bno.calibration_status...')
-            _calibration_status = self._bno.calibration_status
-            # 0: "Accuracy Unreliable", 1: "Low Accuracy", 2: "Medium Accuracy", 3: "High Accuracy",
-            if _calibration_status >= 2:
+            # reports ......................................
+            _confidence = self._activity_report()
+            self._stability_report()
+            _calibration_status = self._calibration_report()
 
-#               self._log.header('IMU Read Cycle', "Stability: {}; Calibration: {}".format(self._bno.stability_classification, REPORT_ACCURACY_STATUS[_calibration_status]), None)
-
-#               self._log.info(Fore.BLUE + "Stability: {}; Calibration: {} ({:d})".format(self._bno.stability_classification, REPORT_ACCURACY_STATUS[_calibration_status], _calibration_status ))
+            if _calibration_status >= self._min_calib_status:
 
                 # Accelerometer ..................................................................
 #               gyro_x, gyro_y, gyro_z = self._bno.gyro  # pylint:disable=no-member
 #               self._log.info(Fore.RED + 'Gyroscope:\tX: {:0.6f}  Y: {:0.6f} Z: {:0.6f} rads/s'.format(gyro_x, gyro_y, gyro_z))
 
                 # Magnetometer ...................................................................
-                self._log.info(Fore.BLACK + 'self._bno.magnetic...')
+#               self._log.info(Fore.BLACK + 'self._bno.magnetic...')
                 mag_x, mag_y, mag_z = self._bno.magnetic  # pylint:disable=no-member
                 _mag_degrees = Convert.convert_to_degrees(mag_x, mag_y, mag_z)
                 if self._rotate_90:
@@ -218,13 +266,13 @@ class BNO08x:
                 self._log.info(Fore.MAGENTA + 'mag\theading: {:>5.2f}°'.format(_mag_degrees))
 
                 # Rotation Vector Quaternion .....................................................
-                self._log.info(Fore.BLACK + 'self._bno.quaternion...')
+#               self._log.info(Fore.BLACK + 'self._bno.quaternion...')
                 ( quat_i, quat_j, quat_k, quat_real ) = self._bno.quaternion  # pylint:disable=no-member
                 _quaternion = self._bno.quaternion
                 self._process_quaternion(Fore.GREEN, 'quat', self._bno.quaternion)
 
                 # Geomagnetic Rotation Vector Quatnernion ........................................
-                self._log.info(Fore.BLACK + 'self._bno.geometric_quaternion...')
+#               self._log.info(Fore.BLACK + 'self._bno.geometric_quaternion...')
                 _geomagnetic_quaternion = self._bno.geomagnetic_quaternion
                 ( geo_quat_i, geo_quat_j, geo_quat_k, geo_quat_real, ) = _geomagnetic_quaternion  # pylint:disable=no-member
                 self._process_quaternion(Fore.YELLOW, 'gm-quat', _geomagnetic_quaternion)
@@ -236,11 +284,36 @@ class BNO08x:
 
             self._log.debug('read ended.')
 
-#       except PacketError as e:
-#           self._log.error('bno08x packet error: {}'.format(traceback.format_exc()))
+        except KeyError as ke:
+            if self._verbose:
+                self._log.error('bno08x key error: {} {}'.format(ke, traceback.format_exc()))
+            else:
+                self._log.error('bno08x key error: {}'.format(ke))
+        except RuntimeError as re:
+            if self._verbose:
+                self._log.error('bno08x runtime error: {} {}'.format(re, traceback.format_exc()))
+            else:
+                self._log.error('bno08x runtime error: {}'.format(re))
+        except IndexError as ie:
+            if self._verbose:
+                self._log.error('bno08x index error: {} {}'.format(ie, traceback.format_exc()))
+            else:
+                self._log.error('bno08x index error: {}'.format(ie))
+        except OSError as oe:
+            if self._verbose:
+                self._log.error('bno08x os error: {} {}'.format(oe, traceback.format_exc()))
+            else:
+                self._log.error('bno08x OS error: {}'.format(oe))
+        except PacketError as pe:
+            if self._verbose:
+                self._log.error('bno08x packet error: {} {}'.format(pe, traceback.format_exc()))
+            else:
+                self._log.error('bno08x packet error: {}'.format(pe))
         except Exception as e:
-            self._log.error('bno08x error: {}'.format(e))
-#           self._log.error('bno08x error: {}'.format(traceback.format_exc()))
+            if self._verbose:
+                self._log.error('bno08x error: {} {}'.format(e, traceback.format_exc()))
+            else:
+                self._log.error('bno08x error: {}'.format(e))
 
     # ..........................................................................
     def disable(self):

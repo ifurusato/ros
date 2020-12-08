@@ -42,11 +42,15 @@ def test_bno08x():
 
     # begin ............
     _bno.enable()
-    print(Fore.CYAN + 'wave robot in air until it beeps...' + Style.RESET_ALL)
+#   while not _bno.calibrated:
+#       print(Fore.BLACK + 'waiting...' + Style.RESET_ALL)
+#       time.sleep(1.0)
+
+    print(Fore.CYAN + 'starting BNO08x read loop...' + Style.RESET_ALL)
     while True:
         _bno.read()
         print(Fore.BLACK + '.' + Style.RESET_ALL)
-        time.sleep(1.0)
+        time.sleep(0.25)
 
 # ..............................................................................
 def main():

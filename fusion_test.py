@@ -60,10 +60,11 @@ def test_fusion():
             _quat_diff = _heading - _quaternion    
             _geo_diff  = _heading - _geo_quaternion
 #           _log.info(Fore.CYAN + Style.BRIGHT + 'bno\theading: {:>5.2f}°\t'.format(_heading) + Style.DIM + 'mag diff: {}°\tquat diff: {}°\tgeo diff: {}°'.format(type(_mag_diff), type(_quat_diff), type(_geo_diff)))
-            _log.info(Fore.CYAN + Style.BRIGHT + 'bno\theading: {:>5.2f}°\t'.format(_heading) + Style.DIM + 'diffs: mag: {:>5.2f}°\tquat: {:>5.2f}°\tgeo: {:>5.2f}°'.format(_mag_diff, _quat_diff, _geo_diff))
+            _log.info(Fore.CYAN + Style.BRIGHT + 'heading\tbno055: {:>5.2f}° / bno085: {:>5.2f}°\t'.format(_heading, _mag_degrees) \
+                    + Style.DIM + 'diffs: mag: {:>5.2f}°\tquat: {:>5.2f}°\tgeo: {:>5.2f}°'.format(_mag_diff, _quat_diff, _geo_diff))
 
         else:
-            _log.info(Fore.BLACK   + 'bno\theading: {:>5.2f}°'.format(_heading))
+            _log.info(Fore.BLACK   + 'bno055\theading: {:>5.2f}°'.format(_heading))
 #       _log.info(Fore.BLACK + '.')
         time.sleep(1.0)
 

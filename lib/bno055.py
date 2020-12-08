@@ -58,6 +58,7 @@ class BNO055:
         If you mount the chip in a different orientation you will likely
         need to multiply one or more of the axis by -1.0.
     '''
+        
     def __init__(self, config, queue, level):
         self._log = Logger("bno055", level)
         if config is None:
@@ -90,6 +91,13 @@ class BNO055:
         self._roll    = None
         self._is_calibrated = Calibration.NEVER
         self._log.info('ready.')
+
+    # ..........................................................................
+    def set_mode(self, mode):
+        if not isinstance(mode, BNO055Mode):
+            raise Exception('argument was not a BNO055Mode object.')
+        self._bno055.mode = mode.mode
+        self._log.info('sensor mode set to: {}'.format(mode.mode))
 
     # ..........................................................................
     def enable(self):
@@ -155,15 +163,26 @@ class BNO055:
 
             # "Therefore we recommend that as long as Magnetometer is 3/3, and Gyroscope is 3/3, the data can be trusted."
             # source: https://community.bosch-sensortec.com/t5/MEMS-sensors-forum/BNO055-Calibration-Staus-not-stable/td-p/8375
-            _ok_calibrated = _gyr_calibrated and _mag_calibrated
+#           _ok_calibrated = _gyr_calibrated and _mag_calibrated
+            _ok_calibrated = _gyr_calibrated 
 
             # show calibration of each sensor
-            self._log.info( Fore.MAGENTA + ( Style.BRIGHT if _sys_calibrated else Style.DIM ) + ' s{}'.format(_status[0]) \
-                          + Fore.YELLOW  + ( Style.BRIGHT if _gyr_calibrated else Style.DIM ) + ' g{}'.format(_status[1]) \
-                          + Fore.GREEN   + ( Style.BRIGHT if _acc_calibrated else Style.DIM ) + ' a{}'.format(_status[2]) \
-                          + Fore.CYAN    + ( Style.BRIGHT if _mag_calibrated else Style.DIM ) + ' m{}'.format(_status[3]) )
+            if not _ok_calibrated:
+                self._log.info( Fore.MAGENTA + ( Style.BRIGHT if _sys_calibrated else Style.DIM ) + ' s{}'.format(_status[0]) + Style.NORMAL \
+                              + Fore.YELLOW  + ( Style.BRIGHT if _gyr_calibrated else Style.DIM ) + ' g{}'.format(_status[1]) + Style.NORMAL \
+                              + Fore.GREEN   + ( Style.BRIGHT if _acc_calibrated else Style.DIM ) + ' a{}'.format(_status[2]) + Style.NORMAL \
+                              + Fore.CYAN    + ( Style.BRIGHT if _mag_calibrated else Style.DIM ) + ' m{}'.format(_status[3]) + Style.NORMAL )
+
+            _euler = self._bno055.euler
+            if _euler != None and _euler[0] != None:
+#               self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler))
+#               self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler[0]))
+                self._log.info(Fore.BLUE + Style.NORMAL + 'euler:\t{}° type: {}'.format(_euler[0], type(_euler[0])))
+            else:
+                self._log.info(Fore.BLUE + Style.DIM + 'euler:\tNA')
 
             # BNO055 Absolute Orientation (Quaterion, 100Hz) Four point quaternion output for more accurate data manipulation ..............
+
             _quat = self._bno055.quaternion
             if _quat != None:
                 _quat_w = _quat[0] if _quat[0] != None else None
@@ -181,17 +200,20 @@ class BNO055:
                     _q_pitch          = _q_yaw_pitch_roll[1]
                     _q_roll           = _q_yaw_pitch_roll[2]
         
+                    if _q_heading < 0.0:
+                        _q_heading += 360.0
+
                     time.sleep(0.5) # TEMP
                     # heading ............................................................
                     self._log.debug(Fore.BLUE + Style.NORMAL + '_quat_w={:>5.4f}, _quat_x={:>5.4f}, _quat_y={:>5.4f}, _quat_z={:>5.4f}'.format(_quat_w, _quat_x, _quat_y, _quat_z) )
                     
                     if _ok_calibrated:
                         self._heading = _q_heading + self._heading_trim
-                        self._log.info(Fore.MAGENTA + 'heading={:>5.4f}\t p={:>5.4f}\t r={:>5.4f}\t y={:>5.4f}'.format(_q_heading, _q_pitch, _q_roll, _q_yaw) \
+                        self._log.info(Fore.MAGENTA + 'heading:\t{:>5.4f}°\t'.format(_q_heading) + Fore.CYAN + 'p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw) \
                                 + Fore.CYAN + Style.DIM + '\tquat: {}'.format(_quat))
                         self._is_calibrated = Calibration.CALIBRATED
                     else:
-                        self._log.info(Fore.CYAN + Style.DIM     + 'heading={:>5.4f}\t p={:>5.4f}\t r={:>5.4f}\t y={:>5.4f}'.format(_q_heading, _q_pitch, _q_roll, _q_yaw) \
+                        self._log.info(Fore.CYAN + Style.DIM     + 'heading:\t{:>5.4f}°\t'.format(_q_heading) + Fore.BLACK + ' p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw) \
                                 + Fore.CYAN + Style.DIM + '\tquat: {}'.format(_quat))
                         self._is_calibrated = Calibration.LOST
         

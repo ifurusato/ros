@@ -19,13 +19,13 @@ init()
 
 from lib.logger import Level, Logger
 from lib.enums import Color
-from lib.bno055 import Calibration, BNO055
+from lib.bno055 import Calibration, BNO055, BNO055Mode
 
 # ..............................................................................
 class Compass():
     '''
         A simplifying wrapper around a BNO055 used as a compass. This reads
-        the heading and ignores pitch and roll, assuming the robot is on 
+        the heading and ignores pitch and roll, assuming the robot is on
         flat ground. The Indicator is optional.
 
         To function in a loop it must be enabled; otherwise just call get_heading().
@@ -42,6 +42,23 @@ class Compass():
         self._has_been_calibrated = False
 
         self._bno055 = BNO055(config, queue, level)
+#       self._bno055.set_mode(BNO055Mode.IMUPLUS_MODE)
+#       self._bno055.set_mode(BNO055Mode.NDOF_FMC_OFF_MODE)
+        self._bno055.set_mode(BNO055Mode.NDOF_FMC_OFF_MODE)
+
+#       self._bno055.set_mode(BNO055Mode.CONFIG_MODE)
+#       self._bno055.set_mode(BNO055Mode.ACCONLY_MODE)
+#       self._bno055.set_mode(BNO055Mode.MAGONLY_MODE)
+#       self._bno055.set_mode(BNO055Mode.GYRONLY_MODE)
+#       self._bno055.set_mode(BNO055Mode.ACCMAG_MODE)
+#       self._bno055.set_mode(BNO055Mode.ACCGYRO_MODE)
+#       self._bno055.set_mode(BNO055Mode.MAGGYRO_MODE)
+#       self._bno055.set_mode(BNO055Mode.AMG_MODE)
+#       self._bno055.set_mode(BNO055Mode.COMPASS_MODE)
+#       self._bno055.set_mode(BNO055Mode.M4G_MODE)
+#       self._bno055.set_mode(BNO055Mode.NDOF_MODE)
+
+
         # any config?
         _config = config['ros'].get('compass')
         self._log.info('ready.')
@@ -58,7 +75,7 @@ class Compass():
     def get_heading(self):
         '''
             Returns a tuple containing a Calibration enum indicating the state
-            of the sensor calibration followed by the heading value. If the 
+            of the sensor calibration followed by the heading value. If the
             result ever indicates the sensor is calibrated, this sets a flag.
         '''
         _tuple = self._bno055.get_heading()
@@ -70,7 +87,7 @@ class Compass():
     # ..........................................................................
     def _indicate(self):
         '''
-            The thread method that reads the heading from the BNO055 and 
+            The thread method that reads the heading from the BNO055 and
             sends the value to the Indicator for display.
         '''
         self._log.info('starting indicator thread...')

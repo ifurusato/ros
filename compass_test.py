@@ -12,7 +12,7 @@
 #  Tests the Compass class, which uses a BNO055 for a heading reading.
 #
 
-import time, sys, signal, itertools
+import time, sys, signal
 from colorama import init, Fore, Style
 init()
 
@@ -52,10 +52,8 @@ def main():
 #       _compass = Compass(_config, _queue, _indicator, Level.INFO)
         _compass.enable()
 
-        _counter = itertools.count()
         print(Fore.WHITE + Style.BRIGHT + '\nwave robot in air until it beeps...' + Style.RESET_ALL + '\n\n')
         while True:
-            _count = next(_counter)
             _heading = _compass.get_heading()
 #           _log.info(Fore.CYAN + Style.BRIGHT + '{:d}: {:>5.2f}; calibrated? {}'.format(_count, _heading[1], _heading[0]))
             time.sleep(1.0)
