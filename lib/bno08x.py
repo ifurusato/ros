@@ -168,6 +168,7 @@ class BNO08x:
 #                   BNO_REPORT_RAW_MAGNETOMETER,
                 ]
             for feature in _features:
+                self._log.info(Fore.YELLOW + 'feature {}'.format(feature))
                 self._bno.enable_feature(feature)
                 time.sleep(0.01)
             self._log.info(Fore.YELLOW + 'features set.  ------------------- ')

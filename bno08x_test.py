@@ -43,13 +43,15 @@ def test_bno08x(log, loop):
 
     # begin ............
     log.info('starting BNO08x read loop...')
-    _count = 0
+    _count  = 0
+    _errors = 0
     while _count < 10 if not loop else True:
         _count += 1
         result = _bno.read()
         if result != None:
-            log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |'.format(_count, result[0], result[1], result[2]))
+            log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |\t'.format(_count, result[0], result[1], result[2]) + Fore.BLACK + '{:d} errors.'.format(_errors))
         else:
+            _errors += 1
             log.warning('[{:>3d}] result: NA'.format(_count))
         time.sleep(0.25)
 
