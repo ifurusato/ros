@@ -16,6 +16,7 @@
 #   https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085
 #   https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085/report-types
 #   https://www.ceva-dsp.com/wp-content/uploads/2019/10/BNO080_085-Datasheet.pdf
+#   https://cdn-learn.adafruit.com/downloads/pdf/adafruit-9-dof-orientation-imu-fusion-breakout-bno085.pdf
 #   https://circuitpython.readthedocs.io/projects/bno08x/en/latest/
 #
 
@@ -61,7 +62,6 @@ from lib.message import Message
 from lib.queue import MessageQueue
 from lib.message_factory import MessageFactory
 from lib.convert import Convert
-from lib.rate import Rate
 
 # ..............................................................................
 class BNO08x:
@@ -79,64 +79,98 @@ class BNO08x:
         _config = self._config['ros'].get('bno085')
         self._loop_delay_sec    = _config.get('loop_delay_sec')
         _i2c_device             = _config.get('i2c_device')
-        self._rotate_90         = _config.get('rotate_90')
-        # trim currently unused
-        self._pitch_trim        = _config.get('pitch_trim')
-        self._roll_trim         = _config.get('roll_trim')
-        self._heading_trim      = _config.get('heading_trim')
-
-        self._error_range       = 5.0 # permitted error between Euler and Quaternion (in degrees) to allow setting value, was 3.0
-        self._rate              = Rate(_config.get('sample_rate')) # e.g., 20Hz
-
+        # default trim, can be overridden by methods
+        self.set_heading_trim(_config.get('heading_trim'))
+        self.set_pitch_trim(_config.get('pitch_trim'))
+        self.set_roll_trim(_config.get('roll_trim'))
         i2c = busio.I2C(board.SCL, board.SDA, frequency=800000)
         self._bno = BNO08X_I2C(i2c, debug=False)
 #       self._bno = BNO08X()
-
+        self._error_range       = 5.0 # permitted error between Euler and Quaternion (in degrees) to allow setting value, was 3.0
         self._min_calib_status  = 1
         self._settle_sec        = 3.0
         self._calibrated        = False
-        self._enabled           = False
-        self._closed            = False
         self._verbose           = False # True for stack traces
+        self._configure()
         self._log.info('ready.')
 
     # ..........................................................................
-    def enable(self):
-        if not self._closed:
-            self._enabled = True
-            self._log.info('enabled.')
-            self._configure()
-        else:
-            self._log.warning('cannot enable: already closed.')
+    def set_heading_trim(self, trim):
+        '''
+        Set the heading trim in degrees.
+        '''
+        self._heading_trim = trim
+        self._log.info('heading trim:\t{:>6.2f}°'.format(self._heading_trim))
+
+    # ..........................................................................
+    @property
+    def heading_trim(self):
+        '''
+        Return the heading trim in degrees.
+        '''
+        return self._heading_trim
+
+    # ..........................................................................
+    def set_pitch_trim(self, trim):
+        '''
+        Set the pitch trim in degrees.
+        '''
+        self._pitch_trim = trim
+        self._log.info('pitch trim:  \t{:>6.2f}°'.format(self._pitch_trim))
+
+    # ..........................................................................
+    @property
+    def pitch_trim(self):
+        '''
+        Return the pitch trim in degrees.
+        '''
+        return self._pitch_trim
+
+    # ..........................................................................
+    def set_roll_trim(self, trim):
+        '''
+        Set the roll trim in degrees.
+        '''
+        self._roll_trim = trim
+        self._log.info('roll trim:   \t{:>6.2f}°'.format(self._roll_trim))
+
+    # ..........................................................................
+    @property
+    def roll_trim(self):
+        '''
+        Return the roll trim in degrees.
+        '''
+        return self._roll_trim
 
     # ..........................................................................
     def _configure(self):
         self._log.info('settle time... ({:1.0f}s)'.format(self._settle_sec))
         time.sleep(self._settle_sec) # settle before calibration
-
         self._log.info(Fore.YELLOW + 'begin configuration/calibration...')
         self._bno.begin_calibration()
-        time.sleep(0.5)
-
+        time.sleep(0.1)
         try:
             self._log.info(Fore.YELLOW + 'setting features...')
-            self._bno.enable_feature(BNO_REPORT_ACCELEROMETER)
-            self._bno.enable_feature(BNO_REPORT_GYROSCOPE)
-            self._bno.enable_feature(BNO_REPORT_MAGNETOMETER)
-            self._bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
-            self._bno.enable_feature(BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR)
-#           self._bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR)
-            self._bno.enable_feature(BNO_REPORT_STABILITY_CLASSIFIER)
-            self._bno.enable_feature(BNO_REPORT_ACTIVITY_CLASSIFIER)
-#           self._bno.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
-#           self._bno.enable_feature(BNO_REPORT_STEP_COUNTER)
-#           self._bno.enable_feature(BNO_REPORT_SHAKE_DETECTOR)
-#           self._bno.enable_feature(BNO_REPORT_RAW_ACCELEROMETER)
-#           self._bno.enable_feature(BNO_REPORT_RAW_GYROSCOPE)
-#           self._bno.enable_feature(BNO_REPORT_RAW_MAGNETOMETER)
+            _features = [
+                    BNO_REPORT_ACCELEROMETER,
+                    BNO_REPORT_GYROSCOPE,
+                    BNO_REPORT_MAGNETOMETER,
+                    BNO_REPORT_ROTATION_VECTOR,
+                    BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
+                    BNO_REPORT_STABILITY_CLASSIFIER,
+                    BNO_REPORT_ACTIVITY_CLASSIFIER 
+#                   BNO_REPORT_GAME_ROTATION_VECTOR,
+#                   BNO_REPORT_LINEAR_ACCELERATION,
+#                   BNO_REPORT_STEP_COUNTER,
+#                   BNO_REPORT_SHAKE_DETECTOR,
+#                   BNO_REPORT_RAW_ACCELEROMETER,
+#                   BNO_REPORT_RAW_GYROSCOPE,
+#                   BNO_REPORT_RAW_MAGNETOMETER,
+                ]
+            for feature in _features:
+                self._bno.enable_feature(feature)
+                time.sleep(0.01)
             self._log.info(Fore.YELLOW + 'features set.  ------------------- ')
-
-            time.sleep(0.5)
 
             # now calibrate...
             self._log.info(Fore.YELLOW + 'calibrating...')
@@ -231,7 +265,7 @@ class BNO08x:
             _q_yaw            = _q_yaw_pitch_roll[0]
             _q_pitch          = _q_yaw_pitch_roll[1]
             _q_roll           = _q_yaw_pitch_roll[2]
-            self._log.info(color + '{}\theading: {:>5.2f}°\tp={:>5.4f}\t r={:>5.4f}\t y={:>5.4f}'.format(title, _q_heading, _q_pitch, _q_roll, _q_yaw))
+            self._log.info(color + 'heading: {:>6.2f}°\t({})\t'.format(_q_heading, title) + Fore.BLACK + 'p={:>5.4f}\t r={:>5.4f}\t y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw))
 
     # ..........................................................................
     def read(self):
@@ -247,11 +281,12 @@ class BNO08x:
         try:
 
             # reports ......................................
-            _confidence = self._activity_report()
-            self._stability_report()
-            _calibration_status = self._calibration_report()
+#           _confidence = self._activity_report()
+#           self._stability_report()
+#           _calibration_status = self._calibration_report()
 
-            if _calibration_status >= self._min_calib_status:
+#           if _calibration_status >= self._min_calib_status:
+            if True:
 
                 # Accelerometer ..................................................................
 #               gyro_x, gyro_y, gyro_z = self._bno.gyro  # pylint:disable=no-member
@@ -261,21 +296,21 @@ class BNO08x:
 #               self._log.info(Fore.BLACK + 'self._bno.magnetic...')
                 mag_x, mag_y, mag_z = self._bno.magnetic  # pylint:disable=no-member
                 _mag_degrees = Convert.convert_to_degrees(mag_x, mag_y, mag_z)
-                if self._rotate_90:
-                    _mag_degrees = Convert.rotate_90_degrees(_mag_degrees)
-                self._log.info(Fore.MAGENTA + 'mag\theading: {:>5.2f}°'.format(_mag_degrees))
+                if self._heading_trim != 0.0:
+                    _mag_degrees = Convert.offset_in_degrees(_mag_degrees, self._heading_trim)
+                self._log.info(Fore.YELLOW + 'heading: {:>6.2f}°\t(magneto)'.format(_mag_degrees))
 
                 # Rotation Vector Quaternion .....................................................
 #               self._log.info(Fore.BLACK + 'self._bno.quaternion...')
                 ( quat_i, quat_j, quat_k, quat_real ) = self._bno.quaternion  # pylint:disable=no-member
                 _quaternion = self._bno.quaternion
-                self._process_quaternion(Fore.GREEN, 'quat', self._bno.quaternion)
+                self._process_quaternion(Fore.GREEN, 'rot-quat', self._bno.quaternion)
 
                 # Geomagnetic Rotation Vector Quatnernion ........................................
 #               self._log.info(Fore.BLACK + 'self._bno.geometric_quaternion...')
                 _geomagnetic_quaternion = self._bno.geomagnetic_quaternion
                 ( geo_quat_i, geo_quat_j, geo_quat_k, geo_quat_real, ) = _geomagnetic_quaternion  # pylint:disable=no-member
-                self._process_quaternion(Fore.YELLOW, 'gm-quat', _geomagnetic_quaternion)
+                self._process_quaternion(Fore.GREEN + Style.BRIGHT, 'geo-quat', _geomagnetic_quaternion)
                 return _mag_degrees, _quaternion[0], _geomagnetic_quaternion[0]
 
             else:
@@ -314,25 +349,6 @@ class BNO08x:
                 self._log.error('bno08x error: {} {}'.format(e, traceback.format_exc()))
             else:
                 self._log.error('bno08x error: {}'.format(e))
-
-    # ..........................................................................
-    def disable(self):
-        if self._enabled:
-            self._enabled = False
-            self._log.info('disabled.')
-        else:
-            self._log.warning('already disabled.')
-
-    # ..........................................................................
-    def close(self):
-        if not self._closed:
-            if self._enabled:
-                self.disable()
-            self._closed = True
-            self._log.info('closed.')
-        else:
-            self._log.warning('already closed.')
-
 
 ## ..............................................................................
 class Calibration(Enum):

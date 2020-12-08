@@ -42,10 +42,9 @@ class Compass():
         self._has_been_calibrated = False
 
         self._bno055 = BNO055(config, queue, level)
+
 #       self._bno055.set_mode(BNO055Mode.IMUPLUS_MODE)
 #       self._bno055.set_mode(BNO055Mode.NDOF_FMC_OFF_MODE)
-        self._bno055.set_mode(BNO055Mode.NDOF_FMC_OFF_MODE)
-
 #       self._bno055.set_mode(BNO055Mode.CONFIG_MODE)
 #       self._bno055.set_mode(BNO055Mode.ACCONLY_MODE)
 #       self._bno055.set_mode(BNO055Mode.MAGONLY_MODE)
@@ -57,7 +56,6 @@ class Compass():
 #       self._bno055.set_mode(BNO055Mode.COMPASS_MODE)
 #       self._bno055.set_mode(BNO055Mode.M4G_MODE)
 #       self._bno055.set_mode(BNO055Mode.NDOF_MODE)
-
 
         # any config?
         _config = config['ros'].get('compass')

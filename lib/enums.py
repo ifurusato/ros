@@ -150,37 +150,55 @@ class Speed(Enum): # deprecated
 #            return Velocity.FULL
 
 # ..............................................................................
-class Heading(Enum):
-    NORTH        = 0
-    NORTHWEST    = 1
-    WEST         = 2
-    SOUTHWEST    = 3
-    SOUTH        = 4
-    SOUTHEAST    = 5
-    EAST         = 6
-    NORTHEAST    = 7
+class Cardinal(Enum):
+    NORTH     = ( 0, 'north' )
+    NORTHEAST = ( 1, 'north-east' )
+    EAST      = ( 2, 'east' )
+    SOUTHEAST = ( 3, 'south-east' )
+    SOUTH     = ( 4, 'south' )
+    SOUTHWEST = ( 5, 'south-west' )
+    WEST      = ( 6, 'west' )
+    NORTHWEST = ( 7, 'north-west' )
+
+    # ignore the first param since it's already set by __new__
+    def __init__(self, num, display):
+        self._display = display
+
+    @property
+    def display(self):
+        return self._display
 
     @staticmethod
     def get_heading_from_degrees(degrees):
         '''
-            Provided a heading in degrees return an enumerated cardinal direction.
+        Provided a heading in degrees return an enumerated cardinal direction.
         '''
-        if degrees > 337.25 or degrees < 22.5:
-            return Heading.NORTH
+        _value = round((degrees / 45.0) + 0.5)
+        print('value: {}'.format(_value))
+        _array = [ Cardinal.NORTH, Cardinal.NORTHEAST, Cardinal.EAST, Cardinal.SOUTHEAST, Cardinal.SOUTH, Cardinal.SOUTHWEST, Cardinal.WEST, Cardinal.NORTHWEST ]
+        return _array[(_value % 8)];
+
+    @staticmethod
+    def get_heading_from_degrees_old(degrees):
+        '''
+        Provided a heading in degrees return an enumerated cardinal direction.
+        '''
+        if 0 <= degrees <= 67.5:
+            return Cardinal.NORTHEAST
+        elif 67.5  <= degrees <= 112.5:
+            return Cardinal.EAST
+        elif degrees > 337.25 or degrees < 22.5:
+            return Cardinal.NORTH
         elif 292.5 <= degrees <= 337.25:
-            return Heading.NORTHWEST
-        elif 247.5 <- degrees <= 292.5:
-            return Heading.WEST
+            return Cardinal.NORTHWEST
+        elif 247.5 <= degrees <= 292.5:
+            return Cardinal.WEST
         elif 202.5 <= degrees <= 247.5:
-            return Heading.SOUTHWEST
+            return Cardinal.SOUTHWEST
         elif 157.5 <= degrees <= 202.5:
-            return Heading.SOUTH
+            return Cardinal.SOUTH
         elif 112.5 <= degrees <= 157.5:
-            return Heading.SOUTHEAST
-        elif 67.5 <= degrees <= 112.5:
-            return Heading.EAST
-        elif 0 <= degrees <= 67.5:
-            return Heading.NORTHEAST
+            return Cardinal.SOUTHEAST
 
 
 # ..............................................................................

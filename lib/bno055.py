@@ -10,13 +10,11 @@
 # modified: 2020-03-27
 #
 
-import sys, time, threading, itertools
+import sys
 from enum import Enum
 import adafruit_bno055
 from colorama import init, Fore, Style
 init()
-
-from lib.rate import Rate
 
 try:
     from adafruit_extended_bus import ExtendedI2C as I2C
@@ -60,7 +58,7 @@ class BNO055:
     '''
         
     def __init__(self, config, queue, level):
-        self._log = Logger("bno055", level)
+        self._log = Logger("bno055-", level)
         if config is None:
             raise ValueError("no configuration provided.")
         self._queue = queue
@@ -68,56 +66,42 @@ class BNO055:
         self._config = config
         # config
         _config = self._config['ros'].get('bno055')
-        self._loop_delay_sec    = _config.get('loop_delay_sec')
-        _i2c_device             = _config.get('i2c_device')
+        self._bno_mode          = BNO055Mode.from_name(_config.get('mode'))
         self._pitch_trim        = _config.get('pitch_trim')
         self._roll_trim         = _config.get('roll_trim')
         self._heading_trim      = _config.get('heading_trim')
         self._error_range       = 5.0 # permitted error between Euler and Quaternion (in degrees) to allow setting value, was 3.0
-        self._rate              = Rate(_config.get('sample_rate')) # e.g., 20Hz
-
         # use `ls /dev/i2c*` to find out what i2c devices are connected
+        _i2c_device             = _config.get('i2c_device')
         self._bno055 = adafruit_bno055.BNO055_I2C(I2C(_i2c_device)) # Device is /dev/i2c-1
-        # some of the other modes provide accurate compass calibration but are very slow to calibrate
+        # some of the modes provide accurate compass calibration but are very slow to calibrate
+#       self._set_mode(BNO055Mode.CONFIG_MODE)
 #       self._bno055.mode = BNO055Mode.COMPASS_MODE.mode 
 #       self._bno055.mode = BNO055Mode.NDOF_FMC_OFF_MODE.mode
-
-        self._counter = itertools.count()
-        self._thread  = None
-        self._enabled = False
-        self._closed  = False
-        self._heading = 0.0    # we jauntily default at zero so we don't return a None
+        self._set_mode(self._bno_mode)
+        self._heading = 0.0
         self._pitch   = None
         self._roll    = None
         self._is_calibrated = Calibration.NEVER
         self._log.info('ready.')
 
     # ..........................................................................
-    def set_mode(self, mode):
+    def _set_mode(self, mode):
         if not isinstance(mode, BNO055Mode):
             raise Exception('argument was not a BNO055Mode object.')
         self._bno055.mode = mode.mode
-        self._log.info('sensor mode set to: {}'.format(mode.mode))
+        self._log.info(Fore.YELLOW + 'BNO055 mode set to: {}'.format(mode.name))
 
     # ..........................................................................
-    def enable(self):
-        if not self._closed:
-            self._enabled = True
-            # if we haven't started the thread yet, do so now...
-            if self._thread is None:
-                self._thread = threading.Thread(target=BNO055._read, args=[self])
-                self._thread.start()
-                self._log.info('enabled.')
-            else:
-                self._log.warning('thread already exists.')
-        else:
-            self._log.warning('cannot enable: already closed.')
+    def is_calibrated(self):
+        return self._is_calibrated
 
     # ..........................................................................
     def get_heading(self):
         '''
-            Returns a tuple containing a Calibration (enum) indicating if the
-            sensor is calibrated followed by the heading value.
+        Returns a tuple containing a Calibration (enum) indicating if the sensor
+        is calibrated followed by the heading value. Note that this only returns
+        the last results following a read() and not new values.
         '''
         return ( self._is_calibrated, self._heading )
 
@@ -130,11 +114,7 @@ class BNO055:
         return self._roll
 
     # ..........................................................................
-    def is_calibrated(self):
-        return self._is_calibrated
-
-    # ..........................................................................
-    def _read(self):
+    def read(self):
         '''
             The function that reads sensor values in a loop. This checks to see
             if the 'sys' calibration is at least 3 (True), and if the Euler and
@@ -142,125 +122,101 @@ class BNO055:
             the class variable for heading, pitch and roll. If they aren't within
             range for more than n polls, the values revert to None.
         '''
-        self._log.info('starting sensor read...')
+        self._log.debug('starting sensor read...')
         _e_heading, _e_pitch, _e_roll, _e_yaw, _q_heading, _q_pitch, _q_roll, _q_yaw  = [None] * 8
         _quat_w = 0
         _quat_x = 0
         _quat_y = 0
         _quat_z = 0
-        _count  = 0
 
-        # begin loop .......................................
-        while self._enabled and not self._closed:
+        # status: sys, gyro, accel, mag
+        _status = self._bno055.calibration_status
+        _sys_calibrated = ( _status[0] >= 3 )
+        _gyr_calibrated = ( _status[1] >= 3 )
+        _acc_calibrated = ( _status[2] >= 2 )
+        _mag_calibrated = ( _status[3] >= 2 )
 
-            _status = self._bno055.calibration_status
-            # status: sys, gyro, accel, mag
-            _sys_calibrated = ( _status[0] >= 3 )
-            _gyr_calibrated = ( _status[1] >= 3 )
-            _acc_calibrated = ( _status[2] >= 2 )
-            _mag_calibrated = ( _status[3] >= 2 )
+        # "Therefore we recommend that as long as Magnetometer is 3/3, and Gyroscope is 3/3, the data can be trusted."
+        # source: https://community.bosch-sensortec.com/t5/MEMS-sensors-forum/BNO055-Calibration-Staus-not-stable/td-p/8375
+#       _ok_calibrated = _gyr_calibrated and _mag_calibrated
+        _ok_calibrated = _gyr_calibrated 
 
+        # show calibration of each sensor
+        if not _ok_calibrated:
+            self._log.info( Fore.MAGENTA + ( Style.BRIGHT if _sys_calibrated else Style.DIM ) + ' s{}'.format(_status[0]) + Style.NORMAL \
+                          + Fore.YELLOW  + ( Style.BRIGHT if _gyr_calibrated else Style.DIM ) + ' g{}'.format(_status[1]) + Style.NORMAL \
+                          + Fore.GREEN   + ( Style.BRIGHT if _acc_calibrated else Style.DIM ) + ' a{}'.format(_status[2]) + Style.NORMAL \
+                          + Fore.CYAN    + ( Style.BRIGHT if _mag_calibrated else Style.DIM ) + ' m{}'.format(_status[3]) + Style.NORMAL )
 
-            # "Therefore we recommend that as long as Magnetometer is 3/3, and Gyroscope is 3/3, the data can be trusted."
-            # source: https://community.bosch-sensortec.com/t5/MEMS-sensors-forum/BNO055-Calibration-Staus-not-stable/td-p/8375
-#           _ok_calibrated = _gyr_calibrated and _mag_calibrated
-            _ok_calibrated = _gyr_calibrated 
+        _euler = self._bno055.euler
+        if _euler != None and _euler[0] != None:
+#           self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler))
+#           self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler[0]))
+            self._log.info(Fore.BLUE + Style.NORMAL + 'heading: {:>6.2f}°\t(euler)'.format(_euler[0]))
+        else:
+            self._log.info(Fore.BLUE + Style.DIM + 'heading: NA\t(euler)')
 
-            # show calibration of each sensor
-            if not _ok_calibrated:
-                self._log.info( Fore.MAGENTA + ( Style.BRIGHT if _sys_calibrated else Style.DIM ) + ' s{}'.format(_status[0]) + Style.NORMAL \
-                              + Fore.YELLOW  + ( Style.BRIGHT if _gyr_calibrated else Style.DIM ) + ' g{}'.format(_status[1]) + Style.NORMAL \
-                              + Fore.GREEN   + ( Style.BRIGHT if _acc_calibrated else Style.DIM ) + ' a{}'.format(_status[2]) + Style.NORMAL \
-                              + Fore.CYAN    + ( Style.BRIGHT if _mag_calibrated else Style.DIM ) + ' m{}'.format(_status[3]) + Style.NORMAL )
+        # BNO055 Absolute Orientation (Quaterion, 100Hz) Four point quaternion output for more accurate data manipulation ..............
 
-            _euler = self._bno055.euler
-            if _euler != None and _euler[0] != None:
-#               self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler))
-#               self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler[0]))
-                self._log.info(Fore.BLUE + Style.NORMAL + 'euler:\t{}° type: {}'.format(_euler[0], type(_euler[0])))
-            else:
-                self._log.info(Fore.BLUE + Style.DIM + 'euler:\tNA')
-
-            # BNO055 Absolute Orientation (Quaterion, 100Hz) Four point quaternion output for more accurate data manipulation ..............
-
-            _quat = self._bno055.quaternion
-            if _quat != None:
-                _quat_w = _quat[0] if _quat[0] != None else None
-                _quat_x = _quat[1] if _quat[1] != None else None
-                _quat_y = _quat[2] if _quat[2] != None else None
-                _quat_z = _quat[3] if _quat[3] != None else None
-                if _quat_w != None \
-                        and _quat_x != None \
-                        and _quat_y != None \
-                        and _quat_z != None:
-                    _q = Quaternion(_quat_w, _quat_x, _quat_y, _quat_z)
-                    _q_heading        = _q.degrees
-                    _q_yaw_pitch_roll = _q.yaw_pitch_roll
-                    _q_yaw            = _q_yaw_pitch_roll[0]
-                    _q_pitch          = _q_yaw_pitch_roll[1]
-                    _q_roll           = _q_yaw_pitch_roll[2]
+        _quat = self._bno055.quaternion
+        if _quat != None:
+            _quat_w = _quat[0] if _quat[0] != None else None
+            _quat_x = _quat[1] if _quat[1] != None else None
+            _quat_y = _quat[2] if _quat[2] != None else None
+            _quat_z = _quat[3] if _quat[3] != None else None
+            if _quat_w != None \
+                    and _quat_x != None \
+                    and _quat_y != None \
+                    and _quat_z != None:
+                _q = Quaternion(_quat_w, _quat_x, _quat_y, _quat_z)
+                _q_heading        = _q.degrees
+                _q_yaw_pitch_roll = _q.yaw_pitch_roll
+                _q_yaw            = _q_yaw_pitch_roll[0]
+                _q_pitch          = _q_yaw_pitch_roll[1]
+                _q_roll           = _q_yaw_pitch_roll[2]
         
-                    if _q_heading < 0.0:
-                        _q_heading += 360.0
+                if _q_heading < 0.0:
+                    _q_heading += 360.0
 
-                    time.sleep(0.5) # TEMP
-                    # heading ............................................................
-                    self._log.debug(Fore.BLUE + Style.NORMAL + '_quat_w={:>5.4f}, _quat_x={:>5.4f}, _quat_y={:>5.4f}, _quat_z={:>5.4f}'.format(_quat_w, _quat_x, _quat_y, _quat_z) )
+                # heading ............................................................
+#               self._log.debug(Fore.BLUE + Style.NORMAL + '_quat_w={:>5.4f}, _quat_x={:>5.4f}, _quat_y={:>5.4f}, _quat_z={:>5.4f}'.format(_quat_w, _quat_x, _quat_y, _quat_z) )
                     
-                    if _ok_calibrated:
-                        self._heading = _q_heading + self._heading_trim
-                        self._log.info(Fore.MAGENTA + 'heading:\t{:>5.4f}°\t'.format(_q_heading) + Fore.CYAN + 'p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw) \
-                                + Fore.CYAN + Style.DIM + '\tquat: {}'.format(_quat))
-                        self._is_calibrated = Calibration.CALIBRATED
-                    else:
-                        self._log.info(Fore.CYAN + Style.DIM     + 'heading:\t{:>5.4f}°\t'.format(_q_heading) + Fore.BLACK + ' p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw) \
-                                + Fore.CYAN + Style.DIM + '\tquat: {}'.format(_quat))
-                        self._is_calibrated = Calibration.LOST
+                if _ok_calibrated:
+                    self._heading = _q_heading + self._heading_trim
+                    self._log.info(Fore.MAGENTA + 'heading: {:>6.2f}°\t({})\t'.format(_q_heading, self._bno_mode.name.lower()) \
+                            + Fore.CYAN + Style.DIM + 'p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw))
+                    self._is_calibrated = Calibration.CALIBRATED
+                else:
+                    self._log.info(Fore.MAGENTA + Style.DIM + 'heading: {:>6.2f}°\t({})\t'.format(_q_heading, self._bno_mode.name.lower()) \
+                            + Fore.BLACK + ' p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw) \
+                            + Fore.CYAN + Style.DIM + '\tquat: {}'.format(_quat))
+                    self._is_calibrated = Calibration.LOST
         
-    #   #           # pitch ..............................................................
-    #   #           if Convert.in_range(_e_pitch, _q_pitch, self._error_range):
-    #   #               self._pitch = _e_pitch + self._pitch_trim
-    #   #               self._log.debug('    ' + Fore.CYAN     + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (calibrated)'.format(_e_pitch))
-    #   #           else:
-    #   #               self._log.debug('    ' + Fore.YELLOW   + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (euler)'.format(_e_pitch))
-    #   #               self._log.debug('    ' + Fore.GREEN    + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (quaternion)'.format(_q_pitch))
-    #   #               self._pitch = None
-    #   #           # roll ...............................................................
-    #   #           if Convert.in_range(_e_roll, _q_roll, self._error_range):
-    #   #               self._roll = _e_roll + self._roll_trim
-    #   #               self._log.debug('    ' + Fore.CYAN     + Style.BRIGHT + 'roll:   \t{:>5.4f}° (calibrated)'.format(_e_roll))
-    #   #           else:
-    #   #               self._log.debug('    ' + Fore.YELLOW   + Style.BRIGHT + 'roll:   \t{:>5.4f}° (euler)'.format(_e_roll))
-    #   #               self._log.debug('    ' + Fore.GREEN    + Style.BRIGHT + 'roll:   \t{:>5.4f}° (quaternion)'.format(_q_roll))
-    #   #               self._roll = None
-
+#   #           # pitch ..............................................................
+#   #           if Convert.in_range(_e_pitch, _q_pitch, self._error_range):
+#   #               self._pitch = _e_pitch + self._pitch_trim
+#   #               self._log.debug('    ' + Fore.CYAN     + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (calibrated)'.format(_e_pitch))
+#   #           else:
+#   #               self._log.debug('    ' + Fore.YELLOW   + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (euler)'.format(_e_pitch))
+#   #               self._log.debug('    ' + Fore.GREEN    + Style.BRIGHT + 'pitch:  \t{:>5.4f}° (quaternion)'.format(_q_pitch))
+#   #               self._pitch = None
+#   #           # roll ...............................................................
+#   #           if Convert.in_range(_e_roll, _q_roll, self._error_range):
+#   #               self._roll = _e_roll + self._roll_trim
+#   #               self._log.debug('    ' + Fore.CYAN     + Style.BRIGHT + 'roll:   \t{:>5.4f}° (calibrated)'.format(_e_roll))
+#   #           else:
+#   #               self._log.debug('    ' + Fore.YELLOW   + Style.BRIGHT + 'roll:   \t{:>5.4f}° (euler)'.format(_e_roll))
+#   #               self._log.debug('    ' + Fore.GREEN    + Style.BRIGHT + 'roll:   \t{:>5.4f}° (quaternion)'.format(_q_roll))
+#   #               self._roll = None
             else:
-                pass
+                self._log.info(Fore.BLACK + 'null quaternion components {}.'.format(_quat))
 
-            _count = next(self._counter)
-
-            self._rate.wait()
-            # end loop .....................................
-
-        self._log.debug('read loop ended.')
-
-    # ..........................................................................
-    def disable(self):
-        if self._enabled:
-            self._enabled = False
-            self._log.info('disabled.')
         else:
-            self._log.warning('already disabled.')
+            self._log.info(Fore.BLACK + 'null quaternion.')
+            pass
 
-    # ..........................................................................
-    def close(self):
-        if not self._closed:
-            if self._enabled:
-                self.disable()
-            self._closed = True
-            self._log.info('closed.')
-        else:
-            self._log.warning('already closed.')
+        self._log.debug('read ended.')
+        return ( self._is_calibrated, self._heading )
 
 
 # ..............................................................................
@@ -394,10 +350,26 @@ class BNO055Mode(Enum):
         self._num = num
         self._mode = mode
 
-    # this makes sure the name is read-only
+    # this makes sure the mode is read-only
     @property
     def mode(self):
         return self._mode
+
+    # lookup by int value
+    @staticmethod
+    def from_num(value):
+        for mode in BNO055Mode:
+            if mode._num == value:
+                return mode
+        raise AttributeError('unrecognised lookup "{}" for BNO055Mode.'.format(value))
+
+    # lookup by name
+    @staticmethod
+    def from_name(value):
+        for mode in BNO055Mode:
+            if mode.name == value:
+                return mode
+        raise AttributeError('unrecognised lookup "{}" for BNO055Mode.'.format(value))
 
 # ..............................................................................
 class Calibration(Enum):

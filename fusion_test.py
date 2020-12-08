@@ -9,9 +9,12 @@
 # created:  2020-03-27
 # modified: 2020-03-27
 #
-# Fusion here means combining the heading outputs of the BNO055 and BNO085.
+# https://www.adafruit.com/product/4754
+# https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085
+# https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085/report-types
+# https://www.ceva-dsp.com/wp-content/uploads/2019/10/BNO080_085-Datasheet.pdf
+# https://circuitpython.readthedocs.io/projects/bno08x/en/latest/
 #
-
 import pytest
 import sys, time
 from colorama import init, Fore, Style
@@ -21,15 +24,15 @@ from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader
 from lib.message_factory import MessageFactory
 from lib.queue import MessageQueue
-
+from lib.enums import Cardinal
 from lib.bno08x import BNO08x
-from lib.compass import Compass
+from lib.bno055 import BNO055
 
-_bno08x = None
+_bno = None
 
 # ..............................................................................
 @pytest.mark.unit
-def test_fusion():
+def test_bno08x():
 
     _log = Logger('fusion', Level.INFO)
     _loader = ConfigLoader(Level.INFO)
@@ -39,43 +42,35 @@ def test_fusion():
     _message_factory = MessageFactory(Level.INFO)
     _queue = MessageQueue(_message_factory, Level.INFO)
     _bno08x = BNO08x(_config, _queue, Level.INFO)
-    _compass = Compass(_config, _queue, None, Level.WARN)
-    _compass.enable()
+    _bno055 = BNO055(_config, _queue, Level.INFO)
 
-    # begin ............
-    _bno08x.enable()
-    _log.info('wave robot in air until it beeps...')
     while True:
         _bno08x_heading = _bno08x.read()
-        # _mag_degrees, _quaternion, _geomagnetic_quaternion
         _mag_degrees    = _bno08x_heading[0] if _bno08x_heading is not None else 0.0
-        _quaternion     = _bno08x_heading[1] if _bno08x_heading is not None else 0.0
-        _geo_quaternion = _bno08x_heading[2] if _bno08x_heading is not None else 0.0
 
-        _result = _compass.get_heading()
-        _calibration = _result[0]
-        _heading = _result[1]
+        _bno055_result = _bno055.read()
+        _calibration = _bno055_result[0]
+        _bno055_heading = _bno055_result[1]
         if _calibration.calibrated:
-            _mag_diff  = _heading - _mag_degrees    
-            _quat_diff = _heading - _quaternion    
-            _geo_diff  = _heading - _geo_quaternion
-#           _log.info(Fore.CYAN + Style.BRIGHT + 'bno\theading: {:>5.2f}°\t'.format(_heading) + Style.DIM + 'mag diff: {}°\tquat diff: {}°\tgeo diff: {}°'.format(type(_mag_diff), type(_quat_diff), type(_geo_diff)))
-            _log.info(Fore.CYAN + Style.BRIGHT + 'heading\tbno055: {:>5.2f}° / bno085: {:>5.2f}°\t'.format(_heading, _mag_degrees) \
-                    + Style.DIM + 'diffs: mag: {:>5.2f}°\tquat: {:>5.2f}°\tgeo: {:>5.2f}°'.format(_mag_diff, _quat_diff, _geo_diff))
+            _mag_diff  = _bno055_heading - _mag_degrees
+            _log.info(Fore.BLUE + Style.BRIGHT + 'heading: {:>6.2f}°\t(bno085)\t'.format(_mag_degrees) + Style.DIM + 'diff: {:>5.2f}°;\ttrim: {:>5.2f}°'.format(_mag_diff, _bno08x.heading_trim))
+            _log.info(Fore.CYAN + Style.BRIGHT + 'heading: {:>6.2f}°\t(bno055)'.format(_bno055_heading))
+            _cardinal = Cardinal.get_heading_from_degrees(_bno055_heading)
+            _log.info(Fore.WHITE + Style.BRIGHT + 'cardinal:  \t{}\n'.format(_cardinal.display.lower()))
 
-        else:
-            _log.info(Fore.BLACK   + 'bno055\theading: {:>5.2f}°'.format(_heading))
-#       _log.info(Fore.BLACK + '.')
-        time.sleep(1.0)
+#           _log.info('')
+
+#       _log.info(Fore.BLACK + '.' + Style.RESET_ALL)
+        time.sleep(2.0)
 
 # ..............................................................................
 def main():
 
     try:
-        test_fusion()
+        test_bno08x()
     except KeyboardInterrupt:
-        if _bno08x:
-            _bno08x.close()
+        if _bno:
+            _bno.close()
         print('done.')
 
 if __name__== "__main__":

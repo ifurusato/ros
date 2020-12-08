@@ -17,7 +17,7 @@ from enum import Enum
 from colorama import init, Fore, Style
 init()
 
-from lib.enums import Heading
+from lib.enums import Cardinal
 from lib.devnull import DevNull
 from lib.logger import Level, Logger
 from lib.message_factory import MessageFactory
@@ -71,7 +71,7 @@ def convert_to_degrees(x, y, z):
     '''
         Provided a x,y,z magnetometer reading returns a heading value in degrees.
 
-        source:  https://cdn-shop.adafruit.com/datasheets/AN203_Compass_Heading_Using_Magnetometers.pdf
+        source:  https://cdn-shop.adafruit.com/datasheets/AN203_Compass_Cardinal.pdf
     '''
     if y == 0.0:
         if x < 0.0:
@@ -164,7 +164,7 @@ def main():
             accel_x, accel_y, accel_z = lsm9ds1.acceleration
     
             degrees = convert_to_degrees(mag_x, mag_y, mag_z)
-            direction = Heading.get_heading_from_degrees(degrees)
+            direction = Cardinal.get_heading_from_degrees(degrees)
             lsm9ds1_heading, filtered_lsm9ds1_heading, roll, pitch, yaw = convert_to_degrees_with_accelerometer(mag_x, mag_y, mag_z, accel_x, accel_y, accel_z)
 
 

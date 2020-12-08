@@ -87,19 +87,16 @@ ros:
         quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
     bno055:
-        loop_delay_sec: 0.1                      # sensor loop delay (seconds)
         i2c_device:       1                      # I2C device bus number, equivalent to '/dev/i2c-1'
+        mode:    'NDOF_MODE'                     # see table in BNO055Mode class for int values (9 is IMUPLUS_MODE)
         pitch_trim:    0.00                      # trim adjustment on pitch
         roll_trim:     0.00                      # trim adjustment on roll
         heading_trim:  0.00                      # trim adjustment on heading
-        sample_rate:     20                      # sample rate in Hz
     bno085:
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
         pitch_trim:    0.00                      # trim adjustment on pitch
         roll_trim:     0.00                      # trim adjustment on roll
-        heading_trim:  0.00                      # trim adjustment on heading
-        rotate_90:     True                      # if true rotate output by 90 degrees
-        sample_rate:      2                      # sample rate in Hz
+        heading_trim:  -90.00                      # trim adjustment on heading
     accelerometer:
         jitter_limit: 0.1                        # how much jitter is permitted whilst considered at rest
     lidar:
@@ -266,6 +263,7 @@ ros:
     rotary_encoder:
         i2c_address:   0x19                      # the I²C address for the device
         brightness:     1.0                      # the brightness of the RGB LED (0.0-1.0)
+        increment:        1                      # the count change per rotary tick
     features:
         ht0740: False
         placeholder: ''

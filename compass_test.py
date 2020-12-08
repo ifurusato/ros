@@ -50,12 +50,11 @@ def main():
         _indicator = Indicator(Level.INFO)
         _compass = Compass(_config, _queue, None, Level.INFO)
 #       _compass = Compass(_config, _queue, _indicator, Level.INFO)
-        _compass.enable()
 
         print(Fore.WHITE + Style.BRIGHT + '\nwave robot in air until it beeps...' + Style.RESET_ALL + '\n\n')
         while True:
             _heading = _compass.get_heading()
-#           _log.info(Fore.CYAN + Style.BRIGHT + '{:d}: {:>5.2f}; calibrated? {}'.format(_count, _heading[1], _heading[0]))
+            _log.info(Fore.CYAN + Style.BRIGHT + 'heading: {:>5.2f}; calibrated? {}'.format(_heading[1], _heading[0].name))
             time.sleep(1.0)
     
     except KeyboardInterrupt:
