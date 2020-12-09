@@ -13,20 +13,45 @@ from adafruit_bno08x.i2c import BNO08X_I2C
 i2c = busio.I2C(board.SCL, board.SDA, frequency=800000)
 bno = BNO08X_I2C(i2c)
 
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_ACCELEROMETER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_GYROSCOPE)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_MAGNETOMETER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_LINEAR_ACCELERATION)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_ROTATION_VECTOR)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_GAME_ROTATION_VECTOR)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_STEP_COUNTER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_STABILITY_CLASSIFIER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_ACTIVITY_CLASSIFIER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_SHAKE_DETECTOR)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_ACCELEROMETER)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_GYROSCOPE)
-bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_MAGNETOMETER)
+ALT_METHOD = True # use feature loop with delay vs list
+if ALT_METHOD:
+    bno.begin_calibration()
+    time.sleep(0.01)
+    _features = [
+             adafruit_bno08x.BNO_REPORT_ACCELEROMETER,
+             adafruit_bno08x.BNO_REPORT_GYROSCOPE,
+             adafruit_bno08x.BNO_REPORT_MAGNETOMETER,
+             adafruit_bno08x.BNO_REPORT_LINEAR_ACCELERATION,
+             adafruit_bno08x.BNO_REPORT_ROTATION_VECTOR,
+             adafruit_bno08x.BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
+             adafruit_bno08x.BNO_REPORT_GAME_ROTATION_VECTOR,
+             adafruit_bno08x.BNO_REPORT_STEP_COUNTER,
+             adafruit_bno08x.BNO_REPORT_STABILITY_CLASSIFIER,
+             adafruit_bno08x.BNO_REPORT_ACTIVITY_CLASSIFIER,
+             adafruit_bno08x.BNO_REPORT_SHAKE_DETECTOR,
+             adafruit_bno08x.BNO_REPORT_RAW_ACCELEROMETER,
+             adafruit_bno08x.BNO_REPORT_RAW_GYROSCOPE,
+             adafruit_bno08x.BNO_REPORT_RAW_MAGNETOMETER
+        ]
+    for feature in _features:
+        print('feature {}'.format(feature))
+        bno.enable_feature(feature)
+        time.sleep(0.01)
+else:
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_ACCELEROMETER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_GYROSCOPE)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_MAGNETOMETER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_LINEAR_ACCELERATION)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_ROTATION_VECTOR)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_GAME_ROTATION_VECTOR)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_STEP_COUNTER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_STABILITY_CLASSIFIER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_ACTIVITY_CLASSIFIER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_SHAKE_DETECTOR)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_ACCELEROMETER)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_GYROSCOPE)
+    bno.enable_feature(adafruit_bno08x.BNO_REPORT_RAW_MAGNETOMETER)
 
 while True:
     time.sleep(0.1)
