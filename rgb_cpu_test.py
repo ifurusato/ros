@@ -24,7 +24,7 @@ def main():
 
     try:
 
-        _rgbmatrix = RgbMatrix(Level.INFO)
+        _rgbmatrix = RgbMatrix(Level.WARN)
         _rgbmatrix.set_display_type(DisplayType.CPU)
         _rgbmatrix.enable()
         while True:
