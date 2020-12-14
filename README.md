@@ -61,6 +61,14 @@ This project is part of the _New Zealand Personal Robotics (NZPRG)_ "Robot Opera
 Please note that the documentation in the code will likely be more current than this README file, so please consult it for the "canonical" information.
 
 
+## Execution
+
+To force the Raspberry Pi to prioritise execution of the python operating system, use the 'chrt' command, e.g.:
+'''
+  % chrt -f 5 python3 ./fusion_test.py
+'''
+
+
 ## Copyright & License
 
 All contents (including software, documentation and images) Copyright 2020 by Murray Altheim, All Rights Reserved.

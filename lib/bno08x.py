@@ -88,7 +88,7 @@ class BNO08x:
 #       self._bno = BNO08X()
         self._error_range       = 5.0 # permitted error between Euler and Quaternion (in degrees) to allow setting value, was 3.0
         self._min_calib_status  = 1
-        self._settle_sec        = 3.0
+        self._settle_sec        = 0.0
         self._calibrated        = False
         self._verbose           = False # True for stack traces
         self._configure()
@@ -168,7 +168,7 @@ class BNO08x:
 #                   BNO_REPORT_RAW_MAGNETOMETER,
                 ]
             for feature in _features:
-                self._log.info(Fore.YELLOW + 'feature {}'.format(feature))
+                self._log.debug('feature {}'.format(feature))
                 self._bno.enable_feature(feature)
                 time.sleep(0.01)
             self._log.info(Fore.YELLOW + 'features set.  ------------------- ')

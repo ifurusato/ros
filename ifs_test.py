@@ -144,7 +144,9 @@ class MockMessageQueue():
 # ..............................................................................
 @pytest.mark.unit
 def test_ifs():
-
+    '''
+    Test the functionality of Integrated Front Sensor.
+    '''
     _log = Logger("test-ifs", Level.INFO)
 
     # read YAML configuration
@@ -162,12 +164,11 @@ def test_ifs():
 #   _indicator = Indicator(Level.INFO)
     # add indicator as message listener
 #   _queue.add_listener(_indicator)
-
     _ifs.enable()
     _clock.enable()
     while not _queue.all_triggered:
         _queue.waiting_for_message()
-        time.sleep(0.1)
+        time.sleep(0.5)
     _ifs.disable()
 
     assert _queue.count > 0

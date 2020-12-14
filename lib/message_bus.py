@@ -49,7 +49,7 @@ class MessageBus():
         Add a handler to the message bus for the given message type.
         '''
         self._message_bus.add_handler(message_type, handler)
-        self._log.info(Fore.YELLOW + 'added message handler \'{}()\' for type:\t{}'.format(handler.__name__, message_type.__name__))
+        self._log.info('added message handler \'{}()\' for type: {}'.format(handler.__name__, message_type.__name__))
 
     # ..........................................................................
     def add_consumer(self, consumer):

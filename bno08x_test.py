@@ -31,8 +31,9 @@ _bno = None
 
 # ..............................................................................
 @pytest.mark.unit
-def test_bno08x(log, loop):
+def test_bno08x(loop=False):
 
+    _log = Logger("rot-test", Level.INFO)
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
@@ -42,30 +43,27 @@ def test_bno08x(log, loop):
     _bno = BNO08x(_config, _queue, Level.INFO)
 
     # begin ............
-    log.info('starting BNO08x read loop...')
+    _log.info('starting BNO08x read loop...')
     _count  = 0
     _errors = 0
     while _count < 10 if not loop else True:
         _count += 1
         result = _bno.read()
         if result != None:
-            log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |\t'.format(_count, result[0], result[1], result[2]) + Fore.BLACK + '{:d} errors.'.format(_errors))
+            _log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |\t'.format(_count, result[0], result[1], result[2]) + Fore.BLACK + '{:d} errors.'.format(_errors))
         else:
             _errors += 1
-            log.warning('[{:>3d}] result: NA'.format(_count))
+            _log.warning('[{:>3d}] result: NA'.format(_count))
         time.sleep(0.25)
 
 # ..............................................................................
 def main():
 
-    _log = Logger("rot-test", Level.INFO)
     try:
-        test_bno08x(_log, True)
+        test_bno08x(True)
     except KeyboardInterrupt:
         if _bno:
             _bno.close()
-    finally:
-        _log.info('done.')
 
 if __name__== "__main__":
     main()

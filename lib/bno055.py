@@ -58,7 +58,7 @@ class BNO055:
     '''
         
     def __init__(self, config, queue, level):
-        self._log = Logger("bno055-", level)
+        self._log = Logger("bno055", level)
         if config is None:
             raise ValueError("no configuration provided.")
         self._queue = queue

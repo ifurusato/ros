@@ -22,7 +22,8 @@ from lib.rotary_encoder import RotaryEncoder
 
 # ..............................................................................
 @pytest.mark.unit
-def test_rot_encoder(log):
+def test_rot_encoder():
+    _log = Logger("rot-test", Level.INFO)
     try:
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
@@ -35,34 +36,33 @@ def test_rot_encoder(log):
         _update_led = True
         _last_value = 0
         _rate = Rate(20)
-        log.info(Fore.WHITE + Style.BRIGHT + 'waiting for rotary encoder to make 10 ticks...')
+        _log.info(Fore.WHITE + Style.BRIGHT + 'waiting for rotary encoder to make 10 ticks...')
         while _updates < 10:
 #           _value = _rot.update() # original method
             _value = _rot.read(_update_led) # improved method
             if _value != _last_value:
-                log.info(Style.BRIGHT + 'returned value: {:d}'.format(_value))
+                _log.info(Style.BRIGHT + 'returned value: {:d}'.format(_value))
                 _updates += 1
             _last_value = _value
             _count += 1
             if _count % 33 == 0:
-                log.info(Fore.BLACK + Style.BRIGHT + 'waiting…')
+                _log.info(Fore.BLACK + Style.BRIGHT + 'waiting…')
             _rate.wait()
     finally:
         if _rot:
-            log.info('resetting rotary encoder...')
+            _log.info('resetting rotary encoder...')
             _rot.reset()
 
 # main .........................................................................
 _rot = None
 def main(argv):
 
-    _log = Logger("rot-test", Level.INFO)
     try:
-        test_rot_encoder(_log)
+        test_rot_encoder()
     except KeyboardInterrupt:
-        _log.info('caught Ctrl-C; exiting...')
+        print(Fore.CYAN + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
     except Exception:
-        _log.error('error starting ros: {}'.format(traceback.format_exc()))
+        print(Fore.RED + 'error starting ros: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
 
 
 # call main ....................................................................

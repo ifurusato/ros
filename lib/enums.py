@@ -174,7 +174,6 @@ class Cardinal(Enum):
         Provided a heading in degrees return an enumerated cardinal direction.
         '''
         _value = round((degrees / 45.0) + 0.5)
-        print('value: {}'.format(_value))
         _array = [ Cardinal.NORTH, Cardinal.NORTHEAST, Cardinal.EAST, Cardinal.SOUTHEAST, Cardinal.SOUTH, Cardinal.SOUTHWEST, Cardinal.WEST, Cardinal.NORTHWEST ]
         return _array[(_value % 8)];
 
