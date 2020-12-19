@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
 import sys, time, traceback, math
-from icm20948 import ICM20948
 from colorama import init, Fore, Style
 init()
+
+try:
+    from icm20948 import ICM20948
+except ImportError as ie:
+    sys.exit("This script requires the icm20948 module.\n"\
+           + "Install with: sudo pip3 install icm20948")
 
 from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader
