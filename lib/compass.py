@@ -30,18 +30,17 @@ class Compass():
 
         To function in a loop it must be enabled; otherwise just call get_heading().
     '''
-    def __init__(self, config, queue, indicator, level):
+    def __init__(self, config, indicator, level):
         super().__init__()
         if config is None:
             raise ValueError('no configuration provided.')
         self._log = Logger('compass', level)
-        self._queue     = queue
         self._indicator = indicator
         self._enabled   = False
         self._thread    = None
         self._has_been_calibrated = False
 
-        self._bno055 = BNO055(config, queue, level)
+        self._bno055 = BNO055(config, level)
 
 #       self._bno055.set_mode(BNO055Mode.IMUPLUS_MODE)
 #       self._bno055.set_mode(BNO055Mode.NDOF_FMC_OFF_MODE)
@@ -72,11 +71,11 @@ class Compass():
     # ..........................................................................
     def get_heading(self):
         '''
-            Returns a tuple containing a Calibration enum indicating the state
-            of the sensor calibration followed by the heading value. If the
-            result ever indicates the sensor is calibrated, this sets a flag.
+        Returns a tuple containing a Calibration enum indicating the state
+        of the sensor calibration followed by the heading value. If the
+        result ever indicates the sensor is calibrated, this sets a flag.
         '''
-        _tuple = self._bno055.get_heading()
+        _tuple = self._bno055.read()
         _calibration = _tuple[0]
         if _calibration.calibrated:
             self._has_been_calibrated = True

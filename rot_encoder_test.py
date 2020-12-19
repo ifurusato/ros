@@ -15,6 +15,7 @@ import sys, traceback
 from colorama import init, Fore, Style
 init()
 
+from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader
 from lib.rate import Rate
 from lib.logger import Logger, Level
@@ -23,7 +24,14 @@ from lib.rotary_encoder import RotaryEncoder
 # ..............................................................................
 @pytest.mark.unit
 def test_rot_encoder():
+
     _log = Logger("rot-test", Level.INFO)
+
+    _i2c_scanner = I2CScanner(Level.WARN)
+    if not _i2c_scanner.has_address([0x19]):
+        _log.warning('test ignored: no rotary encoder found.')
+        return
+
     try:
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)

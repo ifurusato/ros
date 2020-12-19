@@ -127,7 +127,7 @@ class ROS(AbstractTask):
             startup time via registration of their feature availability.
         '''
         scanner = I2CScanner(Level.WARN)
-        self._addresses = scanner.getAddresses()
+        self._addresses = scanner.get_addresses()
         hexAddresses = scanner.getHexAddresses()
         self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, hexAddresses)))
         for i in range(len(self._addresses)):

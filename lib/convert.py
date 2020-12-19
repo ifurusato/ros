@@ -15,6 +15,11 @@
 import numpy, math
 from math import pi as PI
 
+X = 0
+Y = 1
+Z = 2
+AXES = Y, Z
+
 # ..............................................................................
 class Convert:
 
@@ -39,16 +44,27 @@ class Convert:
         '''
         Add two angles (provided in degrees), returning the result.
         '''
-#       print('angle:\t{:>5.2f}°  \toffset: {:>5.2f}°'.format(angle, offset))
         return ( angle + offset ) % 360.0
-    
+
+    # ..............................................................................
+    @staticmethod
+    def difference_in_degrees(angle1, angle2):
+        '''
+        Returns the shortest angular difference between two angles (provided
+        in degrees). When the difference is 180° a positive angle is returned.
+        '''
+#       x = math.radians(angle2)
+#       y = math.radians(angle1)
+#       return math.degrees(min(y-x, y-x+2 * math.pi, y-x-2 * math.pi, key=abs))
+        offset = ( angle1 - angle2 ) % 360.0
+        return offset - 360.0 if offset > 180.0 else offset
+
     # ..............................................................................
     @staticmethod
     def offset_in_radians(angle, offset):
         '''
         Add two angles (provided in radians), returning the result.
         '''
-#       print('angle:\t{:>5.2f}rad\toffset: {:>5.2f}rad'.format(angle, offset))
         return (angle + offset) % (2.0 * PI)
 
     # ..........................................................................
@@ -72,6 +88,35 @@ class Convert:
         t4 = +1.0 - 2.0 * (y * y + z * z)
         heading = math.atan2(t3, t4)
         return [heading, pitch, roll]
+
+    # ..........................................................................
+    @staticmethod
+    def heading_from_magnetometer(amin, amax, mag):
+        '''
+        :param amin:  the original list of magnetometer readings used as a minimum
+        :param amax:  the original list of magnetometer readings used as a maximum
+        :param mag:   the magnetometer reading (x, y, z) to convert to a heading
+        '''
+        mag = list(mag)
+        for i in range(3):
+            v = mag[i]
+            if v < amin[i]:
+                amin[i] = v
+            if v > amax[i]:
+                amax[i] = v
+            mag[i] -= amin[i]
+            try:
+                mag[i] /= amax[i] - amin[i]
+            except ZeroDivisionError:
+                pass
+            mag[i] -= 0.5
+    
+        heading = math.atan2(mag[AXES[0]], mag[AXES[1]])
+        if heading < 0:
+            heading += 2 * math.pi
+        heading = math.degrees(heading)
+        heading = int(round(heading))
+        return heading
 
     # ..........................................................................
     @staticmethod

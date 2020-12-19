@@ -41,10 +41,9 @@ class BatteryCheck(Feature):
 
         This uses the ThunderBorg RGB LED to indicate the battery level of a Makita 18V
         Lithium-Ion power tool battery, whose actual top voltage is around 20 volts.
-        This uses a thread, and when it's done reverts the RGB LED back to is original
-        indicator as the input battery voltage of the ThunderBorg. This is generally
-        the same value but this class enumerates the value so that its state is more
-        obvious.
+        When disabled this reverts the RGB LED back to is original indicator as the 
+        input battery voltage of the ThunderBorg. This is generally the same value but 
+        this class enumerates the value so that its state is more obvious.
 
         Parameters:
 

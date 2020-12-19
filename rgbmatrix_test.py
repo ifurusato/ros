@@ -11,27 +11,34 @@ import sys, time
 from colorama import init, Fore, Style
 init()
 
+from lib.i2c_scanner import I2CScanner
 from lib.rgbmatrix import RgbMatrix, Color, DisplayType
-from lib.logger import Level
+from lib.logger import Logger, Level
 
 # ..............................................................................
 @pytest.mark.unit
 def test_rgbmatrix():
 
-    print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : starting test...' + Style.RESET_ALL)
+    _log = Logger("rgbmatrix-test", Level.INFO)
 
+    _i2c_scanner = I2CScanner(Level.WARN)
+    if not _i2c_scanner.has_address([0x74, 0x77]):
+        _log.warning('test ignored: no rgbmatrix displays found.')
+        return
+
+    _log.info('starting test...')
     _rgbmatrix = RgbMatrix(Level.INFO)
 
-#   print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test...' + Style.RESET_ALL)
+#   _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test...')
 #   for color in Color:
 #       _rgbmatrix.set_color(color)
 #       time.sleep(0.15)
-#   print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test complete.' + Style.RESET_ALL)
+#   _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test complete.')
 
     _types = [ DisplayType.BLINKY, DisplayType.RAINBOW, DisplayType.RANDOM ]
 
     for display_type in _types:
-        print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : displaying {}...'.format(display_type.name) + Style.RESET_ALL)
+        _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : displaying {}...'.format(display_type.name))
         _rgbmatrix.set_display_type(display_type)
         _rgbmatrix.enable()
         time.sleep(2.0)
@@ -41,21 +48,20 @@ def test_rgbmatrix():
             count += 1
             time.sleep(1.0)
             if count > 5:
-                print('rgbmatrix_test    :' + Fore.RED + Style.BRIGHT + ' INFO  : timeout waiting to disable rgbmatrix thread for {}.'.format(display_type.name) + Style.RESET_ALL)
+                _log.info('rgbmatrix_test    :' + Fore.RED + Style.BRIGHT + ' INFO  : timeout waiting to disable rgbmatrix thread for {}.'.format(display_type.name))
                 sys.exit(1)
         _rgbmatrix.set_color(Color.BLACK)
 
-        print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : {} complete.'.format(display_type.name) + Style.RESET_ALL)
+        _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : {} complete.'.format(display_type.name))
 
 #   time.sleep(1.0)
     _rgbmatrix.disable()
     _rgbmatrix.close()
-    print('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.' + Style.RESET_ALL)
+    _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : test complete.')
 
 
 # main .........................................................................
 def main():
-    print(Fore.GREEN + 'main begin.  ......................................................... ' + Style.RESET_ALL)
     try:
         test_rgbmatrix()
     except KeyboardInterrupt:

@@ -106,9 +106,6 @@ def main():
         print(Fore.RED + 'Ctrl-C caught: complete.')
     except Exception as e:
         print(Fore.RED + 'error closing: {}\n{}'.format(e, traceback.format_exc()))
-    finally:
-#       sys.exit(0)
-        pass
 
 if __name__== "__main__":
     main()

@@ -20,11 +20,12 @@ import sys, time
 from colorama import init, Fore, Style
 init()
 
+from lib.i2c_scanner import I2CScanner
 from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader
 from lib.message_factory import MessageFactory
 from lib.queue import MessageQueue
-
+from lib.convert import Convert
 from lib.bno08x import BNO08x
 
 _bno = None
@@ -33,7 +34,14 @@ _bno = None
 @pytest.mark.unit
 def test_bno08x(loop=False):
 
-    _log = Logger("rot-test", Level.INFO)
+    _log = Logger("bno085-test", Level.INFO)
+
+    _i2c_scanner = I2CScanner(Level.WARN)
+    if not _i2c_scanner.has_address([0x4a]):
+        _log.warning('test ignored: no bno085 found.')
+        return
+
+    _log.info('starting test...')
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
@@ -46,14 +54,28 @@ def test_bno08x(loop=False):
     _log.info('starting BNO08x read loop...')
     _count  = 0
     _errors = 0
+    _amin = list(_bno.magneto())
+    _amax = list(_bno.magneto())
+
     while _count < 10 if not loop else True:
         _count += 1
-        result = _bno.read()
-        if result != None:
-            _log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |\t'.format(_count, result[0], result[1], result[2]) + Fore.BLACK + '{:d} errors.'.format(_errors))
+
+        mag = _bno.magneto()
+        if mag is not None:
+            heading = Convert.heading_from_magnetometer(_amin, _amax, mag)
+            _log.info('\tMag: {:05.2f} {:05.2f} {:05.2f}  '.format(mag[0], mag[1], mag[2]) \
+                    + Fore.YELLOW   + '\tHeading: {:d}°'.format(heading))
         else:
-            _errors += 1
-            _log.warning('[{:>3d}] result: NA'.format(_count))
+            _log.info('null result')
+
+
+#       result = _bno.read()
+#       if result != None:
+#           _log.info('[{:>3d}] result: {:>5.2f} | {:>5.2f} | {:>5.2f} |\t'.format(_count, result[0], result[1], result[2]) + Fore.BLACK + '{:d} errors.'.format(_errors))
+#       else:
+#           _errors += 1
+#           _log.warning('[{:>3d}] result: NA'.format(_count))
+
         time.sleep(0.25)
 
 # ..............................................................................

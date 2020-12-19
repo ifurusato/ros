@@ -41,12 +41,12 @@ try:
         BNO_REPORT_ACCELEROMETER,
         BNO_REPORT_GYROSCOPE,
         BNO_REPORT_MAGNETOMETER,
-        BNO_REPORT_ROTATION_VECTOR,
-        BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
-        BNO_REPORT_GAME_ROTATION_VECTOR,
         REPORT_ACCURACY_STATUS,
         BNO_REPORT_ACTIVITY_CLASSIFIER,
         BNO_REPORT_STABILITY_CLASSIFIER,
+#       BNO_REPORT_ROTATION_VECTOR,
+#       BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
+#       BNO_REPORT_GAME_ROTATION_VECTOR,
     )
 except ImportError as ie:
     sys.exit("This script requires the adafruit_bno08x module.\n"\
@@ -155,10 +155,11 @@ class BNO08x:
                     BNO_REPORT_ACCELEROMETER,
                     BNO_REPORT_GYROSCOPE,
                     BNO_REPORT_MAGNETOMETER,
-                    BNO_REPORT_ROTATION_VECTOR,
-                    BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
+                    BNO_REPORT_ACTIVITY_CLASSIFIER,
                     BNO_REPORT_STABILITY_CLASSIFIER,
-                    BNO_REPORT_ACTIVITY_CLASSIFIER 
+#                   BNO_REPORT_ROTATION_VECTOR,
+#                   BNO_REPORT_GEOMAGNETIC_ROTATION_VECTOR,
+
 #                   BNO_REPORT_GAME_ROTATION_VECTOR,
 #                   BNO_REPORT_LINEAR_ACCELERATION,
 #                   BNO_REPORT_STEP_COUNTER,
@@ -174,6 +175,7 @@ class BNO08x:
             self._log.info(Fore.YELLOW + 'features set.  ------------------- ')
 
             # now calibrate...
+            time.sleep(2.0)
             self._log.info(Fore.YELLOW + 'calibrating...')
             start_time = time.monotonic()
             _fail_count = 0
@@ -215,7 +217,7 @@ class BNO08x:
         except Exception as e:
             self._log.error('error setting features: {}'.format(e))
 
-        self._log.info("calibration done")
+        self._log.info("calibration complete.")
 
     # ..........................................................................
     @property
@@ -269,13 +271,25 @@ class BNO08x:
             self._log.info(color + 'heading: {:>6.2f}°\t({})\t'.format(_q_heading, title) + Fore.BLACK + 'p={:>5.4f}\t r={:>5.4f}\t y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw))
 
     # ..........................................................................
+    def magneto(self):
+        '''
+        Returns the current x, y, z reading of the magnetometer.
+        '''
+        try:
+            self._calibration_report()
+#           _calibration_status = self._calibration_report()
+            return self._bno.magnetic
+        except Exception as e:
+            return None
+
+    # ..........................................................................
     def read(self):
         '''
-            The function that reads sensor values in a loop. This checks to see
-            if the 'sys' calibration is at least 3 (True), and if the Euler and
-            Quaternion values are within an error range of each other, this sets
-            the class variable for heading, pitch and roll. If they aren't within
-            range for more than n polls, the values revert to None.
+        The function that reads sensor values in a loop. This checks to see
+        if the 'sys' calibration is at least 3 (True), and if the Euler and
+        Quaternion values are within an error range of each other, this sets
+        the class variable for heading, pitch and roll. If they aren't within
+        range for more than n polls, the values revert to None.
         '''
 #       self._log.info('starting sensor read...')
 

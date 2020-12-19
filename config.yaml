@@ -86,12 +86,17 @@ ros:
     nxp9dof:
         quaternion_accept: True                  # if true, we accept Quaternion alone once calibrated
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
+    icm20948:
+        heading_trim:   180.00                   # trim adjustment on heading
     bno055:
         i2c_device:       1                      # I2C device bus number, equivalent to '/dev/i2c-1'
-        mode:    'NDOF_MODE'                     # see table in BNO055Mode class for int values (9 is IMUPLUS_MODE)
+        mode:    'NDOF_MODE'                     # Acc/Mag/Gyr (see table in BNO055Mode class)
+#       mode:    'NDOF_FMC_OFF_MODE'             # Acc/Mag/Gyr (Fast Mag Calib off)
+#       mode:    'COMPASS_MODE'                  # Acc/Mag no gyro
         pitch_trim:    0.00                      # trim adjustment on pitch
         roll_trim:     0.00                      # trim adjustment on roll
-        heading_trim:  0.00                      # trim adjustment on heading
+        euler_heading_trim: -180.00              # trim adjustment on Euler heading
+        quat_heading_trim:  -180.00              # trim adjustment on Quaternion heading
     bno085:
         loop_delay_sec: 0.1                      # sensor loop delay (seconds)
         pitch_trim:    0.00                      # trim adjustment on pitch

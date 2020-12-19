@@ -25,7 +25,7 @@ _log = Logger('pot-test', Level.INFO)
 # ..............................................................................
 @pytest.mark.unit
 def test_pot():
-    # read YAML configuration
+
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)

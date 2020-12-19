@@ -22,9 +22,8 @@ init()
 
 class I2CScanner():
     '''
-        Scans the I²C bus, returning a list of devices.
+    Scans the I²C bus, returning a list of devices.
     '''
-
     def __init__(self, level):
         super().__init__()
         self._log = Logger('i2cscan', level)
@@ -39,22 +38,37 @@ class I2CScanner():
             self._log.warning('initialised. This script requires smbus. Will operate without but return an empty result.')
             self._bus = None
 
-
+    # ..........................................................................
     def getHexAddresses(self):
         '''
-            Returns a hexadecimal version of the list. This is only populated after calling getAddresses().
+        Returns a hexadecimal version of the list. This is only populated after calling get_addresses().
         '''
         return self.hex_list
 
-
+    # ..........................................................................
     def getIntAddresses(self):
         '''
-            Returns an integer version of the list. This is only populated after calling getAddresses().
+        Returns an integer version of the list. This is only populated after calling get_addresses().
         '''
         return self._int_list
 
+    # ..........................................................................
+    def has_address(self, addresses):
+        '''
+        Performs the scan and returns true if a device is available at any
+        of the specified addresses.
+        '''
+        _addresses = self.get_addresses()
+        for address in addresses:
+            if address in _addresses:
+                return True
+        return False
 
-    def getAddresses(self):
+    # ..........................................................................
+    def get_addresses(self):
+        '''
+        Scans the bus and returns the available device addresses.
+        '''
         self._int_list = []
         device_count = 0
         if self._bus is not None:
@@ -78,7 +92,6 @@ class I2CScanner():
             self._log.info("found no devices (no smbus available)")
         return self._int_list
 
-
     # end class ................................................................
 
 # main .........................................................................
@@ -92,7 +105,7 @@ def main():
     log.info('scanning for I2C devices...')
     scanner = I2CScanner(Level.INFO)
 
-    addresses = scanner.getAddresses()
+    addresses = scanner.get_addresses()
     log.info('available I2C device(s):')
     if len(addresses) == 0:
         log.warning('no devices found.')

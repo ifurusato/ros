@@ -46,11 +46,11 @@ class IoExpander():
                 + Fore.GREEN + ' stbd={:d}; stbd side={:d}'.format(self._stbd_ir_pin, self._stbd_side_ir_pin))
         # bumpers
         self._port_bmp_pin     = _config.get('port_bmp_pin')      # pin connected to port bumper
-        self._center_bmp_pin   = _config.get('center_bmp_pin')    # pin connected to center bumper
+        self._cntr_bmp_pin     = _config.get('center_bmp_pin')    # pin connected to center bumper
         self._stbd_bmp_pin     = _config.get('stbd_bmp_pin')      # pin connected to starboard bumper
         self._log.info('bumper pin assignments:\t' \
                 + Fore.RED + ' port={:d};'.format(self._port_bmp_pin) \
-                + Fore.BLUE + ' center={:d};'.format(self._center_bmp_pin) \
+                + Fore.BLUE + ' center={:d};'.format(self._cntr_bmp_pin) \
                 + Fore.GREEN + ' stbd={:d}'.format(self._stbd_bmp_pin))
 
         # configure board
@@ -69,9 +69,9 @@ class IoExpander():
         self._ioe.set_mode(self._stbd_ir_pin,      io.ADC)
         self._ioe.set_mode(self._stbd_side_ir_pin, io.ADC)
         # digital bumpers
-        self._ioe.set_mode(self._port_bmp_pin,     io.PIN_MODE_PU)
-        self._ioe.set_mode(self._center_bmp_pin,   io.PIN_MODE_PU)
-        self._ioe.set_mode(self._stbd_bmp_pin,     io.PIN_MODE_PU)
+        self._ioe.set_mode(self._port_bmp_pin,     io.IN_PU)
+        self._ioe.set_mode(self._cntr_bmp_pin,     io.IN_PU)
+        self._ioe.set_mode(self._stbd_bmp_pin,     io.IN_PU)
         self._log.info('ready.')
 
     # ..........................................................................
@@ -85,7 +85,7 @@ class IoExpander():
 #               self._log.info(Fore.GREEN + Style.BRIGHT + 'STBD bumper: {}'.format(self._ioe.input(self._stbd_bmp_pin)))
                 if self._ioe.input(self._port_bmp_pin) == 0:
                     self._port_bmp_pump = self._pump_limit
-                if self._ioe.input(self._center_bmp_pin) == 0:
+                if self._ioe.input(self._cntr_bmp_pin) == 0:
                     self._cntr_bmp_pump = self._pump_limit
                 if self._ioe.input(self._stbd_bmp_pin) == 0:
                     self._stbd_bmp_pump = self._pump_limit
@@ -122,16 +122,16 @@ class IoExpander():
     # bumpers ..................................................................
 
     def get_port_bmp_value(self):
-        return self._port_bmp_pump > 0
-#       return self._ioe.input(self._port_bmp_pin) == 0
+#       return self._port_bmp_pump > 0
+        return self._ioe.input(self._port_bmp_pin) == 0
 
     def get_center_bmp_value(self):
-        return self._cntr_bmp_pump > 0
-#       return self._ioe.input(self._center_bmp_pin) == 0
+#       return self._cntr_bmp_pump > 0
+        return self._ioe.input(self._cntr_bmp_pin) == 0
 
     def get_stbd_bmp_value(self):
-        return self._stbd_bmp_pump > 0
-#       return self._ioe.input(self._stbd_bmp_pin) == 0
+#       return self._stbd_bmp_pump > 0
+        return self._ioe.input(self._stbd_bmp_pin) == 0
 
     # ..........................................................................
     # raw values are unprocessed values from the IO Expander (used for testing)
@@ -155,14 +155,16 @@ class IoExpander():
 
     # raw bumpers ..............................................................
 
+
+
     def get_raw_port_bmp_value(self):
-        return self._port_bmp_pump
+        return self._ioe.input(self._port_bmp_pin)
 
     def get_raw_center_bmp_value(self):
-        return self._cntr_bmp_pump
+        return self._ioe.input(self._cntr_bmp_pin)
 
     def get_raw_stbd_bmp_value(self):
-        return self._stbd_bmp_pump
+        return self._ioe.input(self._stbd_bmp_pin)
 
 
 # EOF

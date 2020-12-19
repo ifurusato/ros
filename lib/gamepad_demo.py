@@ -63,7 +63,7 @@ class GamepadDemo():
         self._pid_motor_ctrl = PIDMotorController(_config, self._motors, Level.INFO)
         # i2c scanner, let's us know if certain devices are available
         _i2c_scanner = I2CScanner(Level.WARN)
-        _addresses = _i2c_scanner.getAddresses()
+        _addresses = _i2c_scanner.get_addresses()
         ltr559_available = ( 0x23 in _addresses )
         '''
         Availability of displays:
