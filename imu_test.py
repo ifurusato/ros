@@ -59,7 +59,7 @@ class IMU():
         _mag = self._icm20948.read_magnetometer_data()
         _orig_heading = Convert.heading_from_magnetometer(self._amin, self._amax, _mag)
         _heading = Convert.offset_in_degrees(_orig_heading, self._icm20948_heading_trim)
-        self._log.info(Fore.GREEN + 'heading:\t{:>5.2f}°\t'.format(_heading) + Style.DIM + '(icm20948; orig: {:>5.2f}°)'.format(_orig_heading))
+        self._log.info(Fore.GREEN + 'heading:\t{:>9.2f}°\t'.format(_heading) + Style.DIM + 'orig: {:>9.2f}°\ttrim: {:>9.2f}°; icm20948'.format(_orig_heading, self._icm20948_heading_trim))
         return _heading
 
     # ..........................................................................

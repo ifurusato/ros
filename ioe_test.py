@@ -39,26 +39,30 @@ def test_ioe():
     _ioe = IoExpander(_config, Level.INFO)
     assert _ioe is not None
 
+    _show_ir  = False
+    _show_bmp = True
+
     for i in range(100000):
         # infrared sensors .........................................................
-        _ir_port_side_value = _ioe.get_raw_port_side_ir_value() 
-        _ir_port_value      = _ioe.get_raw_port_ir_value()
-        _ir_cntr_value      = _ioe.get_raw_center_ir_value() 
-        _ir_stbd_value      = _ioe.get_raw_stbd_ir_value()
-        _ir_stbd_side_value = _ioe.get_raw_stbd_side_ir_value()
-        _log.info(Fore.RED   + 'IR {:8.5f}\t'.format(_ir_port_side_value) \
-                             + '{:8.5f}\t'.format(_ir_port_value) \
-                + Fore.BLUE  + '{:8.5f}\t'.format(_ir_cntr_value) \
-                + Fore.GREEN + '{:8.5f}\t'.format(_ir_stbd_value) \
-                             + '{:8.5f}'.format(_ir_stbd_side_value))
-#   
+        if _show_ir:
+            _ir_port_side_value = _ioe.get_raw_port_side_ir_value() 
+            _ir_port_value      = _ioe.get_raw_port_ir_value()
+            _ir_cntr_value      = _ioe.get_raw_center_ir_value() 
+            _ir_stbd_value      = _ioe.get_raw_stbd_ir_value()
+            _ir_stbd_side_value = _ioe.get_raw_stbd_side_ir_value()
+            _log.info(Fore.RED   + 'IR {:8.5f}\t'.format(_ir_port_side_value) \
+                                 + '{:8.5f}\t'.format(_ir_port_value) \
+                    + Fore.BLUE  + '{:8.5f}\t'.format(_ir_cntr_value) \
+                    + Fore.GREEN + '{:8.5f}\t'.format(_ir_stbd_value) \
+                                 + '{:8.5f}'.format(_ir_stbd_side_value))
 #       # bumpers ..................................................................
-        _bmp_port_value     = _ioe.get_raw_port_bmp_value()
-        _bmp_cntr_value     = _ioe.get_raw_center_bmp_value()
-        _bmp_stbd_value     = _ioe.get_raw_stbd_bmp_value()
-        _log.info(Fore.RED   + 'BMP {:d}\t'.format(_bmp_port_value) \
-                + Fore.BLUE  + '{:d}\t'.format(_bmp_cntr_value) \
-                + Fore.GREEN + '{:d}'.format(_bmp_stbd_value))
+        if _show_bmp:
+            _bmp_port_value     = _ioe.get_raw_port_bmp_value()
+            _bmp_cntr_value     = _ioe.get_raw_center_bmp_value()
+            _bmp_stbd_value     = _ioe.get_raw_stbd_bmp_value()
+            _log.info(Fore.RED   + 'BMP {}\t'.format(_bmp_port_value) \
+                    + Fore.BLUE  + '{}\t'.format(_bmp_cntr_value) \
+                    + Fore.GREEN + '{}'.format(_bmp_stbd_value))
 
         _log.info('i={:d}\n'.format(i))
         time.sleep(0.33)

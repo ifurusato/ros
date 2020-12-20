@@ -12,7 +12,6 @@
 
 import sys
 from enum import Enum
-import adafruit_bno055
 from colorama import init, Fore, Style
 init()
 
@@ -20,8 +19,15 @@ try:
     from adafruit_extended_bus import ExtendedI2C as I2C
 except ImportError as ie:
     print(Fore.RED + 'unable to import adafruit_extended_bus: {}'.format(ie))
-    sys.exit("This script requires the adafruit-circuitpython-register and adafruit-circuitpython-busdevice modules.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-register adafruit-circuitpython-busdevice")
+    sys.exit("This script requires the adafruit-circuitpython-register, adafruit-circuitpython-busdevice and adafruit_extended_bus modules.\n"\
+           + "Install with: sudo pip3 install adafruit-circuitpython-register adafruit-circuitpython-busdevice adafruit_extended_bus")
+
+try:
+    import adafruit_bno055
+except ImportError as ie:
+    print(Fore.RED + 'unable to import adafruit-circuitpython-bno055: {}'.format(ie))
+    sys.exit("This script requires the adafruit-circuitpython-bno055 module.\n"\
+           + "Install with: sudo pip3 install adafruit-circuitpython-bno055")
 
 try:
     from pyquaternion import Quaternion
@@ -70,8 +76,8 @@ class BNO055:
         # config
         _config = self._config['ros'].get('bno055')
         self._bno_mode           = BNO055Mode.from_name(_config.get('mode'))
-#       self._pitch_trim         = _config.get('pitch_trim')
-#       self._roll_trim          = _config.get('roll_trim')
+        self._pitch_trim         = _config.get('pitch_trim')
+        self._roll_trim          = _config.get('roll_trim')
         self._euler_heading_trim = _config.get('euler_heading_trim')
         self._quat_heading_trim  = _config.get('quat_heading_trim')
         self._log.info('trim: heading: {:>5.2f}°(Euler) / {:>5.2f}°(Quat); pitch: {:>5.2f}°; roll: {:>5.2f}°'.format(\
@@ -158,7 +164,7 @@ class BNO055:
         Euler and Quaternion headings.
         '''
         self._log.debug('starting sensor read...')
-        _e_heading, _e_pitch, _e_roll, _e_yaw, _orig_quat_heading, _q_pitch, _q_roll, _q_yaw = [None] * 8
+        _e_heading, _e_pitch, _e_roll, _e_yaw, _orig_quat_heading, _euler_converted_heading, _q_pitch, _q_roll, _q_yaw = [None] * 9
         _quat_w = 0
         _quat_x = 0
         _quat_y = 0
@@ -172,7 +178,7 @@ class BNO055:
 #           self._log.info(Fore.BLUE + Style.NORMAL + 'euler: {:>5.4f}°'.format(_euler[0]))
             _orig_euler_heading = _euler[0]
             _euler_converted_heading = Convert.offset_in_degrees(_orig_euler_heading, self._euler_heading_trim)
-            self._log.info(Fore.BLUE + Style.NORMAL + 'heading:\t{:>6.2f}°\t(euler; orig: {:>6.2f}°)'.format(_euler_converted_heading, _orig_euler_heading))
+            self._log.info(Fore.BLUE + Style.NORMAL + 'heading:\t{:>9.2f}°\torig: {:>9.2f}°\ttrim: {:>9.2f}°; euler'.format(_euler_converted_heading, _orig_euler_heading, self._euler_heading_trim))
         else:
             self._log.info(Fore.BLUE + Style.DIM + 'heading:\tNA\t(euler)')
 
@@ -203,8 +209,8 @@ class BNO055:
                     
                 if self._is_calibrated:
                     self._heading = Convert.offset_in_degrees(_orig_quat_heading, self._quat_heading_trim)
-                    self._log.info(Fore.MAGENTA + 'heading:\t{:>6.2f}°\t'.format(self._heading) \
-                            + Style.DIM + '(quat; orig: {:>6.2f}°; mode: {})'.format(_orig_quat_heading, self._bno_mode.name.lower()))
+                    self._log.info(Fore.MAGENTA + 'heading:\t{:>9.2f}°\t'.format(self._heading) \
+                            + Style.DIM + 'orig: {:>9.2f}°\ttrim: {:>9.2f}°; quat; mode: {})'.format(_orig_quat_heading, self._quat_heading_trim, self._bno_mode.name.lower()))
 #                           + Fore.CYAN + 'p={:>5.4f}; r={:>5.4f}; y={:>5.4f}'.format(_q_pitch, _q_roll, _q_yaw))
                 else:
                     # we don't do an update if not calibrated
