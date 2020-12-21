@@ -13,6 +13,8 @@
 # access to the values of the board's pins, which outputs 0-255 values for
 # analog pins, and a 0 or 1 for digital pins.
 #
+# source: /usr/local/lib/python3.7/dist-packages/ioexpander/__init__.py
+#
 
 import ioexpander as io
 from colorama import init, Fore, Style
