@@ -124,16 +124,23 @@ class IoExpander():
     # bumpers ..................................................................
 
     def get_port_bmp_value(self):
-#       return self._port_bmp_pump > 0
-        return self._ioe.input(self._port_bmp_pin) == 0
+        return ( self._ioe.input(self._port_bmp_pin) == 0 )
+#       return ( self._ioe.input(self._port_bmp_pin) == 0 )
 
     def get_center_bmp_value(self):
-#       return self._cntr_bmp_pump > 0
-        return self._ioe.input(self._cntr_bmp_pin) == 0
+        _value = self._ioe.input(self._cntr_bmp_pin)
+        if _value == 0:
+            print(Fore.GREEN + 'get_center_bmp_value({}): {}'.format(type(_value), _value) + Style.RESET_ALL)
+            return True
+        else:
+            print(Fore.RED + 'get_center_bmp_value({}): {}'.format(type(_value), _value) + Style.RESET_ALL)
+            return False
+#       return ( _value == 0 )
+#       return ( self._ioe.input(self._cntr_bmp_pin) == 0 )
 
     def get_stbd_bmp_value(self):
-#       return self._stbd_bmp_pump > 0
-        return self._ioe.input(self._stbd_bmp_pin) == 0
+        return ( self._ioe.input(self._stbd_bmp_pin) == 0 )
+#       return ( self._ioe.input(self._stbd_bmp_pin) == 0 )
 
     # ..........................................................................
     # raw values are unprocessed values from the IO Expander (used for testing)
@@ -156,8 +163,6 @@ class IoExpander():
         return self._ioe.input(self._stbd_side_ir_pin)
 
     # raw bumpers ..............................................................
-
-
 
     def get_raw_port_bmp_value(self):
         return self._ioe.input(self._port_bmp_pin)

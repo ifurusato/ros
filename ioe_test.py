@@ -42,6 +42,10 @@ def test_ioe():
     _show_ir  = False
     _show_bmp = True
 
+    _bmp_port_triggered = False
+    _bmp_cntr_triggered = False
+    _bmp_stbd_triggered = False
+
     for i in range(100000):
         # infrared sensors .........................................................
         if _show_ir:
@@ -58,12 +62,20 @@ def test_ioe():
 #       # bumpers ..................................................................
         if _show_bmp:
             _bmp_port_value     = _ioe.get_raw_port_bmp_value()
+            if _bmp_port_value == 0:
+                _bmp_port_triggered = True
             _bmp_cntr_value     = _ioe.get_raw_center_bmp_value()
+            if _bmp_cntr_value == 0:
+                _bmp_cntr_triggered = True
             _bmp_stbd_value     = _ioe.get_raw_stbd_bmp_value()
-            _log.info(Fore.RED   + 'BMP {}\t'.format(_bmp_port_value) \
-                    + Fore.BLUE  + '{}\t'.format(_bmp_cntr_value) \
-                    + Fore.GREEN + '{}'.format(_bmp_stbd_value))
-
+            if _bmp_stbd_value == 0:
+                _bmp_stbd_triggered = True
+#           _log.info(Fore.RED   + 'BMP {}\t'.format(_bmp_port_value) \
+#                   + Fore.BLUE  + '{}\t'.format(_bmp_cntr_value) \
+#                   + Fore.GREEN + '{}'.format(_bmp_stbd_value))
+            _log.info(Fore.RED   + 'BMP Triggered? {}\t'.format(_bmp_port_triggered) \
+                    + Fore.BLUE  + '{}\t'.format(_bmp_cntr_triggered) \
+                    + Fore.GREEN + '{}'.format(_bmp_stbd_triggered))
         _log.info('i={:d}\n'.format(i))
         time.sleep(0.33)
 

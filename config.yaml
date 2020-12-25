@@ -225,7 +225,7 @@ ros:
         stbd_ir_pin:        9                    # pin connected to starboard infrared
         stbd_side_ir_pin:   7                    # pin connected to starboard side infrared
         port_bmp_pin:       6                    # pin connected to port bumper
-        center_bmp_pin:     3                    # pin connected to center bumper
+        center_bmp_pin:     4                    # pin connected to center bumper
         stbd_bmp_pin:       5                    # pin connected to starboard bumper
     integrated_front_sensor:
         use_potentiometer:  False                # use potentiometer to adjust distance setting
@@ -240,15 +240,6 @@ ros:
         cntr_trigger_distance_cm:        90.0    # center analog IR sensor max distance before triggering
         oblq_trigger_distance_cm:        70.0    # port or starboard oblique analog IR sensor max distance before triggering
         side_trigger_distance_cm:        70.0    # port or starboard side analog IR sensor max distance before triggering
-        # hardware pin assignments:
-        port_side_ir_pin:   1                    # pin connected to port side infrared
-        port_ir_pin:        2                    # pin connected to port infrared
-        center_ir_pin:      3                    # pin connected to center infrared
-        stbd_ir_pin:        4                    # pin connected to starboard infrared
-        stbd_side_ir_pin:   5                    # pin connected to starboard side infrared
-        port_bmp_pin:       9                    # pin connected to port bumper
-        center_bmp_pin:    10                    # pin connected to center bumper
-        stbd_bmp_pin:      11                    # pin connected to starboard bumper
 
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
