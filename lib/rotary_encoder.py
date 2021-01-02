@@ -10,7 +10,7 @@
 # modified: 2020-11-13
 #
 
-import colorsys, traceback
+import sys, colorsys, traceback
 import ioexpander as io
 from colorama import init, Fore, Style
 init()
@@ -41,20 +41,24 @@ class RotaryEncoder(object):
         self._increment  = _config.get('increment')  # the count change per rotary tick
         self._log.info("configured for I²C address of 0x{:02x}".format(_i2c_address))
 
+        I2C_ADDR = 0x19 # default address
+#       self._log.info("default I²C address:  0x{:02X}".format(I2C_ADDR))
+#       self._log.info("assigned I²C address: 0x{:02X}".format(_i2c_address))
+#       sys.exit(0)
+
         try:
 #           _i2c_address     = 0x0F  # 0x18 for IO Expander, 0x0F for the encoder breakout
 #           _i2c_address     = 0x18  # 0x19 for IO Expander, 0x0F for the encoder breakout
-            _i2c_address     = 0x19  # TEMP
+#           _i2c_address     = 0x19  # TEMP
 #           _i2c_address     = 0x20  # TEMP
-#           _new_i2c_address = 0x16
+#           _i2c_address     = 0x16
             self._ioe = io.IOE(i2c_addr=_i2c_address, interrupt_pin=4)
-
             # swap the interrupt pin for the Rotary Encoder breakout
 #           if I2C_ADDR == 0x0F:
             self._ioe.enable_interrupt_out(pin_swap=True)
             # change address to 
-            if I2C_ADDR != _new_i2c_address:
-                self._ioe.set_i2c_addr(_new_i2c_address)
+            if I2C_ADDR != _i2c_address:
+                self._ioe.set_i2c_addr(_i2c_address)
         
             _POT_ENC_A = 12
             _POT_ENC_B = 3

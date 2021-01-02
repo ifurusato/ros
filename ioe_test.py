@@ -39,7 +39,7 @@ def test_ioe():
     _ioe = IoExpander(_config, Level.INFO)
     assert _ioe is not None
 
-    _show_ir  = False
+    _show_ir  = True
     _show_bmp = True
 
     _bmp_port_triggered = False
