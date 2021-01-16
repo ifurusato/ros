@@ -25,7 +25,6 @@ from lib.event import Event
 from lib.message import Message
 from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
-from lib.clock import Clock, Tick, Tock
 from lib.queue import MessageQueue
 from lib.ifs import IntegratedFrontSensor
 #from lib.indicator import Indicator
@@ -41,49 +40,55 @@ class MockMessageQueue():
         self._counter = itertools.count()
         self._log = Logger("queue", Level.INFO)
         self._listeners = []
-        self._ir_port_side = False
-        self._ir_port      = False
-        self._ir_cntr      = False
-        self._ir_stbd      = False
-        self._ir_stbd_side = False
-        self._bmp_port     = False
-        self._bmp_cntr     = False
-        self._bmp_stbd     = False
+        self._triggered_ir_port_side = False
+        self._triggered_ir_port      = False
+        self._triggered_ir_cntr      = False
+        self._triggered_ir_stbd      = False
+        self._triggered_ir_stbd_side = False
+        self._triggered_bmp_port     = False
+        self._triggered_bmp_cntr     = False
+        self._triggered_bmp_stbd     = False
         self._log.info('ready.')
+
+    # ......................................................
+    def handle(self, message):
+        self._log.info(Fore.BLUE + 'handle message {}'.format(message))
+        self.add(message)
 
     # ......................................................
     def add(self, message):
         self._count = next(self._counter)
         message.number = self._count
         _event = message.event
-        self._log.debug('added message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
+        self._log.info('added message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
         _value = message.value
 
-        if _event is Event.INFRARED_PORT_SIDE and not self._ir_port_side:
-            self._log.debug(Fore.RED  + '> INFRARED_PORT_SIDE: {}; value: {}'.format(_event.description, _value))
-            self._ir_port_side = True
-        elif _event is Event.INFRARED_PORT and not self._ir_port:
-            self._log.debug(Fore.RED  + '> INFRARED_PORT: {}; value: {}'.format(_event.description, _value))
-            self._ir_port      = True
-        elif _event is Event.INFRARED_CNTR and not self._ir_cntr:
-            self._log.debug(Fore.BLUE + '> INFRARED_CNTR:     distance: {:>5.2f}cm'.format(_value))
-            self._ir_cntr      = True
-        elif _event is Event.INFRARED_STBD and not self._ir_stbd:
-            self._log.debug(Fore.GREEN + '> INFRARED_STBD: {}; value: {}'.format(_event.description, _value))
-            self._ir_stbd      = True
-        elif _event is Event.INFRARED_STBD_SIDE and not self._ir_stbd_side:
-            self._log.debug(Fore.GREEN + '> INFRARED_STBD_SIDE: {}; value: {}'.format(_event.description, _value))
-            self._ir_stbd_side = True
-
-        elif _event is Event.BUMPER_PORT and not self._bmp_port:
+        if _event is Event.BUMPER_PORT and not self._triggered_bmp_port:
             self._log.info(Fore.RED + Style.BRIGHT + 'BUMPER_PORT: {}; value: {}'.format(_event.description, _value))
-            self._bmp_port     = True
-        elif _event is Event.BUMPER_CNTR and not self._bmp_cntr:
+            self._triggered_bmp_port     = True
+        elif _event is Event.BUMPER_CNTR and not self._triggered_bmp_cntr:
             self._log.info(Fore.BLUE + Style.BRIGHT + 'BUMPER_CNTR: {}; value: {}'.format(_event.description, _value))
-            self._bmp_cntr     = True
-        elif _event is Event.BUMPER_STBD and not self._bmp_stbd:
+            self._triggered_bmp_cntr     = True
+        elif _event is Event.BUMPER_STBD and not self._triggered_bmp_stbd:
             self._log.info(Fore.GREEN + Style.BRIGHT + 'BUMPER_STBD: {}; value: {}'.format(_event.description, _value))
-            self._bmp_stbd     = True
+            self._triggered_bmp_stbd     = True
+
+        elif _event is Event.INFRARED_PORT_SIDE and not self._triggered_ir_port_side:
+            self._log.debug(Fore.RED  + '> INFRARED_PORT_SIDE: {}; value: {}'.format(_event.description, _value))
+            self._triggered_ir_port_side = True
+        elif _event is Event.INFRARED_PORT and not self._triggered_ir_port:
+            self._log.debug(Fore.RED  + '> INFRARED_PORT: {}; value: {}'.format(_event.description, _value))
+            self._triggered_ir_port      = True
+        elif _event is Event.INFRARED_CNTR and not self._triggered_ir_cntr:
+            self._log.debug(Fore.BLUE + '> INFRARED_CNTR:     distance: {:>5.2f}cm'.format(_value))
+            self._triggered_ir_cntr      = True
+        elif _event is Event.INFRARED_STBD and not self._triggered_ir_stbd:
+            self._log.debug(Fore.GREEN + '> INFRARED_STBD: {}; value: {}'.format(_event.description, _value))
+            self._triggered_ir_stbd      = True
+        elif _event is Event.INFRARED_STBD_SIDE and not self._triggered_ir_stbd_side:
+            self._log.debug(Fore.GREEN + '> INFRARED_STBD_SIDE: {}; value: {}'.format(_event.description, _value))
+            self._triggered_ir_stbd_side = True
+
         else:
             self._log.debug(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
 
@@ -108,8 +113,8 @@ class MockMessageQueue():
     # ......................................................
     @property
     def all_triggered(self):
-        _all_ir_triggered  = self._ir_port_side and self._ir_port and self._ir_cntr and self._ir_stbd and self._ir_stbd_side
-        _all_bmp_triggered = self._bmp_port and self._bmp_cntr and self._bmp_stbd 
+        _all_ir_triggered  = self._triggered_ir_port_side and self._triggered_ir_port and self._triggered_ir_cntr and self._triggered_ir_stbd and self._triggered_ir_stbd_side
+        _all_bmp_triggered = self._triggered_bmp_port and self._triggered_bmp_cntr and self._triggered_bmp_stbd 
         return _all_ir_triggered and _all_bmp_triggered 
 
     # ......................................................
@@ -117,30 +122,25 @@ class MockMessageQueue():
     def count(self):
         return self._count
 
-    # ......................................................
-    def handle(self, message):
-#       self._log.info(Fore.BLUE + 'handle message {}'.format(message))
-        self.add(message)
-
     # ..........................................................................
     def waiting_for_message(self):
         _fmt = '{0:>9}'
         self._log.info('waiting for: | ' \
-                + Fore.RED   + _fmt.format( 'PORT_SIDE' if not self._ir_port_side else '' ) \
+                + Fore.RED   + _fmt.format( 'PORT_SIDE' if not self._triggered_ir_port_side else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.RED   + _fmt.format( 'PORT' if not self._ir_port else '' ) \
+                + Fore.RED   + _fmt.format( 'PORT' if not self._triggered_ir_port else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.BLUE  + _fmt.format( 'CNTR' if not self._ir_cntr else '' ) \
+                + Fore.BLUE  + _fmt.format( 'CNTR' if not self._triggered_ir_cntr else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.GREEN + _fmt.format( 'STBD' if not self._ir_stbd else '' ) \
+                + Fore.GREEN + _fmt.format( 'STBD' if not self._triggered_ir_stbd else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.GREEN + _fmt.format( 'STBD_SIDE' if not self._ir_stbd_side else '' ) 
+                + Fore.GREEN + _fmt.format( 'STBD_SIDE' if not self._triggered_ir_stbd_side else '' ) 
                 + Fore.CYAN  + ' || ' \
-                + Fore.RED   + _fmt.format( 'BMP_PORT' if not self._bmp_port else '' ) \
+                + Fore.RED   + _fmt.format( 'BMP_PORT' if not self._triggered_bmp_port else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.BLUE  + _fmt.format( 'BMP_CNTR' if not self._bmp_cntr else '' ) \
+                + Fore.BLUE  + _fmt.format( 'BMP_CNTR' if not self._triggered_bmp_cntr else '' ) \
                 + Fore.CYAN  + ' | ' \
-                + Fore.GREEN + _fmt.format( 'BMP_STBD' if not self._bmp_stbd else '' ) \
+                + Fore.GREEN + _fmt.format( 'BMP_STBD' if not self._triggered_bmp_stbd else '' ) \
                 + Fore.CYAN  + ' |' )
 
 # ..............................................................................
@@ -160,14 +160,8 @@ def test_ifs():
     _queue = MockMessageQueue(Level.INFO)
     _message_bus = MessageBus(Level.INFO)
     _message_bus.add_handler(Message, _queue.handle)
-    _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
-    _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
-
-#   _indicator = Indicator(Level.INFO)
-    # add indicator as message listener
-#   _queue.add_listener(_indicator)
+    _ifs = IntegratedFrontSensor(_config, _message_bus, _message_factory, Level.INFO)
     _ifs.enable()
-    _clock.enable()
     while not _queue.all_triggered:
         _queue.waiting_for_message()
         time.sleep(0.5)

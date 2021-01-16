@@ -36,7 +36,7 @@ from lib.selector import Selector
 @pytest.mark.unit
 def test_selector():
 
-    _log = Logger("rot-test", Level.INFO)
+    _log = Logger("sel-test", Level.INFO)
 #   _i2c_scanner = I2CScanner(Level.WARN)
 #   if not _i2c_scanner.has_address([0x0F]):
 #       _log.warning('test ignored: no rotary encoder found.')
@@ -55,12 +55,14 @@ def test_selector():
         _rate       = Rate(20)
         _last_value = 0
         _limit      = 45
-        _log.info('live-updating rotary encoder...')
+        _log.info('live-updating from rotary encoder...')
         while _updates < _limit:
             _value = _selector.read()
             if _value != _last_value:
                 _updates += 1
                 _log.info(Style.BRIGHT + 'returned value: {:d}; updates remaining: {:d}'.format(_value, _limit - _updates))
+            else:
+                _log.info(Style.DIM    + 'returned value: {:d}; updates remaining: {:d}'.format(_value, _limit - _updates))
             _last_value = _value
             _count += 1
             if _count % 33 == 0:

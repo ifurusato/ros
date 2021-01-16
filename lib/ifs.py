@@ -14,7 +14,6 @@
 # for analog pins, and a 0 or 1 for digital pins.
 #
 
-from concurrent.futures import ThreadPoolExecutor #, ProcessPoolExecutor
 import itertools, time, threading
 import datetime as dt
 from collections import deque as Deque
@@ -29,9 +28,8 @@ from lib.message_factory import MessageFactory
 from lib.message_bus import MessageBus
 from lib.message import Message
 from lib.rate import Rate
-#from lib.indicator import Indicator
-from lib.pot import Potentiometer # for calibration only
 from lib.ioe import IoExpander
+from lib.pot import Potentiometer # for calibration only
 
 # ..............................................................................
 class IntegratedFrontSensor():
@@ -40,22 +38,20 @@ class IntegratedFrontSensor():
     infrared sensors, receiving messages from the IO Expander board or I²C
     Arduino slave, sending the messages with its events onto the message bus.
 
-    This listens to the Clock and at a frequency of ( TICK % tick_modulo )
-    calls the _poll() method.
+    When enabled this polls at a frequency set in configuration, the _loop
+    method repeatedly calling the _poll() method.
 
     :param config:           the YAML based application configuration
     :param queue:            the message queue receiving activation notifications
-    :param clock:            the clock providing the polling loop trigger
     :param message_bus:      the message bus to send event messages
     :param message_factory:  optional MessageFactory
     :param level:            the logging Level
     '''
-    def __init__(self, config, clock, message_bus, message_factory, level):
+    def __init__(self, config, message_bus, message_factory, level):
         if config is None:
             raise ValueError('no configuration provided.')
         self._log = Logger("ifs", level)
         self._log.info('configuring integrated front sensor...')
-        self._clock = clock
         self._message_bus = message_bus
         if message_factory:
             self._message_factory = message_factory
@@ -63,16 +59,10 @@ class IntegratedFrontSensor():
             self._message_factory = MessageFactory(level)
         self._config = config['ros'].get('integrated_front_sensor')
         self._ignore_duplicates            = self._config.get('ignore_duplicates')
-        self._loop_freq_hz                 = self._config.get('loop_freq_hz')
         _use_pot                           = self._config.get('use_potentiometer')
         self._pot = Potentiometer(config, Level.INFO) if _use_pot else None
-#       if self._loop_freq_hz:
-#           self._rate = Rate(self._loop_freq_hz)
-#           self._tick_modulo = None
-#       else:
-        self._tick_modulo              = self._config.get('tick_modulo')
-        self._log.info('tick modulo: {:d}'.format(self._tick_modulo) )
-        self._clock.add_consumer(self)
+        self._loop_freq_hz                 = self._config.get('loop_freq_hz')
+        self._rate = Rate(self._loop_freq_hz)
         # event thresholds:
         self._cntr_raw_min_trigger         = self._config.get('cntr_raw_min_trigger')
         self._oblq_raw_min_trigger         = self._config.get('oblq_raw_min_trigger')
@@ -85,13 +75,8 @@ class IntegratedFrontSensor():
                 +Fore.BLUE + ' center={:>5.2f};'.format(self._cntr_trigger_distance_cm) \
                 +Fore.GREEN + ' stbd={:>5.2f}; stbd side={:>5.2f}'.format(self._oblq_trigger_distance_cm, self._side_trigger_distance_cm))
         # hardware pin assignments are defined in IO Expander
-        _max_workers                       = self._config.get('max_workers')
-#       self._executor = ProcessPoolExecutor(max_workers=_max_workers)
-        self._log.info('creating thread pool executor with maximum of {:d} workers.'.format(_max_workers))
-        self._executor = ThreadPoolExecutor(max_workers=_max_workers, thread_name_prefix='ifs')
         # create/configure IO Expander
         self._ioe = IoExpander(config, Level.INFO)
-        self._clock.add_consumer(self._ioe)
         # these are used to support running averages
         _queue_limit = 2 # larger number means it takes longer to change
         self._deque_cntr      = Deque([], maxlen=_queue_limit)
@@ -99,45 +84,30 @@ class IntegratedFrontSensor():
         self._deque_stbd      = Deque([], maxlen=_queue_limit)
         self._deque_port_side = Deque([], maxlen=_queue_limit)
         self._deque_stbd_side = Deque([], maxlen=_queue_limit)
-        # ...
-#       self._thread     = None
-        self._last_event = None
-        self._last_value = None
+        self._thread     = None
+        self._group      = 0
         self._enabled    = False
         self._suppressed = False
         self._closed     = False
         self._count      = 0
-        self._counter    = itertools.count()
-        self._group      = 0
         self._log.info('ready.')
 
     # ..........................................................................
-    def get_IOExpander(self):
-        '''
-        Return a reference to the internal IO Expander board.
-        This is used for testing.
-        '''
-        return self._ioe
+    def _loop(self, count, f_is_enabled):
+        self._log.info('loop starting... ({})'.format(f_is_enabled))
+        _counter = itertools.count()
+        while f_is_enabled:
+            _count = next(_counter)
+            self._poll(_count)
+            self._rate.wait()
+        self._log.info('loop ended.')
 
     # ..........................................................................
-    def add(self, message):
-        '''
-        Reacts to every nth (modulo) TICK message, submitting a _poll Thread
-        from the thread pool executor, which polls the various sensors and
-        sending callbacks for each.
-
-        Note that if the loop frequency is set this method is disabled.
-        '''
-#       if not self._enabled or self._suppressed:
-        if self._enabled and message.event is Event.CLOCK_TICK:
-            if ( message.value % self._tick_modulo ) == 0:
-                _future = self._executor.submit(self._poll, message.value, lambda: self.enabled )
-
-    # ..........................................................................
-    def _poll(self, count, f_is_enabled):
+    def _poll(self, count):
         '''
         Poll the various infrared and bumper sensors, executing callbacks for each.
-        In tests this typically takes 173ms from ItsyBitsy, 85ms from the Pimoroni IO Expander.
+        In tests this typically takes 173ms using an ItsyBitsy, 85ms from a 
+        Pimoroni IO Expander (which uses a Nuvoton MS51 microcontroller).
 
         This uses 'poll groups' so that all sensors are read upon each poll.
 
@@ -149,19 +119,15 @@ class IntegratedFrontSensor():
         Note that the bumpers are handled entirely differently, using a "charge pump" debouncer,
         running off a modulo of the clock TICKs.
         '''
-        if not f_is_enabled():
-            self._log.warning('[{:04d}] poll not enabled'.format(count))
-            return
-
         _group = self._get_sensor_group()
-        _current_thread = threading.current_thread()
-        _current_thread.name = 'poll-{:d}'.format(_group)
+#       _current_thread = threading.current_thread()
+#       _current_thread.name = 'poll-{:d}'.format(_group)
         _start_time = dt.datetime.now()
 
-        if _group != 0:
-            _group = 0
+        # force group?
+        _group = 1
 
-#       self._log.info(Fore.YELLOW + '[{:04d}] group: {}'.format(count, _group))
+        self._log.debug(Fore.YELLOW + '[{:04d}] sensor group: {}'.format(count, _group))
         if _group == 0: # bumper group .........................................
             self._log.debug(Fore.WHITE + '[{:04d}] BUMP ifs poll start; group: {}'.format(count, _group))
 
@@ -184,11 +150,11 @@ class IntegratedFrontSensor():
             self._log.debug(Fore.BLUE + '[{:04d}] CNTR ifs poll start; group: {}'.format(count, _group))
             _cntr_ir_data      = self._ioe.get_center_ir_value()
             if _cntr_ir_data > self._cntr_raw_min_trigger:
-                self._log.debug(Fore.BLUE + '[{:04d}] ANALOG IR ({:d}):       \t'.format(count, 3) + (Fore.RED if (_cntr_ir_data > 100.0) else Fore.YELLOW) \
+                self._log.info(Fore.BLUE + '[{:04d}] ANALOG IR ({:d}):       \t'.format(count, 3) + (Fore.RED if (_cntr_ir_data > 100.0) else Fore.YELLOW) \
                         + Style.BRIGHT + '{:d}'.format(_cntr_ir_data) + Style.DIM + '\t(analog value 0-255)')
                 _value = self._get_mean_distance(Orientation.CNTR, self._convert_to_distance(_cntr_ir_data))
                 if _value != None and _value < self._cntr_trigger_distance_cm:
-                    self._log.debug(Fore.BLUE + Style.DIM + 'CNTR     \tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
+                    self._log.info(Fore.BLUE + Style.DIM + 'CNTR     \tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._cntr_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_cntr_ir_data))
                     _cntr_ir_message = self._message_factory.get_message(Event.INFRARED_CNTR, _value)
                     self._message_bus.handle(_cntr_ir_message)
@@ -262,7 +228,7 @@ class IntegratedFrontSensor():
             self._group = 0
         else:
             self._group += 1
-#       self._log.debug(Fore.BLACK + 'group: {:d}'.format(self._group))
+#       self._log.debug(Fore.BLACK + 'sensor group: {:d}'.format(self._group))
         return self._group
 
     # ..........................................................................
@@ -361,31 +327,27 @@ class IntegratedFrontSensor():
 
     # ..........................................................................
     def enable(self):
+        self._log.info('enabling...')
         if not self._enabled:
             if not self._closed:
-                self._log.info('enabled.')
                 self._enabled = True
-#               if self._thread is None:
-#                   self._thread = threading.Thread(name='ifs-poll', target=self._loop, args=())
-#                   self._thread.start()
-#               else:
-#                   self._log.error('poll thread already running.')
+                if self._thread == None:
+                    self._thread = threading.Thread(target=self._loop, args=(self._count, lambda: self.enabled))
+                    self._thread.start()
+                    self._thread.join()
+                    self._log.info('enabled.')
+                else:
+                    self._log.info('unable to start loop: thread already exists.')
             else:
                 self._log.warning('cannot enable: already closed.')
         else:
             self._log.warning('already enabled.')
 
-#   # ..........................................................................
-#   def _loop(self):
-#       while self._enabled:
-#           _count = next(self._counter)
-#           _future = self._executor.submit(self._poll, _count, lambda: self.enabled )
-#           self._rate.wait()
-
     # ..........................................................................
     def disable(self):
         if self._enabled:
             self._enabled = False
+            self._thread = None
             self._log.info(Fore.YELLOW + 'shutting down thread pool executor...')
             self._executor.shutdown(wait=False) # python 3.9: , cancel_futures=True)
             self._log.info(Fore.YELLOW + 'disabled: thread pool executor has been shut down.')
@@ -403,6 +365,14 @@ class IntegratedFrontSensor():
             self._log.info('closed.')
         else:
             self._log.debug('already closed.')
+
+    # ..........................................................................
+    def get_IOExpander(self):
+        '''
+        Return a reference to the internal IO Expander board.
+        This is used for testing.
+        '''
+        return self._ioe
 
     # ..........................................................................
     @staticmethod

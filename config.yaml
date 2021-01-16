@@ -230,9 +230,7 @@ ros:
     integrated_front_sensor:
         use_potentiometer:  False                # use potentiometer to adjust distance setting
         ignore_duplicates:  False                # don't fire messages for duplicate events
-        max_workers:        4                    # thread pool executor maximum number of worker threads
-        loop_freq_hz:      20                    # optional loop frequency (Hz); if set doesn't use ticks
-        tick_modulo:        3                    # controls how often the queue is polled (TICK % modulo)
+        loop_freq_hz:      20                    # polling loop frequency (Hz)
         # the analog sensor distances (raw or cm) used as event trigger thresholds:
         cntr_raw_min_trigger:              35    # below this raw value we don't execute callback on center IR
         oblq_raw_min_trigger:              43    # below this raw value we don't execute callback on PORT & STBD IRs

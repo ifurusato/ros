@@ -58,9 +58,9 @@ class RotaryEncoder(object):
 #           if I2C_ADDR == 0x0F:
             self._ioe.enable_interrupt_out(pin_swap=True)
             # change address to 
-#           if I2C_ADDR != i2c_address:
-#               self._log.warning("force-setting I²C address of 0x{:02x}".format(i2c_address))
-#               self._ioe.set_i2c_addr(i2c_address)
+            if I2C_ADDR != i2c_address:
+                self._log.warning("force-setting I²C address of 0x{:02x}".format(i2c_address))
+                self._ioe.set_i2c_addr(i2c_address)
         
             _POT_ENC_A = 12
             _POT_ENC_B = 3

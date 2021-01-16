@@ -77,32 +77,32 @@ class IoExpander():
         self._log.info('ready.')
 
     # ..........................................................................
-    def add(self, message):
-        '''
-        React to every 5th TICK message.
-        '''
-#       self._log.info(Fore.YELLOW + Style.DIM + 'MESSAGE received at message {:d}.'.format(message.eid))
-        if message.event is Event.CLOCK_TICK:
-            if message.eid % 5 == 0:
-#               self._log.info(Fore.GREEN + Style.BRIGHT + 'STBD bumper: {}'.format(self._ioe.input(self._stbd_bmp_pin)))
-                if self._ioe.input(self._port_bmp_pin) == 0:
-                    self._port_bmp_pump = self._pump_limit
-                if self._ioe.input(self._cntr_bmp_pin) == 0:
-                    self._cntr_bmp_pump = self._pump_limit
-                if self._ioe.input(self._stbd_bmp_pin) == 0:
-                    self._stbd_bmp_pump = self._pump_limit
-            else:
-                if self._port_bmp_pump > 0:
-                    self._port_bmp_pump -= 1
-                if self._cntr_bmp_pump > 0:
-                    self._cntr_bmp_pump -= 1
-                if self._stbd_bmp_pump > 0:
-                    self._stbd_bmp_pump -= 1
-            self._log.debug('message[{:d}] received values: '.format(message.eid) \
-                    + Fore.RED   + 'PORT={:d}\t'.format(self._port_bmp_pump) \
-                    + Fore.BLUE  + 'CNTR={:d}\t'.format(self._cntr_bmp_pump) \
-                    + Fore.GREEN + 'STBD={:d}'.format(self._stbd_bmp_pump) )
-        pass
+#    def add(self, message):
+#        '''
+#        React to every 5th TICK message.
+#        '''
+##       self._log.info(Fore.YELLOW + Style.DIM + 'MESSAGE received at message {:d}.'.format(message.eid))
+#        if message.event is Event.CLOCK_TICK:
+#            if message.eid % 5 == 0:
+##               self._log.info(Fore.GREEN + Style.BRIGHT + 'STBD bumper: {}'.format(self._ioe.input(self._stbd_bmp_pin)))
+#                if self._ioe.input(self._port_bmp_pin) == 0:
+#                    self._port_bmp_pump = self._pump_limit
+#                if self._ioe.input(self._cntr_bmp_pin) == 0:
+#                    self._cntr_bmp_pump = self._pump_limit
+#                if self._ioe.input(self._stbd_bmp_pin) == 0:
+#                    self._stbd_bmp_pump = self._pump_limit
+#            else:
+#                if self._port_bmp_pump > 0:
+#                    self._port_bmp_pump -= 1
+#                if self._cntr_bmp_pump > 0:
+#                    self._cntr_bmp_pump -= 1
+#                if self._stbd_bmp_pump > 0:
+#                    self._stbd_bmp_pump -= 1
+#            self._log.debug('message[{:d}] received values: '.format(message.eid) \
+#                    + Fore.RED   + 'PORT={:d}\t'.format(self._port_bmp_pump) \
+#                    + Fore.BLUE  + 'CNTR={:d}\t'.format(self._cntr_bmp_pump) \
+#                    + Fore.GREEN + 'STBD={:d}'.format(self._stbd_bmp_pump) )
+#        pass
 
     # infrared sensors .........................................................
 
