@@ -175,7 +175,7 @@ class PIDController(object):
         at zero when it's clear the target velocity is zero. This is a
         perhaps cheap approach to hysteresis.
         '''
-        _doc = Documentation.NONE
+        _doc = Documentation.SIMPLE
         _power_color = Fore.BLACK
         _lim = 0.2
         _last_velocity = 0.0
@@ -209,7 +209,8 @@ class PIDController(object):
                     _velocity_color = Fore.CYAN + Style.NORMAL
                 else:
                     _velocity_color = Fore.BLACK
-                self._log.info('velocity:\t' + _velocity_color + '{:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
+#               self._log.info('velocity:\t' + _velocity_color + '{:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
+                self._log.info('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint))
 
             elif _doc is Documentation.FULL:
                 if self._last_power < self._power:

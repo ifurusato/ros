@@ -23,7 +23,6 @@ from lib.message import Message
 from lib.message_factory import MessageFactory
 from lib.message_bus import MessageBus
 from lib.queue import MessageQueue
-from lib.clock import Clock
 from lib.ifs import IntegratedFrontSensor
 #rom lib.indicator import Indicator
 from lib.rate import Rate
@@ -204,9 +203,8 @@ def main():
         _message_factory = MessageFactory(Level.INFO)
 
         _message_bus = MessageBus(Level.INFO)
-        _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
 
-        _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
+        _ifs = IntegratedFrontSensor(_config, _message_bus, _message_factory, Level.INFO)
 
         try:
 
