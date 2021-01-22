@@ -81,7 +81,7 @@ class Potentiometer(object):
     def set_output_limits(self, out_min, out_max):
         self._out_min = out_min
         self._out_max = out_max
-        self._log.info('output range:\t{:>7.4f}-{:<7.4f}'.format(self._out_min, self._out_max))
+        self._log.info('output range:\t{:>5.2f}-{:<5.2f}'.format(self._out_min, self._out_max))
 
     # ..........................................................................
     def get_value(self):

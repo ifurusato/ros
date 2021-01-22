@@ -159,6 +159,7 @@ class Motor():
         '''
             This callback is used to capture encoder steps.
         '''
+        print(Fore.BLACK + Style.BRIGHT + '_callback_step_count()' + Style.RESET_ALL)
         if not self._reverse_encoder_orientation:
             if self._orientation is Orientation.PORT:
                 self._steps = self._steps + pulse
@@ -176,7 +177,7 @@ class Motor():
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
-#       self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
+        self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
 
     # ..........................................................................
     @property

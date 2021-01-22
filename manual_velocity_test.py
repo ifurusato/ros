@@ -30,22 +30,39 @@ def main():
 
     try:
         _motors = Motors(_config, None, _level)
-        _stbd_motor = _motors.get_motor(Orientation.STBD)
-        _stbd_pid = PIDController(_config, _stbd_motor, level=Level.DEBUG)
-
         _pot = Potentiometer(_config, Level.INFO)
         _pot.set_output_limits(0.0, 127.0) 
-#       _pot.test()
-        _stbd_pid.enable()
+
+        # motor configuration: starboard, port or both?
+        _orientation = Orientation.PORT
+
+        _log.info(Fore.YELLOW + '================================================')
+
+        if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+            _port_motor = _motors.get_motor(Orientation.PORT)
+            _port_pid = PIDController(_config, _port_motor, level=Level.DEBUG)
+            _port_pid.enable()
+
+        if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+            _stbd_motor = _motors.get_motor(Orientation.STBD)
+            _stbd_pid = PIDController(_config, _stbd_motor, level=Level.DEBUG)
+            _stbd_pid.enable()
+
+#       sys.exit(0)
 
         try:
 
             while True:
 #               _value = _pot.get_value()
                 _value = 127.0 - _pot.get_scaled_value()
+                if _value > 125.0:
+                    _value = 127.0
                 _velocity = Gamepad.convert_range(_value)
+                if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+                    _port_pid.velocity = _velocity * 100.0
+                if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+                    _stbd_pid.velocity = _velocity * 100.0
                 _log.info(Fore.GREEN + 'value: {:<5.2f}; velocity: {:5.2f}'.format(_value, _velocity))
-                _stbd_pid.velocity = _velocity * 100.0
                 time.sleep(0.1)
 
             _log.info(Fore.YELLOW + 'end of cruising.')
@@ -53,7 +70,10 @@ def main():
         except KeyboardInterrupt:
             _log.info(Fore.CYAN + Style.BRIGHT + 'PID test complete.')
         finally:
-            _stbd_pid.disable()
+            if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+                _port_pid.disable()
+            if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+                _stbd_pid.disable()
             _motors.brake()
 
     except Exception as e:

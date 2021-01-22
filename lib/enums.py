@@ -15,11 +15,13 @@ from enum import Enum
 
 # ..............................................................................
 class Orientation(Enum):
-    PORT  = ( 1, "port", "port")
-    CNTR  = ( 2, "center", "cntr")
-    STBD  = ( 3, "starboard", "stbd")
-    PORT_SIDE = ( 4, "port-side", "psid") # only used with infrareds
-    STBD_SIDE = ( 5, "stbd-side", "ssid") # only used with infrareds
+    NONE  = ( 0, "none", "none")          # not generally used
+    BOTH  = ( 1, "both", "both")          # not generally used
+    PORT  = ( 2, "port", "port")
+    CNTR  = ( 3, "center", "cntr")
+    STBD  = ( 4, "starboard", "stbd")
+    PORT_SIDE = ( 5, "port-side", "psid") # only used with infrareds
+    STBD_SIDE = ( 6, "stbd-side", "ssid") # only used with infrareds
 
     # ignore the first param since it's already set by __new__
     def __init__(self, num, name, label):
