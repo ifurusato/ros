@@ -255,7 +255,8 @@ class GamepadController():
             if not self._port_pid.enabled:
                 self._port_pid.enable()
 #           if message.value == 0: # on push of button
-            _value = message.value
+#           _value = message.value # with no hysteresis
+            _value = self._hysteresis(message.value)
             _velocity = Gamepad.convert_range(_value)
             self._log.debug(Fore.RED + 'PORT: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
 #           self._motors.set_motor(Orientation.PORT, _velocity)
@@ -270,9 +271,10 @@ class GamepadController():
             if not self._stbd_pid.enabled:
                 self._stbd_pid.enable()
 #           if message.value == 0: # on push of button
+#           _value = message.value # with no hysteresis
             _value = self._hysteresis(message.value)
             _velocity = Gamepad.convert_range(_value)
-            self._log.debug(Fore.GREEN + 'STBD: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
+            self._log.info(Fore.GREEN + 'STBD: {};\tvalue: {:>5.2f}; velocity: {:>5.2f};'.format(event.description, _value, _velocity))
 #           self._motors.set_motor(Orientation.STBD, _velocity)
             self._stbd_pid.velocity = _velocity * 100.0
 

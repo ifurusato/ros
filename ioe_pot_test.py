@@ -29,7 +29,7 @@ def main(argv):
         _config = _loader.configure('config.yaml')
 
         _pot = Potentiometer(_config, Level.INFO)
-        _pot.set_output_limits(0.0, 50.0) 
+        _pot.set_output_limits(0.0, 100.0) 
         _pot.test()
 
     except KeyboardInterrupt:

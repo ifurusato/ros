@@ -176,7 +176,7 @@ class Motor():
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
-        self._log.info(Fore.BLACK + '{}: {:+d} steps; 🥧 velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
+#       self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
 
     # ..........................................................................
     @property

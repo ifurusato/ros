@@ -16,6 +16,7 @@ from lib.config_loader import ConfigLoader
 
 from lib.motors import Motors
 from lib.enums import Orientation
+from lib.gamepad import Gamepad
 from lib.pid_ctrl import PIDController
 from lib.ioe_pot import Potentiometer
 
@@ -33,16 +34,18 @@ def main():
         _stbd_pid = PIDController(_config, _stbd_motor, level=Level.DEBUG)
 
         _pot = Potentiometer(_config, Level.INFO)
-        _pot.set_output_limits(0.0, 50.0) 
+        _pot.set_output_limits(0.0, 127.0) 
 #       _pot.test()
         _stbd_pid.enable()
 
         try:
 
             while True:
-                _velocity = _pot.get_value()
-                _log.info(Fore.YELLOW + 'cruising at velocity: {:5.2f}'.format(_velocity))
-                _stbd_pid.velocity = _velocity
+#               _value = _pot.get_value()
+                _value = 127.0 - _pot.get_scaled_value()
+                _velocity = Gamepad.convert_range(_value)
+                _log.info(Fore.GREEN + 'value: {:<5.2f}; velocity: {:5.2f}'.format(_value, _velocity))
+                _stbd_pid.velocity = _velocity * 100.0
                 time.sleep(0.1)
 
             _log.info(Fore.YELLOW + 'end of cruising.')

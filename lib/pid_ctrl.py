@@ -175,7 +175,7 @@ class PIDController(object):
         at zero when it's clear the target velocity is zero. This is a
         perhaps cheap approach to hysteresis.
         '''
-        _doc = Documentation.MINIMAL
+        _doc = Documentation.NONE
         _power_color = Fore.BLACK
         _lim = 0.2
         _last_velocity = 0.0
