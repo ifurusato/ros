@@ -159,7 +159,7 @@ ros:
 #       use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
     gamepad:
         enabled: True
-        device_path: '/dev/input/event0'         # the path to the bluetooth gamepad on the pi (see find_gamepad.py)
+        device_path: '/dev/input/event4'         # the path to the bluetooth gamepad on the pi (see find_gamepad.py)
         loop_delay: 0.01                         # main loop delay
         loop_freq_hz: 20                         # main loop frequency
     gamepad_demo:
@@ -180,10 +180,10 @@ ros:
         reverse_encoder_orientation: False       # ditto
         sample_rate: 10                          # how many pulses per encoder measurement?
         velocity_fudge_factor: 14.0              # convert raw velocity to approximate a percentage
-        max_power_limit: 1.0                     # limit set on power sent to motors
+#       max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
-            enable_slew:     True
+            enable_slew:     False
             sample_freq_hz:    20
             hyst_queue_len:    20                # size of queue used for running average for hysteresis
             pot_ctrl:       False                # if True enable potentiometer for setting PID terms
@@ -200,6 +200,18 @@ ros:
         schema:            'robot'
         index:             'kr01'
         doc_type:          'pid'
+    ioe_potentiometer:                           # IO Expander-based Potentiometer board
+        i2c_address:   0x0E                      # the I²C address for the device
+        brightness:     1.0                      # the brightness of the RGB LED (0.0-1.0)
+        pin_red:          1                      # red pin
+        pin_green:        7                      # green pin
+        pin_blue:         2                      # blue pin
+        in_min:         0.0                      # minimum analog value from IO Expander
+        in_max:         3.3                      # maximum analog value from IO Expander
+#       out_min:       -100.0                    # minimum scaled output value
+#       out_max:        100.0                    # maximum scaled output value
+        out_min:       -255.0                    # minimum scaled output value
+        out_max:        255.0                    # maximum scaled output value
     potentiometer:                               # potentiometer connected as voltage divider
         pin:             14                      # pin connected to wiper
         in_min:           0                      # minimum analog value from IO Expander

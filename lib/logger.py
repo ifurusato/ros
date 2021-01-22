@@ -76,6 +76,10 @@ class Logger:
         type(self)._suppress = suppress
 
     @property
+    def level(self):
+        return self._level
+
+    @property
     def suppressed(self):
         return type(self)._suppress
 

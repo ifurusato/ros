@@ -32,8 +32,8 @@ class PIDController(object):
      Provides a configurable PID motor controller via a threaded
      fixed-time loop.
 
-     If the 'ros:motors:pid:enable_slew' property is True, this will set a slew
-     limiter on the velocity setter.
+     If the 'ros:motors:pid:enable_slew' property is True, this will
+     set a slew limiter on the velocity setter.
     '''
 
     def __init__(self,
@@ -175,7 +175,7 @@ class PIDController(object):
         at zero when it's clear the target velocity is zero. This is a
         perhaps cheap approach to hysteresis.
         '''
-        _doc = Documentation.SIMPLE
+        _doc = Documentation.MINIMAL
         _power_color = Fore.BLACK
         _lim = 0.2
         _last_velocity = 0.0
@@ -189,16 +189,23 @@ class PIDController(object):
                 self._pid.kd = _pot_value
                 self._log.debug('pot: {:8.5f}.'.format(_pot_value))
             _pid_output = self._pid(_current_velocity)
+
             self._power += _pid_output
             _mean_setpoint = self._get_mean_setpoint(self._pid.setpoint)
-            self._log.debug('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint))
+#           self._log.debug('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint))
+#           self._log.info('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint)
+#                   + Fore.YELLOW + ' pid output: {:5.2f}'.format(_pid_output))
+
             if _mean_setpoint == 0.0:
                 self._motor.set_motor_power(0.0)
             else:
                 self._motor.set_motor_power(self._power / 100.0)
 
             if _doc is Documentation.MINIMAL:
-                self._log.info('velocity: {:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
+#               self._log.info('velocity: {:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
+                self._log.info('vel: {:5.2f};'.format(_current_velocity) + Fore.BLACK \
+                        + Fore.WHITE + ' {:d} steps;'.format(self.steps) \
+                        + Fore.BLACK + ' power: {:5.2f}; spt: {:5.2f}; mspt: {:5.2f};'.format(self._power, self._pid.setpoint, _mean_setpoint))
 
             elif _doc is Documentation.SIMPLE:
                 if ( _last_velocity * 0.97 ) <= _current_velocity <= ( _last_velocity * 1.03 ): # within 3%
@@ -210,7 +217,9 @@ class PIDController(object):
                 else:
                     _velocity_color = Fore.BLACK
 #               self._log.info('velocity:\t' + _velocity_color + '{:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
-                self._log.info('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint))
+                self._log.info('vel: {:5.2f};'.format(_current_velocity) + Fore.BLACK \
+                        + Fore.WHITE + ' {:d} steps;'.format(self.steps) \
+                        + Fore.BLACK + ' power: {:5.2f}; spt: {:5.2f}; mspt: {:5.2f};'.format(self._power, self._pid.setpoint, _mean_setpoint))
 
             elif _doc is Documentation.FULL:
                 if self._last_power < self._power:

@@ -4,7 +4,7 @@
 # created:  2020-10-05
 # modified: 2020-10-05
 #
-# Tests the port and starboard motors for both current draw and encoder ticks.
+# Tests the port and starboard motors for encoder ticks.
 #
 
 import pytest
@@ -28,7 +28,7 @@ def close_motors(_log, port_motor, stbd_motor):
         for _power in numpy.arange(_init_power, 0.0, -0.01):
             _log.info('setting motor power: {:5.2f}'.format(_power))
             stbd_motor.set_motor_power(_power)
-            port_motor.set_motor_power(-1.0 * _power)
+            port_motor.set_motor_power(_power)
             time.sleep(0.1)
     else:
         _log.warning('motor power already appears at zero.')
@@ -58,15 +58,17 @@ def test_motors():
     _stbd_motor.enable()
 
     try:
-        for i in range(8):
+        for i in range(5):
             _power = i * 0.1 
             _log.info(Fore.YELLOW + 'set motor power: {:5.2f};'.format(_power))
             _stbd_motor.set_motor_power(_power)
-            _port_motor.set_motor_power(-1.0 * _power)
+            _port_motor.set_motor_power(_power)
             time.sleep(1.0)
             _log.info('[{:d}]\t'.format(i) \
-                    + Fore.RED   + 'power {:5.2f}/{:5.2f}; {:>4d} steps; \t'.format(_stbd_motor.get_current_power_level(), _power, _port_motor.steps) \
-                    + Fore.GREEN + 'power {:5.2f}/{:5.2f}; {:>4d} steps.'.format(_port_motor.get_current_power_level(), _power, _stbd_motor.steps))
+                    + Fore.RED   + 'power {:5.2f}/{:5.2f}; '.format(_port_motor.get_current_power_level(), _power) \
+                    + Fore.CYAN  + ' {:>4d} steps; \t'.format(_port_motor.steps) \
+                    + Fore.GREEN + 'power {:5.2f}/{:5.2f}; '.format(_stbd_motor.get_current_power_level(), _power) \
+                    + Fore.CYAN  + ' {:>4d} steps.'.format(_stbd_motor.steps) )
 #           if i > 2 and ( _port_motor.steps == 0 or _stbd_motor.steps == 0 ):
 #               raise Exception('motors are not turning.')
             time.sleep(1.0)

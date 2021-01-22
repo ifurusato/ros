@@ -8,6 +8,7 @@
 # A quick test of the simple_pid library.
 
 import sys, time, traceback
+import numpy
 from colorama import init, Fore, Style
 init()
 
@@ -15,10 +16,10 @@ from lib.velocity import Velocity
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 
-from lib.status import Status
 from lib.motors import Motors
 from lib.enums import Orientation
-from lib.pot import Potentiometer 
+#from lib.status import Status
+#from lib.pot import Potentiometer 
 from lib.pid_ctrl import PIDController
 
 # ..............................................................................
@@ -26,60 +27,61 @@ def main():
 
     _level = Level.INFO
     _log = Logger('main', _level)
-
-    _adjust_velocity = True # otherwise kp or kd
-
     _loader = ConfigLoader(_level)
-    filename = 'config.yaml'
-    _config = _loader.configure(filename)
-    _pot = Potentiometer(_config, _level)
-    _status = Status(_config, _level)
+    _config = _loader.configure('config.yaml')
 
     try:
-
-        _status.enable()
         _motors = Motors(_config, None, _level)
-        _port_motor = _motors.get_motor(Orientation.PORT)
+#       _port_motor = _motors.get_motor(Orientation.PORT)
+#       _port_pid = PIDController(_config, _port_motor, level=Level.DEBUG)
+
         _stbd_motor = _motors.get_motor(Orientation.STBD)
+        _stbd_pid = PIDController(_config, _stbd_motor, level=Level.DEBUG)
 
-        _port_pid = PIDController(_config, _port_motor, level=_level)
-        _stbd_pid = PIDController(_config, _stbd_motor, level=_level)
+#       sys.exit(0)
 
-        _value = _pot.get_scaled_value()
-        if _adjust_velocity: # otherwise kp or kd
-            _port_pid.velocity = _value
-            _stbd_pid.velocity = _value
-        else:
-            _port_pid.velocity = 40.0
-            _stbd_pid.velocity = 40.0
-            _port_pid.kp = _value
-            _stbd_pid.kp = _value
-#           _stbd_pid.pid.kd = _value
-
-        _port_pid.enable()
+        _max_velocity = 30.0
+#       _port_pid.enable()
         _stbd_pid.enable()
 
         try:
 
-            while True:
-                _value = _pot.get_scaled_value()
-                if _adjust_velocity: # otherwise kp or kd
-                    _port_pid.velocity = _value
-                    _stbd_pid.velocity = _value
-                else:
-                    _port_pid.kp = _value
-                    _stbd_pid.kp = _value
-#                   _stbd_pid.kd = _value
+            _log.info(Fore.YELLOW + 'accelerating...')
 
-                _log.info(Fore.BLACK + 'STBD pot: {:5.2f}; setpoint={:>5.2f}.'.format(_value, _stbd_pid.velocity))
-                time.sleep(0.1)
+            _stbd_pid.velocity = 10.0
+
+#           for _velocity in numpy.arange(0.0, _max_velocity, 0.3):
+#               _log.info(Fore.YELLOW + '_velocity={:>5.2f}.'.format(_velocity))
+#               _stbd_pid.velocity = _velocity
+#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.velocity))
+#               _port_pid.velocity = _velocity
+#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.velocity))
+
+#               time.sleep(1.0)
+                # ..........................................
+
+            _log.info(Fore.YELLOW + 'cruising...')
+            time.sleep(10.0)
+            _log.info(Fore.YELLOW + 'end of cruising.')
+
+#           _log.info(Fore.YELLOW + 'decelerating...')
+#           for _velocity in numpy.arange(_max_velocity, 0.0, -0.25):
+#               _log.info(Fore.YELLOW + '_velocity={:>5.2f}.'.format(_velocity))
+#               _port_pid.velocity = _velocity
+#               _stbd_pid.velocity = _velocity
+#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.velocity))
+#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.velocity))
+#               time.sleep(1.0)
+
+#           _log.info(Fore.YELLOW + 'stopped...')
+#           time.sleep(1.0)
 
         except KeyboardInterrupt:
             _log.info(Fore.CYAN + Style.BRIGHT + 'PID test complete.')
         finally:
+#           _port_pid.disable()
             _stbd_pid.disable()
             _motors.brake()
-            _status.disable()
 
     except Exception as e:
         _log.info(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e))

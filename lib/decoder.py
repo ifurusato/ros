@@ -12,6 +12,8 @@ import pigpio
 from colorama import init, Fore, Style
 init()
 
+from lib.logger import Level, Logger
+
 #try:
 #    import pigpio
 #    pi = pigpio.pi()
@@ -28,7 +30,7 @@ class Decoder:
     '''
 
     # ..........................................................................
-    def __init__(self, pi, gpioA, gpioB, callback):
+    def __init__(self, pi, orientation, gpio_a, gpio_b, callback, level):
         '''
            Instantiate the class with the pi and gpios connected to
            rotary encoder contacts A and B. The common contact should
@@ -41,7 +43,7 @@ class Decoder:
            import time
            import pigpio
 
-           import motor_encoder
+           from lib.decoder import Decoder
 
            pos = 0
 
@@ -50,24 +52,33 @@ class Decoder:
               pos += way
               print("pos={}".format(pos))
 
-           decoder = motor_encoder.Decoder(pi, 7, 8, callback)
+           decoder = Decoder(pi, 7, 8, callback)
            time.sleep(300)
            decoder.cancel()
+
+        :param pi:           the Pigpio connection to the Raspberry Pi
+        :param orientation:  the motor orientation
+        :param gpio_a:        pin number for A
+        :param gpio_b:        pin number for B
+        :param callback:     the callback method
+        :param level:        the log Level
         '''
+        self._log = Logger('enc:{}'.format(orientation.label), level)
         self._pi = pi
- #      print( 'pi: {}'.format(self._pi))
-        self.gpioA = gpioA
-        self.gpioB = gpioB
+        self._gpio_a = gpio_a
+        self._gpio_b = gpio_b
+        self._log.info('pin A: {:d}; pin B: {:d}'.format(self._gpio_a,self._gpio_b))
         self.callback = callback
-        self.levA = 0
-        self.levB = 0
-        self.lastGpio = None
-        self._pi.set_mode(gpioA, pigpio.INPUT)
-        self._pi.set_mode(gpioB, pigpio.INPUT)
-        self._pi.set_pull_up_down(gpioA, pigpio.PUD_UP)
-        self._pi.set_pull_up_down(gpioB, pigpio.PUD_UP)
-        self.cbA = self._pi.callback(gpioA, pigpio.EITHER_EDGE, self._pulse)
-        self.cbB = self._pi.callback(gpioB, pigpio.EITHER_EDGE, self._pulse)
+        self._level_a = 0
+        self._level_b = 0
+        self._last_gpio = None
+        self._pi.set_mode(self._gpio_a, pigpio.INPUT)
+        self._pi.set_mode(self._gpio_b, pigpio.INPUT)
+        self._pi.set_pull_up_down(self._gpio_a, pigpio.PUD_UP)
+        self._pi.set_pull_up_down(self._gpio_b, pigpio.PUD_UP)
+        self.cbA = self._pi.callback(self._gpio_a, pigpio.EITHER_EDGE, self._pulse)
+        self.cbB = self._pi.callback(self._gpio_b, pigpio.EITHER_EDGE, self._pulse)
+        self._log.info('ready.')
 
     # ..........................................................................
     def _pulse(self, gpio, level, tick):
@@ -86,17 +97,20 @@ class Decoder:
                   |         |         |         |
               ----+         +---------+         +---------+  1
         '''
-        if gpio == self.gpioA:
-           self.levA = level
+#       self._log.info(Fore.BLACK + 'pulse on pin: {:d}; level: {:d}'.format(gpio, level))
+        if gpio == self._gpio_a:
+           self._level_a = level
         else:
-           self.levB = level;
-        if gpio != self.lastGpio: # debounce
-           self.lastGpio = gpio
-           if   gpio == self.gpioA and level == 1:
-              if self.levB == 1:
+           self._level_b = level;
+        if gpio != self._last_gpio: # debounce
+           self._last_gpio = gpio
+           if gpio == self._gpio_a and level == 1:
+              if self._level_b == 1:
+#                self._log.info('gpio B step.')
                  self.callback(1)
-           elif gpio == self.gpioB and level == 1:
-              if self.levA == 1:
+           elif gpio == self._gpio_b and level == 1:
+              if self._level_a == 1:
+#                self._log.info('gpio B step.')
                  self.callback(-1)
 
     # ..........................................................................

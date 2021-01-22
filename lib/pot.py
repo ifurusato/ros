@@ -17,10 +17,10 @@ except ImportError:
 
 from lib.config_loader import ConfigLoader
 from lib.logger import Level, Logger
-from lib.rate import Rate
+#from lib.rate import Rate
 
 # ..............................................................................
-class Potentiometer():
+class Potentiometer(object):
     '''
        Configures a potentiometer (wired from Vcc to Gnd) connected to a single 
        pin on a Pimoroni IO Expander Breakout Garden board, returning an analog

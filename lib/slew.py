@@ -52,7 +52,7 @@ class SlewLimiter():
         self._minimum_output    = cfg.get('minimum_output')
         self._maximum_output    = cfg.get('maximum_output')
         self._log.info('minimum output: {:5.2f}; maximum output: {:5.2f}'.format(self._minimum_output, self._maximum_output))
-        self._rate_limit        = SlewRate.NORMAL.limit # default rate_limit: 0.0025 # value change permitted per millisecond
+        self._rate_limit        = SlewRate.FAST.limit # default rate_limit: 0.0025 # value change permitted per millisecond
         self._stats_queue       = None
         self._start_time        = None
         self._enabled           = False

@@ -23,7 +23,7 @@ except ImportError:
 from lib.logger import Level, Logger
 from lib.enums import Orientation
 from lib.slew import SlewRate
-from lib.motor_encoder import Decoder
+from lib.decoder import Decoder
 
 # ..............................................................................
 class Motor():
@@ -32,6 +32,13 @@ class Motor():
         to determine the velocity and distance traveled.
 
         This uses the ros:motors: section of the configuration.
+
+        :param config:      application configuration
+        :param tb:          reference to the ThunderBorg motor controller
+        :param pi:          reference to the Raspberry Pi
+        :param orientation: motor orientation
+        :param level:       log level
+
     '''
     def __init__(self, config, tb, pi, orientation, level):
         global TB
@@ -78,8 +85,8 @@ class Motor():
         self._velocity_fudge_factor = cfg.get('velocity_fudge_factor') # default: 14.0
         self._log.debug('velocity fudge factor: {:>5.2f}'.format(self._velocity_fudge_factor))
         # limit set on power sent to motors
-        self._max_power_limit = cfg.get('max_power_limit') # default: 1.2
-        self._log.debug('maximum power limit: {:>5.2f}'.format(self._max_power_limit))
+#       self._max_power_limit = cfg.get('max_power_limit') # default: 1.2
+#       self._log.debug('maximum power limit: {:>5.2f}'.format(self._max_power_limit))
         # acceleration loop delay
         self._accel_loop_delay_sec = cfg.get('accel_loop_delay_sec') # default: 0.10
         self._log.debug('acceleration loop delay: {:>5.2f} sec'.format(self._accel_loop_delay_sec))
@@ -144,11 +151,11 @@ class Motor():
             _encoder_b = self._motor_encoder_b2_stbd
         else:
             raise ValueError("unrecognised value for orientation.")
-        self._decoder = Decoder(self._pi, _encoder_a, _encoder_b, self.callback_step_count)
+        self._decoder = Decoder(self._pi, self._orientation, _encoder_a, _encoder_b, self._callback_step_count, self._log.level)
         self._log.info('configured {} motor encoder on pin {} and {}.'.format(orientation.name, _encoder_a, _encoder_b))
 
     # ..............................................................................
-    def callback_step_count(self, pulse):
+    def _callback_step_count(self, pulse):
         '''
             This callback is used to capture encoder steps.
         '''
@@ -169,7 +176,7 @@ class Motor():
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
-        self._log.debug(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
+        self._log.info(Fore.BLACK + '{}: {:+d} steps; 🥧 velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
 
     # ..........................................................................
     @property

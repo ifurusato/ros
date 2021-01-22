@@ -24,6 +24,9 @@ from lib.logger import Logger, Level
 class PID(object):
     '''
     The PID controller itself.
+
+    Note that 'velocity' is the name of the setpoint, as this
+    PID controller is governed by a velocity setting.
     '''
     def __init__(self,
                  config,
