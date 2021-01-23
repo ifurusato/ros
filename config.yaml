@@ -172,10 +172,10 @@ ros:
             min_loop_time_ms:  5                 # gamepad loop time (ms)
     motors:
         # GPIO pins configured for A1, B1, A2 and B2
-        motor_encoder_a1_port:  22
-        motor_encoder_b1_port:  23
-        motor_encoder_a2_stbd:  17
-        motor_encoder_b2_stbd:  18
+        motor_encoder_a1_port:  22               # port A
+        motor_encoder_b1_port:  23               # port B
+        motor_encoder_a2_stbd:  17               # stbd A
+        motor_encoder_b2_stbd:  18               # stbd B
         reverse_motor_orientation:   False       # in case you wire something up backwards
         reverse_encoder_orientation: False       # ditto
         sample_rate: 10                          # how many pulses per encoder measurement?

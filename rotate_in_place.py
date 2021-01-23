@@ -8,6 +8,7 @@
 # A quick test of the simple_pid library.
 
 import sys, time
+import numpy
 from colorama import init, Fore, Style
 init()
 
@@ -55,10 +56,30 @@ def main():
 
         try:
 
-            while True:
+            for _value in numpy.arange(0.0, 90.0, 1.0):
+#           while True:
                 # update RGB LED
                 _pot.set_rgb(_pot.get_value())
-                _value = 127.0 - _pot.get_scaled_value()
+#               _value = 127.0 - _pot.get_scaled_value()
+                if _value > 125.0:
+                    _value = 127.0
+                _velocity = Gamepad.convert_range(_value)
+                if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+                    _port_pid.velocity = _velocity * 100.0
+                    _port_velocity = _port_pid.velocity
+                if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+                    _stbd_pid.velocity = _rotate * _velocity * 100.0
+                    _stbd_velocity = _stbd_pid.velocity
+                _log.info(Fore.GREEN + 'value: {:<5.2f}; set-point: {:5.2f};'.format(_value, _velocity) + ' velocity: {:5.2f} / {:5.2f}'.format(_port_velocity, _stbd_velocity))
+                time.sleep(0.1)
+
+            time.sleep(2.0)
+
+            for _value in numpy.arange(0.0, 90.0, 1.0):
+#           while True:
+                # update RGB LED
+                _pot.set_rgb(_pot.get_value())
+#               _value = 127.0 - _pot.get_scaled_value()
                 if _value > 125.0:
                     _value = 127.0
                 _velocity = Gamepad.convert_range(_value)
@@ -70,6 +91,7 @@ def main():
                     _stbd_velocity = _stbd_pid.velocity
                 _log.info(Fore.GREEN + 'value: {:<5.2f}; set-point: {:5.2f};'.format(_value, _velocity) + ' velocity: {:5.2f} / {:5.2f}'.format(_port_velocity, _stbd_velocity))
                 time.sleep(0.1)
+
 
             _log.info(Fore.YELLOW + 'end of cruising.')
 
