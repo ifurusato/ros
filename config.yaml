@@ -217,10 +217,10 @@ ros:
         in_min:           0                      # minimum analog value from IO Expander
         in_max:         255                      # maximum analog value from IO Expander
 #       out_min:       -100.0                    # minimum scaled output value
-#       out_max:        100.0                    # VEL: maximum scaled output value
-#       out_max:          1.0                    # KP:  maximum scaled output value
+#       out_max:        100.0                    # maximum scaled output value
+#       out_max:          1.0                    # maximum scaled output value
         out_min:          0.5                    # minimum scaled output value
-        out_max:          1.5                    # KD:  maximum scaled output value
+        out_max:          1.5                    # maximum scaled output value
     slew:
         minimum_output: 0.00                     # lower limit of permitted output values
         maximum_output: 100.00                   # upper limit of permitted output values
@@ -266,6 +266,9 @@ ros:
             10: 'DNP'
             11: 'DNP'
 #           12: 'DNP'
+    rotary_ctrl:
+        i2c_address:   0x16                      # the I²C address for the device
+        update_led:    True                      # update the RGB LED according to the value
     rotary_encoder:
         i2c_address:   0x19                      # the I²C address for the device
         brightness:     1.0                      # the brightness of the RGB LED (0.0-1.0)

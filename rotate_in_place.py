@@ -20,6 +20,7 @@ from lib.enums import Orientation
 from lib.gamepad import Gamepad
 from lib.pid_ctrl import PIDController
 from lib.ioe_pot import Potentiometer
+from lib.rate import Rate
 
 # ..............................................................................
 def main():
@@ -54,9 +55,14 @@ def main():
         _stbd_velocity = 0.0
         _port_velocity = 0.0
 
+        _step =  0.5
+        _min  =  0.0
+        _max  = 70.0
+        _rate = Rate(10)
+
         try:
 
-            for _value in numpy.arange(0.0, 90.0, 1.0):
+            for _value in numpy.arange(_min, _max, _step):
 #           while True:
                 # update RGB LED
                 _pot.set_rgb(_pot.get_value())
@@ -70,12 +76,14 @@ def main():
                 if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
                     _stbd_pid.velocity = _rotate * _velocity * 100.0
                     _stbd_velocity = _stbd_pid.velocity
-                _log.info(Fore.GREEN + 'value: {:<5.2f}; set-point: {:5.2f};'.format(_value, _velocity) + ' velocity: {:5.2f} / {:5.2f}'.format(_port_velocity, _stbd_velocity))
-                time.sleep(0.1)
+                _log.info(Fore.WHITE + 'value: {:<5.2f}; set-point: {:5.2f}; velocity: '.format(_value, _velocity) \
+                        + Fore.RED   + ' port: {:5.2f}\t'.format(_port_velocity) + Fore.GREEN + ' stbd: {:5.2f}'.format(_stbd_velocity))
+                _rate.wait()
 
-            time.sleep(2.0)
+            _log.info(Fore.YELLOW + 'resting...')
+            time.sleep(10.0)
 
-            for _value in numpy.arange(0.0, 90.0, 1.0):
+            for _value in numpy.arange(_min, _max, _step):
 #           while True:
                 # update RGB LED
                 _pot.set_rgb(_pot.get_value())
@@ -89,9 +97,9 @@ def main():
                 if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
                     _stbd_pid.velocity = _velocity * 100.0
                     _stbd_velocity = _stbd_pid.velocity
-                _log.info(Fore.GREEN + 'value: {:<5.2f}; set-point: {:5.2f};'.format(_value, _velocity) + ' velocity: {:5.2f} / {:5.2f}'.format(_port_velocity, _stbd_velocity))
-                time.sleep(0.1)
-
+                _log.info(Fore.MAGENTA + 'value: {:<5.2f}; set-point: {:5.2f}; velocity: '.format(_value, _velocity) \
+                        + Fore.RED   + ' port: {:5.2f}\t'.format(_port_velocity) + Fore.GREEN + ' stbd: {:5.2f}'.format(_stbd_velocity))
+                _rate.wait()
 
             _log.info(Fore.YELLOW + 'end of cruising.')
 

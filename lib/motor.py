@@ -95,6 +95,7 @@ class Motor():
         self._motor_power_limit = 0.99       # power limit to motor
         self._counter = itertools.count()
         self._over_power_count = 0           # limit to disable motor
+        self._over_power_count_limit = 4     # how many times we can be overpowered before disabling
         self._steps = 0                      # step counter
         self._steps_begin = 0                # step count at beginning of velocity measurement
         self._velocity = 0.0                 # current velocity
@@ -177,7 +178,7 @@ class Motor():
                 self._stepcount_timestamp = time.time()
             self._stepcount_timestamp = time.time()
             self._steps_begin = self._steps
-        self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
+        self._log.debug(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._steps, self._velocity))
 
     # ..........................................................................
     @property
@@ -192,6 +193,7 @@ class Motor():
     # ..........................................................................
     def disable(self):
         self._enabled = False
+        self.set_motor_power(0.0)
         self._log.info('disabled.')
 
     # ..........................................................................
@@ -348,9 +350,9 @@ class Motor():
     def _over_power(self):
         self._over_power_count = next(self._counter)
         self._log.warning('over powered {} times.'.format(self._over_power_count))
-        if self._over_power_count >= 4:
+        if self._over_power_count >= self._over_power_count_limit:
             self._log.error('over power limit reached, disabling...')
-#           self.disable()
+            self.disable()
 
     # ..........................................................................
     def set_motor_power(self, power_level):

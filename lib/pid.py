@@ -87,6 +87,7 @@ class PID(object):
     def velocity(self):
         '''
         Getter for the velocity (PID set point).
+        An alias for the setpoint property.
         '''
         return self.setpoint
 
@@ -94,9 +95,10 @@ class PID(object):
     def velocity(self, velocity):
         '''
         Setter for the velocity (PID set point).
+        An alias for the setpoint setter.
         '''
-        self._log.debug(Fore.BLACK + 'set velocity: {:5.2f}'.format(velocity))
-        self._setpoint = velocity
+#       self._log.debug(Fore.BLACK + 'set velocity: {:5.2f}'.format(velocity))
+        self.setpoint = velocity
 
     def set_max_velocity(self, max_velocity):
         '''
@@ -104,10 +106,10 @@ class PID(object):
         disable this feature. Note that this doesn't affect the setting
         of the velocity but rather the getting of the setpoint.
         '''
-        if max_velocity:
-            self._log.debug(Fore.CYAN + 'max velocity: {:5.2f}'.format(max_velocity))
+        if max_velocity == None:
+            self._log.info(Fore.CYAN + Style.DIM + 'max velocity: disabled')
         else:
-            self._log.debug(Fore.CYAN + Style.DIM + 'max velocity: DISABLED')
+            self._log.info(Fore.CYAN + 'max velocity: {:5.2f}'.format(max_velocity))
         self._max_velocity = max_velocity
 
     # ..........................................................................
@@ -118,17 +120,25 @@ class PID(object):
         If a maximum velocity has been set the returned value is
         limited by the set value.
         '''
-        if self._max_velocity:
-            return min(self._max_velocity, self._setpoint)
-        else:
-            return self._setpoint
+        return self._setpoint
 
     @setpoint.setter
     def setpoint(self, setpoint):
         '''
-        Setter for the set point.
+        Setter for the set point. If max_velocity has been set this limits
+        the set value.
         '''
-        self._setpoint = setpoint
+        if self._max_velocity:
+            if setpoint > self._max_velocity:
+                self._setpoint = self._max_velocity
+            elif setpoint < -1.0 * self._max_velocity:
+                self._setpoint = -1.0 * self._max_velocity
+            else:
+                self._setpoint = setpoint
+#           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._max_velocity))
+        else:
+            self._setpoint = setpoint
+#           self._log.debug(Fore.BLACK + 'set setpoint: {:5.2f}'.format(setpoint))
 
     # ..........................................................................
     def __call__(self, target, dt=None):
@@ -224,7 +234,7 @@ class PID(object):
     @property
     def output_limits(self):
         '''
-        The curre_pom output limits as a 2-tuple: (lower, upper). See also
+        The output limits as a 2-tuple: (lower, upper). See also
         the *output_limts* parameter in :meth:`PID.__init__`.
         '''
         return self._min_output, self._max_output

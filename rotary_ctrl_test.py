@@ -15,59 +15,49 @@ import sys, traceback
 from colorama import init, Fore, Style
 init()
 
-from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader
 from lib.rate import Rate
 from lib.logger import Logger, Level
-from lib.rotary_encoder import RotaryEncoder
+from lib.rotary_ctrl import RotaryControl
 
 # ..............................................................................
 @pytest.mark.unit
-def test_rot_encoder():
+def test_rot_control():
 
-    _log = Logger("rot-test", Level.INFO)
+    _log = Logger("rot-ctrl-test", Level.INFO)
 
-    _i2c_scanner = I2CScanner(Level.WARN)
-#   if not _i2c_scanner.has_address([0x19]):
-#       _log.warning('test ignored: no rotary encoder found.')
-#       return
-
-    _rot = None
+    _rot_ctrl = None
     try:
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
-        _rot = RotaryEncoder(_config, 0x16, Level.INFO)
 
-        _count      = 0
-        _updates    = 0
-        _update_led = True
-        _last_value = 0
+      # def __init__(self, config, minimum, maximum, step, level):
+        _min  = -127
+        _max  = 127
+        _step = 5
+        _rot_ctrl = RotaryControl(_config, _min, _max, _step, Level.INFO)
+
         _rate = Rate(20)
-        _log.info(Fore.WHITE + Style.BRIGHT + 'waiting for rotary encoder to make 10 ticks...')
-        while _updates < 10:
-#           _value = _rot.update() # original method
-            _value = _rot.read(_update_led) # improved method
-            if _value != _last_value:
-                _log.info(Style.BRIGHT + 'returned value: {:d}'.format(_value))
-                _updates += 1
-            _last_value = _value
-            _count += 1
-            if _count % 33 == 0:
-                _log.info(Fore.BLACK + Style.BRIGHT + 'waiting…')
+        _log.info(Fore.WHITE + Style.BRIGHT + 'waiting for changes to rotary encoder...')
+
+        while True:
+            _value = _rot_ctrl.read() 
+            _log.info(Fore.YELLOW + ' value: {:d}'.format(_value))
             _rate.wait()
+
     finally:
-        if _rot:
+        if _rot_ctrl:
             _log.info('resetting rotary encoder...')
-            _rot.reset()
+            _rot_ctrl.reset()
 
 # main .........................................................................
 _rot = None
 def main(argv):
 
     try:
-        test_rot_encoder()
+        test_rot_control()
     except KeyboardInterrupt:
         print(Fore.CYAN + 'caught Ctrl-C; exiting...' + Style.RESET_ALL)
     except Exception:
