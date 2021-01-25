@@ -21,13 +21,109 @@ from lib.pid_ctrl import PIDController
 from lib.ioe_pot import Potentiometer
 from lib.rotary_ctrl import RotaryControl
 
+from lib.button import Button
+
+ROTATE = True
+
+_level = Level.INFO
+_log = Logger('main', _level)
+
+# ..............................................................................
+def rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid):
+    _log.info(Fore.BLUE + Style.BRIGHT + 'rotate in place...')
+    _rotate = -1.0 if ROTATE else 1.0
+    _min_value =  0.0
+    _max_value = 90.0
+
+    # accelerate
+    _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
+    for _value in numpy.arange(_min_value, _max_value, 1.0):
+        _port_pid.velocity = _rotate * _value 
+        _port_velocity = _port_pid.velocity
+        _stbd_pid.velocity = _value
+        _stbd_velocity = _stbd_pid.velocity
+        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+        time.sleep(0.1)
+    # cruise
+    _log.info(Fore.MAGENTA + 'cruising...')
+    time.sleep(20.0)
+    # decelerate
+    _log.info(Fore.MAGENTA + 'decelerating to zero...')
+    for _value in numpy.arange(50.0, 0.0, -1.0):
+        _port_pid.velocity = _rotate * _value 
+        _port_velocity = _port_pid.velocity
+        _stbd_pid.velocity = _value
+        _stbd_velocity = _stbd_pid.velocity
+        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+        time.sleep(0.1)
+
+    # wait
+    _port_pid.velocity = 0.0
+    _stbd_pid.velocity = 0.0
+    time.sleep(5.0)
+
+    # accelerate
+    _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
+    for _value in numpy.arange(_min_value, _max_value, 1.0):
+        _port_pid.velocity = _value 
+        _port_velocity = _port_pid.velocity
+        _stbd_pid.velocity = _rotate * _value
+        _stbd_velocity = _stbd_pid.velocity
+        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+        time.sleep(0.1)
+    # cruise
+    _log.info(Fore.MAGENTA + 'cruising...')
+    time.sleep(20.0)
+    # decelerate
+    _log.info(Fore.MAGENTA + 'decelerating to zero...')
+    for _value in numpy.arange(50.0, 0.0, -1.0):
+        _port_pid.velocity = _value 
+        _port_velocity = _port_pid.velocity
+        _stbd_pid.velocity = _rotate * _value
+        _stbd_velocity = _stbd_pid.velocity
+        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+        time.sleep(0.1)
+
+    # wait a bit
+    _port_pid.velocity = 0.0
+    _stbd_pid.velocity = 0.0
+    _log.info(Fore.MAGENTA + 'pause...')
+    time.sleep(5.0)
+    pass
+
+# ..............................................................................
+def callback_method_A(value):
+    global action_A
+    action_A = not action_A
+    _log.info('callback method fired;\t' + Fore.YELLOW + 'action A: {}'.format(action_A))
+
+# ..............................................................................
+def callback_method_B(value):
+    global action_B
+    action_B = not action_B
+    _log.info('callback method fired;\t' + Fore.YELLOW + 'action B: {}'.format(action_B))
+
 # ..............................................................................
 def main():
+    global action_A, action_B
+    # initial states
+    action_A = False
+    action_B = True
 
-    _level = Level.INFO
-    _log = Logger('main', _level)
     _loader = ConfigLoader(_level)
     _config = _loader.configure('config.yaml')
+
+    _pin_A = 12
+    _button_24 = Button(_pin_A, callback_method_A, Level.INFO)
+    _log.info(Style.BRIGHT + 'press button A (connected to pin {:d}) to toggle or initiate action.'.format(_pin_A))
+
+    _pin_B = 24
+    _button_24 = Button(_pin_B, callback_method_B, Level.INFO)
+    _log.info(Style.BRIGHT + 'press button B connected to pin {:d}) to exit.'.format(_pin_B))
 
     _rot_ctrl = None
 
@@ -36,7 +132,6 @@ def main():
         # motor configuration: starboard, port or both?
         _orientation = Orientation.BOTH
         USE_ROTARY_ENCODER = True
-        ROTATE = True
         DRY_RUN = False
 
         # .........................................
@@ -74,37 +169,45 @@ def main():
 #       sys.exit(0)
 
         try:
-            while True:
-                if USE_ROTARY_ENCODER:
-                    _value = _rot_ctrl.read()
-                    _log.info(Fore.BLUE + Style.BRIGHT + 'rotary value: {:<5.2f}'.format(_value))
+            while action_B:
+                if action_A:
+                    _log.info(Fore.BLUE + Style.BRIGHT + 'action A.')
+                    action_A = False # trigger once
+                    rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid)
+                    action_B = False # quit after action
+                    time.sleep(1.0)
+                    # and we now return to our regularly scheduled broadcast...
                 else:
-                    _unscaled_value = _pot.get_value()
-                    _pot.set_rgb(_unscaled_value)
-                    _scaled_value = _pot.get_scaled_value()
-                    _value = 127.0 - _scaled_value
-                    _log.info(Fore.CYAN + Style.BRIGHT + 'read value: {:<5.2f};\t'.format(_value))
-                    # pre-process value:
-                    if _value > 120.0:
-                        _value = _limit
-                    elif _value < -120.0:
-                        _value = -1.0 * _limit
-                if _value > -2.0 and _value < 2.0: # hysteresis?
-                    _value = 0.0
+                    if USE_ROTARY_ENCODER:
+                        _value = _rot_ctrl.read()
+                        _log.info(Fore.BLUE + Style.BRIGHT + 'rotary value: {:<5.2f}'.format(_value))
+                    else:
+                        _unscaled_value = _pot.get_value()
+                        _pot.set_rgb(_unscaled_value)
+                        _scaled_value = _pot.get_scaled_value()
+                        _value = 127.0 - _scaled_value
+                        _log.info(Fore.CYAN + Style.BRIGHT + 'read value: {:<5.2f};\t'.format(_value))
+                        # pre-process value:
+                        if _value > 120.0:
+                            _value = _limit
+                        elif _value < -120.0:
+                            _value = -1.0 * _limit
+                    if _value > -2.0 and _value < 2.0: # hysteresis?
+                        _value = 0.0
+    
+                    if not DRY_RUN:
+                        if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+                            _port_pid.velocity = _rotate * _value #* 100.0
+                            _port_velocity = _port_pid.velocity
+                        if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+                            _stbd_pid.velocity = _value #* 100.0
+                            _stbd_velocity = _stbd_pid.velocity
+    
+                    _log.info(Fore.MAGENTA + 'set point: {:<5.2f} (unscaled/scaled: {:<7.4f}/{:<5.2f});'.format(_value, _unscaled_value, _scaled_value) \
+                            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity) + Fore.WHITE + ' action_B: {}'.format(action_B))
+                    time.sleep(0.1)
 
-                if not DRY_RUN:
-                    if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
-                        _port_pid.velocity = _rotate * _value #* 100.0
-                        _port_velocity = _port_pid.velocity
-                    if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
-                        _stbd_pid.velocity = _value #* 100.0
-                        _stbd_velocity = _stbd_pid.velocity
-
-                _log.info(Fore.MAGENTA + 'set point: {:<5.2f} (unscaled/scaled: {:<7.4f}/{:<5.2f});'.format(_value, _unscaled_value, _scaled_value) \
-                        + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f}'.format(_port_velocity, _stbd_velocity))
-                time.sleep(0.1)
-
-            _log.info(Fore.YELLOW + 'end of cruising.')
+            _log.info(Fore.YELLOW + 'end of test.')
 
         except KeyboardInterrupt:
             _log.info(Fore.CYAN + Style.BRIGHT + 'Ctrl-C caught: closing...')

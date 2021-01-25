@@ -19,17 +19,18 @@ from lib.logger import Level
 def callback_method(value):
     global activated
     activated = True
+#   activated = True if False else False 
     print('button_test       :' + Fore.CYAN + ' INFO  : callback method fired; value: {:d}'.format(value) + Style.RESET_ALL)
     
 
 # call main ....................................................................
 def main():
     global activated
-
     activated = False
+
     print('button_test       :' + Fore.CYAN + ' INFO  : starting test...' + Style.RESET_ALL)
 
-    _pin = 24
+    _pin = 12
     _button = Button(_pin, callback_method, Level.INFO)
 
     try:

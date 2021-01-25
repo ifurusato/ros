@@ -52,7 +52,7 @@ class MockMessageQueue():
 
     # ......................................................
     def handle(self, message):
-        self._log.info(Fore.BLUE + 'handle message {}'.format(message))
+        self._log.debug(Fore.BLUE + 'handle message {}'.format(message))
         self.add(message)
 
     # ......................................................
@@ -60,7 +60,7 @@ class MockMessageQueue():
         self._count = next(self._counter)
         message.number = self._count
         _event = message.event
-        self._log.info('added message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
+        self._log.debug('added message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
         _value = message.value
 
         if _event is Event.BUMPER_PORT and not self._triggered_bmp_port:

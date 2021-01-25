@@ -5,7 +5,8 @@
 # the Robot Operating System project and is released under the "Apache Licence, 
 # Version 2.0". Please see the LICENSE file included as part of this package.
 #
-# A sanity check for our heading conversion/offset.
+# A sanity check for our heading conversion/offset. This makes no assertions;
+# its output is meant to be read on the console.
 #
 
 import pytest
