@@ -33,67 +33,74 @@ def rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid):
     _log.info(Fore.BLUE + Style.BRIGHT + 'rotate in place...')
     _rotate = -1.0 if ROTATE else 1.0
     _min_value =  0.0
-    _max_value = 90.0
+    _max_value = 50.0
 
-    # accelerate
-    _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
-    for _value in numpy.arange(_min_value, _max_value, 1.0):
-        _port_pid.velocity = _rotate * _value 
-        _port_velocity = _port_pid.velocity
-        _stbd_pid.velocity = _value
-        _stbd_velocity = _stbd_pid.velocity
-        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
-        time.sleep(0.1)
-    # cruise
-    _log.info(Fore.MAGENTA + 'cruising...')
-    time.sleep(20.0)
-    # decelerate
-    _log.info(Fore.MAGENTA + 'decelerating to zero...')
-    for _value in numpy.arange(50.0, 0.0, -1.0):
-        _port_pid.velocity = _rotate * _value 
-        _port_velocity = _port_pid.velocity
-        _stbd_pid.velocity = _value
-        _stbd_velocity = _stbd_pid.velocity
-        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
-        time.sleep(0.1)
+    ACCELERATE_COUNTER_CLOCKWISE = True
+    ACCELERATE_CLOCKWISE = True
 
-    # wait
+    if ACCELERATE_COUNTER_CLOCKWISE:
+        # accelerate
+        _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
+        for _value in numpy.arange(_min_value, _max_value, 1.0):
+            _port_pid.velocity = _rotate * _value 
+            _port_velocity = _port_pid.velocity
+            _stbd_pid.velocity = _value
+            _stbd_velocity = _stbd_pid.velocity
+            _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+            time.sleep(0.1)
+        # cruise
+        _log.info(Fore.MAGENTA + 'cruising...')
+        time.sleep(3.0)
+        # decelerate
+        _log.info(Fore.MAGENTA + 'decelerating to zero...')
+        for _value in numpy.arange(_max_value, 0.0, -1.0):
+            _port_pid.velocity = _rotate * _value 
+            _port_velocity = _port_pid.velocity
+            _stbd_pid.velocity = _value
+            _stbd_velocity = _stbd_pid.velocity
+            _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+            time.sleep(0.1)
+    # wait a bit ...........................
     _port_pid.velocity = 0.0
     _stbd_pid.velocity = 0.0
+    _port_pid.print_state()
+    _stbd_pid.print_state() 
     time.sleep(5.0)
 
-    # accelerate
-    _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
-    for _value in numpy.arange(_min_value, _max_value, 1.0):
-        _port_pid.velocity = _value 
-        _port_velocity = _port_pid.velocity
-        _stbd_pid.velocity = _rotate * _value
-        _stbd_velocity = _stbd_pid.velocity
-        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
-        time.sleep(0.1)
-    # cruise
-    _log.info(Fore.MAGENTA + 'cruising...')
-    time.sleep(20.0)
-    # decelerate
-    _log.info(Fore.MAGENTA + 'decelerating to zero...')
-    for _value in numpy.arange(50.0, 0.0, -1.0):
-        _port_pid.velocity = _value 
-        _port_velocity = _port_pid.velocity
-        _stbd_pid.velocity = _rotate * _value
-        _stbd_velocity = _stbd_pid.velocity
-        _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
-        time.sleep(0.1)
+    if ACCELERATE_CLOCKWISE:
+        # accelerate
+        _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
+        for _value in numpy.arange(_min_value, _max_value, 1.0):
+            _port_pid.velocity = _value 
+            _port_velocity = _port_pid.velocity
+            _stbd_pid.velocity = _rotate * _value
+            _stbd_velocity = _stbd_pid.velocity
+            _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+            time.sleep(0.1)
+        # cruise
+        _log.info(Fore.MAGENTA + 'cruising...')
+        time.sleep(10.0)
+        # decelerate
+        _log.info(Fore.MAGENTA + 'decelerating to zero...')
+        for _value in numpy.arange(_max_value, 0.0, -1.0):
+            _port_pid.velocity = _value 
+            _port_velocity = _port_pid.velocity
+            _stbd_pid.velocity = _rotate * _value
+            _stbd_velocity = _stbd_pid.velocity
+            _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
+                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+            time.sleep(0.1)
 
-    # wait a bit
+    # wait a bit ...........................
     _port_pid.velocity = 0.0
     _stbd_pid.velocity = 0.0
-    _log.info(Fore.MAGENTA + 'pause...')
+    _port_pid.print_state()
+    _stbd_pid.print_state() 
+    _log.info(Fore.MAGENTA + 'end of test.')
     time.sleep(5.0)
-    pass
 
 # ..............................................................................
 def callback_method_A(value):

@@ -21,6 +21,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
+from lib.enums import Orientation
 from lib.pid import PID
 from lib.slew import SlewRate, SlewLimiter
 from lib.rate import Rate
@@ -53,7 +54,8 @@ class PIDController(object):
         if motor is None:
             raise ValueError('null motor argument.')
         self._motor = motor
-        self._log = Logger('pid-ctrl:{}'.format(motor.orientation.label), level)
+        self._orientation = motor.orientation
+        self._log = Logger('pid-ctrl:{}'.format(self._orientation.label), level)
         if sys.version_info < (3,0):
             self._log.error('PID class requires Python 3.')
             sys.exit(1)
@@ -66,7 +68,7 @@ class PIDController(object):
             self._pot = Potentiometer(config, Level.INFO)
         self._rate = Rate(_config.get('sample_freq_hz'), level)
         _sample_time = self._rate.get_period_sec()
-        self._pid = PID(config, self._motor.orientation, sample_time=_sample_time, level=level)
+        self._pid = PID(config, self._orientation, sample_time=_sample_time, level=level)
 
         # used for hysteresis, if queue too small will zero-out motor power too quickly
         _queue_len = _config.get('hyst_queue_len')
@@ -84,7 +86,6 @@ class PIDController(object):
 
         self._power      = 0.0
         self._last_power = 0.0
-        self._failures   = 0
         self._enabled    = False
         self._disabling  = False
         self._closed     = False
@@ -96,7 +97,7 @@ class PIDController(object):
     # ..........................................................................
     @property
     def orientation(self):
-        return self._motor.orientation
+        return self._orientation
 
     # ..............................................................................
     def enable_slew(self, enable):
@@ -276,6 +277,13 @@ class PIDController(object):
             _n += 1
             _mean += ( x - _mean ) / _n
         return float('nan') if _n < 1 else _mean
+
+    # ..........................................................................
+    def print_state(self):
+        _fore = Fore.RED if self._orientation == Orientation.PORT else Fore.GREEN
+        self._log.info(_fore + 'power:        \t{}'.format(self._power))
+        self._log.info(_fore + 'last_power:   \t{}'.format(self._last_power))
+        self._pid.print_state()
 
     # ..........................................................................
     def reset(self):
