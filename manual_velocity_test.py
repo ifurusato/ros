@@ -51,7 +51,7 @@ def rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid):
             time.sleep(0.1)
         # cruise
         _log.info(Fore.MAGENTA + 'cruising...')
-        time.sleep(3.0)
+        time.sleep(5.0)
         # decelerate
         _log.info(Fore.MAGENTA + 'decelerating to zero...')
         for _value in numpy.arange(_max_value, 0.0, -1.0):
@@ -82,7 +82,7 @@ def rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid):
             time.sleep(0.1)
         # cruise
         _log.info(Fore.MAGENTA + 'cruising...')
-        time.sleep(10.0)
+        time.sleep(5.0)
         # decelerate
         _log.info(Fore.MAGENTA + 'decelerating to zero...')
         for _value in numpy.arange(_max_value, 0.0, -1.0):
