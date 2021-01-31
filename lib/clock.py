@@ -81,13 +81,13 @@ class Clock(object):
             else:
                 _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
             if self._bus_first: # first to message bus, then consumers
-                self._message_bus.handle(_message)
+                self._message_bus.add(_message)
                 for consumer in self._consumers:
                     consumer.add(_message);
             else: # first add to any consumers, then message bus
                 for consumer in self._consumers:
                     consumer.add(_message);
-                self._message_bus.handle(_message)
+                self._message_bus.add(_message)
 
 #           time.sleep(0.003)
             self._rate.wait()

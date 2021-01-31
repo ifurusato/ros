@@ -26,11 +26,11 @@ from lib.logger import Logger, Level
 # ..............................................................................
 class MessageQueue():
     '''
-        A priority message queue, where the highest priority is the lowest 
-        priority number.
+    A priority message queue, where the highest priority is the lowest 
+    priority number.
 
-        The MessageFactory parameter is optional if not using the FlaskWrapper
-        (which calls the respond() method).
+    The MessageFactory parameter is optional if not using the FlaskWrapper
+    (which calls the respond() method).
     '''
 
     MAX_SIZE = 100
