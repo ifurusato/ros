@@ -141,7 +141,7 @@ ros:
     servo4:
         center_offset: 0.0                       # offset necessary to center the servo at 0.0
     button:
-        pin:           21                        # pin connected to hardware button
+        pin:           24                        # pin connected to hardware button
         toggle:      True                        # toggle or momentary button
     status:
         led_pin:       27                        # pin connected to status LED

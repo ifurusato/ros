@@ -19,6 +19,7 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
+from lib.enums import Orientation
 
 # ..............................................................................
 class PID(object):
@@ -138,6 +139,8 @@ class PID(object):
 #           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._max_velocity))
         else:
             self._setpoint = setpoint
+        if self._setpoint == 0.0:
+            self.reset()
 #           self._log.debug(Fore.BLACK + 'set setpoint: {:5.2f}'.format(setpoint))
 
     # ..........................................................................
@@ -154,21 +157,24 @@ class PID(object):
         '''
         _now = self._current_time()
         if dt is None:
-            dt = _now - self._last_time if _now - self._last_time else 1e-16
+            dt = _now - self._last_time #if _now - self._last_time else 1e-16
+#           dt = _now - self._last_time if _now - self._last_time else 1e-16
+            self._log.info(Fore.RED + '__call__  dt: {:7.4f}'.format(dt) + Style.RESET_ALL)
         elif dt <= 0:
             raise ValueError("dt has nonpositive value {}. Must be positive.".format(dt))
 
         if dt < self._sample_time and self._last_output is not None:
             # only update every sample_time seconds
+            self._log.info(Fore.RED + '__call__() last output: {:5.2f}'.format(self._last_output) + Style.RESET_ALL)
             return self._last_output
 
         # compute error terms
-        error = self.setpoint - target
+        _error = self.setpoint - target
         d_input = target - (self._last_input if self._last_input is not None else target)
 
         # compute the proportional, integral and derivative terms
-        self._proportional = self.kp * error
-        self._integral    += self.ki * error * dt
+        self._proportional = self.kp * _error
+        self._integral    += self.ki * _error * dt
         self._integral     = self.clamp(self._integral)  # avoid integral windup
         self._derivative   = -self.kd * d_input / dt
 
@@ -177,7 +183,7 @@ class PID(object):
 
         kp, ki, kd = self.constants
         cp, ci, cd = self.components
-#       self._log.info(Fore.CYAN + 'target={:5.2f}; error={:6.3f};'.format(target, error) \
+#       self._log.info(Fore.CYAN + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
 #               + Fore.MAGENTA + '\tKD={:8.5f};'.format(kd) \
 #               + Fore.CYAN + Style.BRIGHT + '\tP={:8.5f}; I={:8.5f}; D={:8.5f}; setpoint={:6.3f};'.format(cp, ci, cd, self._setpoint) \
 #               + Style.DIM + ' output: {:>6.3f}'.format(output))
@@ -257,17 +263,45 @@ class PID(object):
         self._last_output = self.clamp(self._last_output)
 
     # ..........................................................................
+    def print_state(self):
+        _fore = Fore.RED if self._orientation == Orientation.PORT else Fore.GREEN
+        self._log.info(_fore + 'kp:           \t{}'.format(self.kp))
+        self._log.info(_fore + 'ki:           \t{}'.format(self.ki))
+        self._log.info(_fore + 'kd:           \t{}'.format(self.kd))
+
+        self._log.info(_fore + 'min_output:   \t{}'.format(self._min_output))
+        self._log.info(_fore + 'max_output:   \t{}'.format(self._max_output))
+        self._log.info(_fore + 'setpoint:     \t{}'.format(self._setpoint))
+        self._log.info(_fore + 'max_velocity: \t{}'.format(self._max_velocity))
+        self._log.info(_fore + 'sample_time:  \t{}'.format(self._sample_time))
+
+        self._log.info(_fore + 'proportional: \t{}'.format(self._proportional))
+        self._log.info(_fore + 'integral:     \t{}'.format(self._integral))
+        self._log.info(_fore + 'derivative:   \t{}'.format(self._derivative))
+        self._log.info(_fore + 'last_output:  \t{}'.format(self._last_output))
+        self._log.info(_fore + 'last_input:   \t{}'.format(self._last_input))
+        self._log.info(_fore + 'last_time:    \t{}'.format(self._last_time))
+
+    # ..........................................................................
     def reset(self):
         '''
         Reset the PID controller internals, setting each term to 0 as well
         as cleaning the integral, the last output and the last input
         (derivative calculation).
+
+        Note that after the setpoint has been set to zero if the motors
+        have been running the last input and output values remain at 
+        their previous values. This storing of previous state causes 
+        problems when starting up again. The reset() function cleans 
+        any stored state.
         '''
+        self._log.info(Fore.YELLOW + 'reset ========================= ')
         self._proportional = 0.0
         self._integral     = 0.0
         self._derivative   = 0.0
         self._last_output  = 0.0
         self._last_input   = 0.0
+        self._last_time    = self._current_time()
         self._last_time    = self._current_time()
 
     # ..........................................................................

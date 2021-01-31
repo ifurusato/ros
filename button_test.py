@@ -8,44 +8,40 @@
 #    This tests the Button task, which reads the state of the push button.
 #
 
-import os, sys, signal, time, threading
+import os, sys, signal, time
 from colorama import init, Fore, Style
 init()
 
 from lib.button import Button
-from lib.config_loader import ConfigLoader
-from lib.queue import MessageQueue
 from lib.logger import Level
+
+# ..............................................................................
+def callback_method(value):
+    global activated
+    activated = True
+#   activated = True if False else False 
+    print('button_test       :' + Fore.CYAN + ' INFO  : callback method fired; value: {:d}'.format(value) + Style.RESET_ALL)
+    
 
 # call main ....................................................................
 def main():
+    global activated
+    activated = False
 
     print('button_test       :' + Fore.CYAN + ' INFO  : starting test...' + Style.RESET_ALL)
 
-    print('button_test       :' + Fore.BLUE + Style.BRIGHT + ' INFO  : to pass test, press button for both ON and OFF states...' + Style.RESET_ALL)
+    _pin = 12
+    _button = Button(_pin, callback_method, Level.INFO)
 
-    # read YAML configuration
-    _loader = ConfigLoader(Level.INFO)
-    filename = 'config.yaml'
-    _config = _loader.configure(filename)
-    
-    _message_factory = MessageFactory(Level.INFO)
-    _queue = MessageQueue(_message_factory, Level.INFO)
-    _button = Button(_config, _queue, _message_factory, threading.Lock())
-    _button.start()
-
-    while not _button.get():
-        print('button_test       : ' + Fore.RED + Style.BRIGHT + "button OFF" + Fore.CYAN + Style.NORMAL + ' (press button to turn ON)' + Style.RESET_ALL)   
-        time.sleep(1)
-    while _button.get():
-        print('button_test       : ' + Fore.GREEN + Style.BRIGHT + "button ON" + Fore.CYAN + Style.NORMAL + ' (press button to turn OFF)' + Style.RESET_ALL)
-        time.sleep(1)
-    while not _button.get():
-        print('button_test       : ' + Fore.RED + Style.BRIGHT + "button OFF" + Fore.CYAN + Style.NORMAL + ' (press button to turn ON)' + Style.RESET_ALL)   
-        time.sleep(1)
-
-    print("button task close()")   
-    _button.close()
+    try:
+        while not activated:
+            print(Fore.BLACK + 'waiting for button press on pin {:d}...'.format(_pin) + Style.RESET_ALL)
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        print(Fore.RED + "caught Ctrl-C." + Style.RESET_ALL)
+    finally:
+        print("closing button...")
+        _button.close()
 
 
 if __name__== "__main__":

@@ -6,104 +6,45 @@
 # Please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
-# created:  2020-01-18
-# modified: 2020-03-26
+# created:  2021-01-24
+# modified: 2021-01-24
 #
 
-import time, threading
+import RPi.GPIO as GPIO
 from colorama import init, Fore, Style
 init()
 
-from lib.abstract_task import AbstractTask
-from lib.event import Event
-from lib.message import Message
-
-try:
-    from gpiozero import Button as GpioButton
-    print('import            :' + Fore.BLACK + ' INFO  : successfully imported gpiozero Button.' + Style.RESET_ALL)
-except ImportError:
-    print('import            :' + Fore.RED + ' ERROR : failed to import gpiozero Button, using mock...' + Style.RESET_ALL)
-    from .mock_gpiozero import Button as GpioButton
-
-ms = 50 / 1000 # 50ms loop delay
+from lib.logger import Level, Logger
 
 # ..............................................................................
-class Button(AbstractTask):
+class Button(object):
     '''
-        Button Task: reacts to pressing the red button.
-        
-        Usage:
-    
-           TOGGLE = False
-           button = Button(TOGGLE, mutex)
-           button.start()
-           value = button.get()
+    Executes a callback upon pressing a button connected to the specified
+    GPIO pin. The button should be pulled high and connected to ground
+    when pressed.
+
+    :param pin:       the BCM pin to which the button is connected
+    :param callback:  the callback to execute upon button activation
+    :param level:     log level
     '''
+    def __init__(self, pin, callback, level):
+        self._log = Logger("button", level)
+        _callback = callback
+        self._log.info('configuring button for callback on pin {}'.format(pin))
+        GPIO.setmode(GPIO.BCM)
+        # The GPIO pin is set up as an input, pulled up to avoid false
+        # detection. The pin is wired to connect to GND on button press,
+        # it is configured to detect a falling edge.
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    button_priority = 6
-
-    def __init__(self, config, queue, message_factory, mutex):
-        '''
-        Parameters:
-
-           config:          the YAML-based application configuration
-           queue:           the message queue to receive messages from this task
-           mutex:           vs godzilla
-        '''
-        super().__init__("button", queue, None, Button.button_priority, mutex)
-        if config is None:
-            raise ValueError('no configuration provided.')
-        self._queue = queue
-        _config = config['ros'].get('button')
-        _pin = _config.get('pin')
-        self._log.warning('configuring button on pin {}'.format(_pin))
-        self._toggle = _config.get('toggle') # if true, the value toggles when the button is pushed rather than acting as a momentary button
-        self._log.info('initialising button on pin {:d}; toggle={}'.format(_pin, self._toggle))
-        self._queue = queue
-        self._message_factory = message_factory
-        self._button = GpioButton(_pin)
-        self._value = False
-        self._log.debug('ready.')
-
-    # ......................................................
-    def run(self):
-        super(AbstractTask, self).run()
-        self.enable()
-        if self._toggle:
-            self._button.when_released = self.toggle_state
-        else:
-            self.polling = threading.Thread(target=Button.poll, args=[self,])
-            self.polling.start()
-
-    # ......................................................
-    def toggle_state(self):
-        self._value = not self._value
-        self._log.info("button toggle: {}".format(self._value))
-        _message = self._message_factory.get_message(Event.BUTTON, self._value)
-        if self._queue:
-            self._queue.add(_message)
-
-    # ......................................................
-    def poll(self):
-        while self.is_enabled():
-            if not self._toggle:
-                self._value = self._button.is_pressed
-                self._log.debug('button poll.')
-            time.sleep(ms)
-
-    # ..........................................................................
-    def enable(self):
-        super().enable()
-
-    # ..........................................................................
-    def disable(self):
-        super().disable()
-
-    # ......................................................
-    def get(self):
-        return self._value
+        # when a falling edge is detected on the pin, regardless of whatever
+        # else is happening in the program, the function _callback will be run
+        # 'bouncetime=300' includes the bounce control written into interrupts2a.py
+        GPIO.add_event_detect(pin, GPIO.FALLING, callback=_callback, bouncetime=300)
+        self._log.info('ready.')
 
     # ......................................................
     def close(self):
-        super().close()
+        GPIO.cleanup() # clean up GPIO on normal exit
+        self._log.info('closed.')
 
