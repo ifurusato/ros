@@ -178,8 +178,7 @@ ros:
         motor_encoder_b2_stbd:  18               # stbd B
         reverse_motor_orientation:   False       # in case you wire something up backwards
         reverse_encoder_orientation: False       # ditto
-        sample_rate: 10                          # how many pulses per encoder measurement?
-        velocity_fudge_factor: 14.0              # convert raw velocity to approximate a percentage
+#       sample_rate: 10                          # how many pulses per encoder measurement?
 #       max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
@@ -187,6 +186,8 @@ ros:
             sample_freq_hz:    20
             hyst_queue_len:    20                # size of queue used for running average for hysteresis
             pot_ctrl:       False                # if True enable potentiometer for setting PID terms
+            sample_rate:       10                # how many pulses per encoder measurement?
+            velocity_fudge_factor: 14.0          # convert raw velocity to approximate a percentage
         pid:
             kp:             0.09500
             ki:             0.00000

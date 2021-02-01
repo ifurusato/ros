@@ -4,6 +4,10 @@
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
+
+# author:   Murray Altheim
+# created:  2020-01-14
+# modified: 2021-01-28
 #
 
 import logging, math, traceback, threading
@@ -20,27 +24,48 @@ class Level(Enum):
     ERROR    = logging.ERROR     # 40
     CRITICAL = logging.CRITICAL  # 50
 
+    @staticmethod
+    def from_str(label):
+        if label.upper()   == 'DEBUG':
+            return Level.DEBUG
+        elif label.upper() == 'INFO':
+            return Level.INFO
+        elif label.upper() == 'WARN':
+            return Level.WARN
+        elif label.upper() == 'ERROR':
+            return Level.ERROR
+        elif label.upper() == 'CRITICAL':
+            return Level.CRITICAL
+        else:
+            raise NotImplementedError
+
 # ..............................................................................
 class Logger:
 
     _suppress = False
+    __color_debug    = Fore.BLUE   + Style.DIM
+    __color_info     = Fore.CYAN   + Style.NORMAL
+    __color_warning  = Fore.YELLOW + Style.NORMAL
+    __color_error    = Fore.RED    + Style.NORMAL
+    __color_critical = Fore.WHITE  + Style.NORMAL
+    __color_reset    = Style.RESET_ALL
 
     def __init__(self, name, level, log_to_file=False):
         '''
-           Writes to a named log with the provided level, defaulting to a
-           console (stream) handler unless 'log_to_file' is True, in which
-           case only write to file, not to the console.
+        Writes to a named log with the provided level, defaulting to a
+        console (stream) handler unless 'log_to_file' is True, in which
+        case only write to file, not to the console.
         '''
         # create logger
         self.__log = logging.getLogger(name)
         self.__log.propagate = False
         self._name = name
-        self._level = level
-        self.__log.setLevel(self._level.value)
-        self._mutex = threading.Lock()
+        self._fh = None # optional file handler
+        self._sh = None # optional stream handler
+        self.mutex = threading.Lock()
         # some of this could be set via configuration
-        self._include_timestamp = True 
-#       _format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s', 
+        self._include_timestamp = True
+#       _format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
         self._date_format='%Y-%m-%dT%H:%M:%S'
 #       self._date_format = '%Y-%m-%dT%H:%M:%S.%f'
 #       self._date_format = '%H:%M:%S'
@@ -49,23 +74,24 @@ class Logger:
                 _ts = dt.utcfromtimestamp(dt.utcnow().timestamp()).isoformat().replace(':','_').replace('-','_').replace('.','_')
                 _filename = './log/ros-{}.csv'.format(_ts)
                 self.info("logging to file: {}".format(_filename))
-                fh = RotatingFileHandler(filename=_filename, mode='w', maxBytes=262144, backupCount=10)
-                fh.setLevel(level.value)
+                self._fh = RotatingFileHandler(filename=_filename, mode='w', maxBytes=262144, backupCount=10)
+#               self._fh.setLevel(level.value)
                 if self._include_timestamp:
-                    fh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03dZ\t|%(name)s|%(message)s', datefmt=self._date_format))
+                    self._fh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03dZ\t|%(name)s|%(message)s', datefmt=self._date_format))
                 else:
-                    fh.setFormatter(logging.Formatter('%(name)s|%(message)s'))
-                self.__log.addHandler(fh)
+                    self._fh.setFormatter(logging.Formatter('%(name)s|%(message)s'))
+                self.__log.addHandler(self._fh)
             else: # log to console .............................................
-                sh = logging.StreamHandler()
-                sh.setLevel(level.value)
+                self._sh = logging.StreamHandler()
+#               self._sh.setLevel(level.value)
                 if self._include_timestamp:
-                    sh.setFormatter(logging.Formatter(Fore.BLACK + '%(asctime)s.%(msecs)3fZ\t:' \
+                    self._sh.setFormatter(logging.Formatter(Fore.BLUE + Style.DIM + '%(asctime)s.%(msecs)3fZ\t:' \
                             + Fore.RESET + ' %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
-#                   sh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)06f  %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
+#                   self._sh.setFormatter(logging.Formatter('%(asctime)s.%(msecs)06f  %(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s', datefmt=self._date_format))
                 else:
-                    sh.setFormatter(logging.Formatter('%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s'))
-                self.__log.addHandler(sh)
+                    self._sh.setFormatter(logging.Formatter('%(name)s ' + ( ' '*(16-len(name)) ) + ' : %(message)s'))
+                self.__log.addHandler(self._sh)
+        self.level = level
 
     # ..........................................................................
     def set_suppress(self, suppress):
@@ -75,50 +101,64 @@ class Logger:
         '''
         type(self)._suppress = suppress
 
+    # ..........................................................................
     @property
     def level(self):
         return self._level
 
+    # ..........................................................................
+    @level.setter
+    def level(self, level):
+        self._level = level
+        self.__log.setLevel(self._level.value)
+        if self._fh:
+            self._fh.setLevel(level.value)
+        if self._sh:
+            self._sh.setLevel(level.value)
+
+    # ..........................................................................
     @property
     def suppressed(self):
         return type(self)._suppress
 
     # ..........................................................................
-    def get_mutex(self):
+    @property
+    def mutex(self):
         return self._mutex
 
     # ..........................................................................
-    def set_mutex(self, mutex):
+    @mutex.setter
+    def mutex(self, mutex):
         self._mutex = mutex
 
     # ..........................................................................
     def debug(self, message):
         if not self.suppressed:
             with self._mutex:
-                self.__log.debug(Fore.BLACK + "DEBUG : " + message + Style.RESET_ALL)
+                self.__log.debug(Logger.__color_debug + "DEBUG : " + message + Logger.__color_reset)
 
     # ..........................................................................
     def info(self, message):
         if not self.suppressed:
             with self._mutex:
-                self.__log.info(Fore.CYAN + "INFO  : " + message + Style.RESET_ALL)
+                self.__log.info(Logger.__color_info + "INFO  : " + message + Logger.__color_reset)
 
     # ..........................................................................
     def warning(self, message):
         if not self.suppressed:
             with self._mutex:
-                self.__log.warning(Fore.YELLOW + "WARN  : " + message + Style.RESET_ALL)
+                self.__log.warning(Logger.__color_warning + "WARN  : " + message + Logger.__color_reset)
 
     # ..........................................................................
     def error(self, message):
         if not self.suppressed:
             with self._mutex:
-                self.__log.error(Fore.RED + Style.NORMAL + "ERROR : " + Style.BRIGHT + message + Style.RESET_ALL)
+                self.__log.error(Logger.__color_error + "ERROR : " + Style.BRIGHT + message + Logger.__color_reset)
 
     # ..........................................................................
     def critical(self, message):
         with self._mutex:
-            self.__log.critical(Fore.WHITE + "FATAL : " + Style.BRIGHT + message + Style.RESET_ALL)
+            self.__log.critical(Logger.__color_critical + "FATAL : " + Style.BRIGHT + message + Logger.__color_reset)
 
     # ..........................................................................
     def file(self, message):
@@ -138,7 +178,7 @@ class Logger:
            :param message:  the optional message to display; if None only the title will be displayed.
            :param info:     an optional second message to display right-justified; ignored if None.
         '''
-        MAX_WIDTH = 80
+        MAX_WIDTH = 100
         MARGIN = 27
         if title is None or len(title) == 0:
             raise ValueError('no title parameter provided (required)')

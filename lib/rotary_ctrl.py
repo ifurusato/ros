@@ -10,7 +10,6 @@
 # modified: 2020-11-13
 #
 
-from numpy import clip as clip
 from colorama import init, Fore, Style
 init()
 
@@ -44,14 +43,19 @@ class RotaryControl(object):
     # ..........................................................................
     def read(self):
         _delta = self._rot.read(self._update_led)
-        if _delta != self._last_delta:
-            if _delta > self._last_delta:
-                self._value = clip(self._value + self._step, -127, 127) 
-            elif _delta < self._last_delta:
-                self._value = clip(self._value - self._step, -127, 127)
-            self._log.debug(Fore.BLACK + 'delta: {:d}'.format(_delta) + Fore.BLUE + ' value: {:d}'.format(self._value))
+#       if _delta != self._last_delta:
+        if _delta > self._last_delta: # if increasing in value
+            self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
+        elif _delta < self._last_delta: # if decreasing in value
+            self._value = RotaryControl.clamp(self._value - self._step, self._min, self._max)
+        self._log.debug(Fore.MAGENTA + 'delta: {:d} (last: {:d});'.format(_delta, self._last_delta) + Fore.WHITE + ' value: {:d}'.format(self._value))
         self._last_delta = _delta
         return self._value
+
+    # ..........................................................................
+    @staticmethod
+    def clamp(n, minn, maxn):
+        return max(min(maxn, n), minn)
 
     # ..........................................................................
     def reset(self):

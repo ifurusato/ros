@@ -13,7 +13,7 @@
 # the PID class.
 #
 
-import sys, itertools
+import sys, time, itertools
 from collections import deque as Deque
 from threading import Thread
 from enum import Enum
@@ -31,10 +31,12 @@ from lib.pot import Potentiometer
 class PIDController(object):
     '''
      Provides a configurable PID motor controller via a threaded
-     fixed-time loop.
+     fixed-time loop. This also maintains a value for the current 
+     motor velocity by sampling the step count from the motors on
+     the same interval as the PID calls.
 
-     If the 'ros:motors:pid:enable_slew' property is True, this will
-     set a slew limiter on the velocity setter.
+     If the 'ros:motors:pid:enable_slew' property is True, this
+     will set a slew limiter on the PID setpoint.
     '''
 
     def __init__(self,
@@ -74,6 +76,13 @@ class PIDController(object):
         _queue_len = _config.get('hyst_queue_len')
         self._deque = Deque([], maxlen=_queue_len)
 
+        # how many pulses per encoder measurement?
+        self._sample_rate = _config.get('sample_rate') # default: 10
+        self._log.info('sample_rate: {:d}'.format(self._sample_rate))
+        # convert raw velocity to approximate a percentage
+        self._velocity_fudge_factor = _config.get('velocity_fudge_factor') # default: 14.0
+        self._log.info('velocity fudge factor: {:>5.2f}'.format(self._velocity_fudge_factor))
+
         self._enable_slew = True #_config.get('enable_slew')
         self._slewlimiter = SlewLimiter(config, orientation=self._motor.orientation, level=Level.INFO)
         _slew_rate = SlewRate.NORMAL # TODO _config.get('slew_rate')
@@ -84,13 +93,16 @@ class PIDController(object):
         else:
             self._log.info('slew limiter disabled.')
 
-        self._power      = 0.0
-        self._last_power = 0.0
-        self._enabled    = False
-        self._disabling  = False
-        self._closed     = False
-        self._thread     = None
-#       self._last_steps = 0
+        self._velocity     = 0.0       # current velocity
+        self._max_velocity = 0.0       # capture maximum velocity attained
+        self._steps_begin  = 0         # step count at beginning of velocity measurement
+        self._power        = 0.0
+        self._last_power   = 0.0
+        self._enabled      = False
+        self._disabling    = False
+        self._closed       = False
+        self._thread       = None
+#       self._last_steps   = 0
 #       self._max_diff_steps = 0
         self._log.info('ready.')
 
@@ -98,6 +110,16 @@ class PIDController(object):
     @property
     def orientation(self):
         return self._orientation
+
+    # ..............................................................................
+    @property
+    def velocity(self):
+        return self._velocity
+
+    # ..............................................................................
+    @property
+    def max_velocity(self):
+        return self._max_velocity
 
     # ..............................................................................
     def enable_slew(self, enable):
@@ -124,43 +146,39 @@ class PIDController(object):
 
     # ..........................................................................
     @property
-    def velocity(self):
+    def setpoint(self):
         '''
-        Getter for the velocity (PID set point).
+        Getter for the setpoint (PID set point).
         '''
-        return self._pid.velocity
+        return self._pid.setpoint
 
-    @velocity.setter
-    def velocity(self, velocity):
+    @setpoint.setter
+    def setpoint(self, setpoint):
         '''
-        Setter for the velocity (PID set point).
+        Setter for the setpoint (PID set point).
         '''
         if self._enable_slew:
-            velocity = self._slewlimiter.slew(self.velocity, velocity)
-        self._pid.velocity = velocity
+            setpoint = self._slewlimiter.slew(self.setpoint, setpoint)
+        self._pid.setpoint = setpoint
 
     # ..........................................................................
-    def set_max_velocity(self, max_velocity):
+    def set_limit(self, limit):
         '''
-        Setter for the maximum velocity of both PID controls. Set
-        to None (the default) to disable this feature.
+        Setter for the limit of the PID setpoint.
+        Set to None (the default) to disable this feature.
         '''
-#       if max_velocity == None:
-#           self._log.info(Fore.YELLOW + 'max velocity: NONE')
-#       else:
-#           self._log.info(Fore.YELLOW + 'max velocity: {:5.2f}'.format(max_velocity))
-        self._pid.set_max_velocity(max_velocity)
+        self._pid.set_limit(limit)
 
     # ..........................................................................
     @property
     def stats(self):
         '''
          Returns statistics a tuple for this PID contrroller:
-            [kp, ki, kd, cp, ci, cd, last_power, current_motor_power, power, current_velocity, setpoint, steps]
+            [kp, ki, kd, cp, ci, cd, last_power, current_motor_power, power, _velocity, setpoint, steps]
         '''
         kp, ki, kd = self._pid.constants
         cp, ci, cd = self._pid.components
-        return kp, ki, kd, cp, ci, cd, self._last_power, self._motor.get_current_power_level(), self._power, self._motor.velocity, self._pid.setpoint, self._motor.steps
+        return kp, ki, kd, cp, ci, cd, self._last_power, self._motor.get_current_power_level(), self._power, self._velocity, self._pid.setpoint, self._motor.steps
 
     # ..........................................................................
     @property
@@ -172,92 +190,46 @@ class PIDController(object):
         '''
         The PID loop that continues while the enabled flag is True.
 
-        This uses a running average on the setpoint to settle the output 
+        This uses a running average on the setpoint to settle the output
         at zero when it's clear the target velocity is zero. This is a
         perhaps cheap approach to hysteresis.
         '''
-        _doc = Documentation.NONE
-        _power_color = Fore.BLACK
-        _lim = 0.2
-        _last_velocity = 0.0
         _counter = itertools.count()
 
         while f_is_enabled() and self._motor.enabled:
             _count = next(_counter)
-            _current_velocity = self._motor.velocity
+
+            # calculate velocity from motor encoder's step count
+            _steps = self._motor.steps
+            if _steps % self._sample_rate == 0:
+                if self._steps_begin != 0:
+                    self._velocity = ( (_steps - self._steps_begin) / (time.time() - self._stepcount_timestamp) / self._velocity_fudge_factor ) # steps / duration
+#                   self._max_velocity = max(self._velocity, self._max_velocity)
+                    self._stepcount_timestamp = time.time()
+                self._stepcount_timestamp = time.time()
+                self._steps_begin = _steps
+            self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._motor.steps, self._velocity))
+
             if self._pot_ctrl:
                 _pot_value = self._pot.get_scaled_value()
                 self._pid.kd = _pot_value
                 self._log.debug('pot: {:8.5f}.'.format(_pot_value))
-            _pid_output = self._pid(_current_velocity)
+            _pid_output = self._pid(self._velocity)
 
             self._power += _pid_output
-            _mean_setpoint = self._get_mean_setpoint(self._pid.setpoint)
-#           self._log.debug('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint))
-#           self._log.info('cv: {:5.2f}; pow: {:5.2f}; sp: {:5.2f}; msp: {:5.2f};'.format(_current_velocity, self._power, self._pid.setpoint, _mean_setpoint)
-#                   + Fore.YELLOW + ' pid output: {:5.2f}'.format(_pid_output))
-
-            if _mean_setpoint == 0.0:
-                self._motor.set_motor_power(0.0)
-            else:
-                self._motor.set_motor_power(self._power / 100.0)
-
-            if _doc is Documentation.MINIMAL:
-#               self._log.info('velocity: {:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
-                self._log.info('vel: {:5.2f};'.format(_current_velocity) + Fore.BLACK \
-                        + Fore.WHITE + ' {:d} steps;'.format(self.steps) \
-                        + Fore.BLACK + ' power: {:5.2f}; spt: {:5.2f}; mspt: {:5.2f};'.format(self._power, self._pid.setpoint, _mean_setpoint))
-
-            elif _doc is Documentation.SIMPLE:
-                if ( _last_velocity * 0.97 ) <= _current_velocity <= ( _last_velocity * 1.03 ): # within 3%
-                    _velocity_color = Fore.YELLOW + Style.NORMAL
-                elif _last_velocity < _current_velocity:
-                    _velocity_color = Fore.MAGENTA + Style.NORMAL
-                elif _last_velocity > _current_velocity:
-                    _velocity_color = Fore.CYAN + Style.NORMAL
-                else:
-                    _velocity_color = Fore.BLACK
-#               self._log.info('velocity:\t' + _velocity_color + '{:>5.2f}\t{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
-                self._log.info('vel: {:5.2f};'.format(_current_velocity) + Fore.BLACK \
-                        + Fore.WHITE + ' {:d} steps;'.format(self.steps) \
-                        + Fore.BLACK + ' power: {:5.2f}; spt: {:5.2f}; mspt: {:5.2f};'.format(self._power, self._pid.setpoint, _mean_setpoint))
-
-            elif _doc is Documentation.FULL:
-                if self._last_power < self._power:
-                    _power_color = Fore.GREEN + Style.BRIGHT
-                elif self._last_power > self._power:
-                    _power_color = Fore.RED
-                else:
-                    _power_color = Fore.YELLOW
-                if ( _last_velocity * 0.97 ) <= _current_velocity <= ( _last_velocity * 1.03 ): # within 3%
-                    _velocity_color = Fore.YELLOW + Style.NORMAL
-                elif _last_velocity < _current_velocity:
-                    _velocity_color = Fore.MAGENTA + Style.NORMAL
-                elif _last_velocity > _current_velocity:
-                    _velocity_color = Fore.CYAN + Style.NORMAL
-                else:
-                    _velocity_color = Fore.BLACK
-
-                _current_power = self._motor.get_current_power_level()
-                kp, ki, kd = self._pid.constants
-                cp, ci, cd = self._pid.components
-                self._log.info(Fore.BLUE + 'cp={:7.4f}|ci={:7.4f}|cd={:7.4f}'.format(cp, ci, cd)\
-                        + Fore.CYAN + '|kd={:<7.4f} '.format(kd) \
-                        + _power_color + '\tpwr: {:>5.2f}/{:<5.2f}'.format(_current_power, self._power)\
-                        + _velocity_color + '\tvel: {:>5.2f}/{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
-
-            elif _doc is Documentation.CSV:
-                kp, ki, kd = self._pid.constants
-                cp, ci, cd = self._pid.components
-                self._log.info('{:7.4f}|{:7.4f}|{:7.4f}'.format(kp, ki, kd)\
-                        + '|{:7.4f}|{:7.4f}|{:7.4f}'.format(cp, ci, cd) \
-                        + '|{:>5.2f}|{:<5.2f}'.format(_current_power, self._power)\
-                        + '|{:>5.2f}|{:<5.2f}'.format(_current_velocity, self._pid.setpoint))
-
+            self._log.info(Fore.WHITE + Style.BRIGHT + '_power: {:>5.2f};\t'.format(self._power) \
+                    + Style.NORMAL + 'pid output: {:5.2f};\t'.format(_pid_output)
+                    + Fore.RED + 'velocity: {:5.2f}'.format(self._velocity))
+            self._motor.set_motor_power(self._power / 100.0)
             self._last_power = self._power
-            _last_velocity = _current_velocity
+
             self._rate.wait() # 20Hz
-            # ......................
+
+#           _mean_setpoint = self._get_mean_setpoint(self._pid.setpoint)
+#           if _mean_setpoint == 0.0:
+#               self._motor.set_motor_power(0.0)
+#           else:
+#               self._motor.set_motor_power(self._power / 100.0)
 
         self._log.info('exited PID loop.')
 
@@ -265,7 +237,7 @@ class PIDController(object):
     def _get_mean_setpoint(self, value):
         '''
         Returns the mean of setpoint values collected in the queue.
-        This is used to provide hysteresis around the PID controller's 
+        This is used to provide hysteresis around the PID controller's
         setpoint, eliminating jitter particularly around zero.
         '''
         if value == None:
@@ -287,9 +259,7 @@ class PIDController(object):
 
     # ..........................................................................
     def reset(self):
-        self._pid.velocity = 0.0
         self._pid.reset()
-#       self._motor.reset_steps()
         self._motor.stop()
         self._log.info(Fore.GREEN + 'reset.')
 
@@ -335,18 +305,9 @@ class PIDController(object):
         if self._enabled:
             self.disable()
         self._closed = True
+#       if self._velocity > 0 or self._max_velocity > 0:
+#           self._log.info('on closing: velocity: {:5.2f}; max velocity: {:>5.2f}.'.format(self._velocity, self._max_velocity))
 #       self.close_filewriter()
         self._log.info('closed.')
-
-# ..............................................................................
-class Documentation(Enum):
-    '''
-    Different documentation modes:
-    '''
-    NONE    = 0
-    MINIMAL = 1
-    SIMPLE  = 2
-    FULL    = 3
-    CSV     = 4
 
 #EOF

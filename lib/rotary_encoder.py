@@ -184,5 +184,4 @@ class RotaryEncoder(object):
         self._ioe.output(self._pin_blue,  0)
         self._log.info('reset.')
 
-
 #EOF

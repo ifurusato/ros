@@ -9,6 +9,9 @@
 # created:  2020-04-15
 # modified: 2020-04-15
 
+import pprint
+from colorama import init, Fore, Style
+init()
 try:
     import yaml
 except ImportError:
@@ -25,14 +28,20 @@ class ConfigLoader():
         self._log.info('ready.')
 
     # ..........................................................................
-    def configure(self, filename):
+    def configure(self, filename='config.yaml'):
         '''
-            Read and return configuration from the specified YAML file.
+        Read and return configuration from the specified YAML file.
+
+        Pretty-prints the configuration object if the log level is set to DEBUG.
         '''
         self._log.info('reading from yaml configuration file {}...'.format(filename))
         _config = yaml.safe_load(open(filename, 'r'))
-        for key, value in _config.items():
-            self._log.debug('config key: {}; value: {}'.format(key, str(value)))
+        if self._log.level == Level.DEBUG:
+            self._log.debug('YAML configuration as read:')
+            print(Fore.BLUE)
+            pp = pprint.PrettyPrinter(width=80, indent=2)
+            pp.pprint(_config)
+            print(Style.RESET_ALL)
         self._log.info('configuration read.')
         return _config
 

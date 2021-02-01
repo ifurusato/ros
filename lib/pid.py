@@ -26,8 +26,8 @@ class PID(object):
     '''
     The PID controller itself.
 
-    Note that 'velocity' is the name of the setpoint, as this
-    PID controller is governed by a velocity setting.
+    Note that the setpoint of this PID controller is a velocity setting;
+    this is not to be confused with the velocity property of the motors.
     '''
     def __init__(self,
                  config,
@@ -45,7 +45,7 @@ class PID(object):
         self._max_output   = _config.get('max_output')
         self._setpoint     = setpoint
         self._orientation  = orientation
-        self._max_velocity = None
+        self._setpoint_limit = None
         self._log = Logger('pid:{}'.format(orientation.label), level)
         self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self.ki, self.kd, self._min_output, self._max_output))
         if sample_time is None:
@@ -85,40 +85,10 @@ class PID(object):
 
     # ..........................................................................
     @property
-    def velocity(self):
-        '''
-        Getter for the velocity (PID set point).
-        An alias for the setpoint property.
-        '''
-        return self.setpoint
-
-    @velocity.setter
-    def velocity(self, velocity):
-        '''
-        Setter for the velocity (PID set point).
-        An alias for the setpoint setter.
-        '''
-#       self._log.debug(Fore.BLACK + 'set velocity: {:5.2f}'.format(velocity))
-        self.setpoint = velocity
-
-    def set_max_velocity(self, max_velocity):
-        '''
-        Setter for the maximum velocity. Set to None (the default) to
-        disable this feature. Note that this doesn't affect the setting
-        of the velocity but rather the getting of the setpoint.
-        '''
-        if max_velocity == None:
-            self._log.info(Fore.CYAN + Style.DIM + 'max velocity: disabled')
-        else:
-            self._log.info(Fore.CYAN + 'max velocity: {:5.2f}'.format(max_velocity))
-        self._max_velocity = max_velocity
-
-    # ..........................................................................
-    @property
     def setpoint(self):
         '''
         The setpoint used by the controller as a tuple: (Kp, Ki, Kd)
-        If a maximum velocity has been set the returned value is
+        If a setpoint limit has been set the returned value is
         limited by the set value.
         '''
         return self._setpoint
@@ -126,22 +96,35 @@ class PID(object):
     @setpoint.setter
     def setpoint(self, setpoint):
         '''
-        Setter for the set point. If max_velocity has been set this limits
-        the set value.
+        Setter for the set point. If setpoint limit has been set and the
+        argument exceeds the limit, the value is set to the setpoint limit.
         '''
-        if self._max_velocity:
-            if setpoint > self._max_velocity:
-                self._setpoint = self._max_velocity
-            elif setpoint < -1.0 * self._max_velocity:
-                self._setpoint = -1.0 * self._max_velocity
+        if self._setpoint_limit:
+            if setpoint > self._setpoint_limit:
+                self._setpoint = self._setpoint_limit
+            elif setpoint < -1.0 * self._setpoint_limit:
+                self._setpoint = -1.0 * self._setpoint_limit
             else:
                 self._setpoint = setpoint
-#           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._max_velocity))
+#           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._setpoint_limit))
         else:
             self._setpoint = setpoint
-        if self._setpoint == 0.0:
-            self.reset()
+#       if self._setpoint == 0.0:
+#           self.reset()
 #           self._log.debug(Fore.BLACK + 'set setpoint: {:5.2f}'.format(setpoint))
+
+    # ..........................................................................
+    def set_limit(self, limit):
+        '''
+        Setter for the setpoint limit. Set to None (the default) to
+        disable this feature. Note that this doesn't affect the setting
+        of the setpoint but rather the getting of the setpoint.
+        '''
+        if limit == None:
+            self._log.info(Fore.CYAN + Style.DIM + 'setpoint limit: disabled')
+        else:
+            self._log.info(Fore.CYAN + 'setpoint limit: {:5.2f}'.format(limit))
+        self._setpoint_limit = limit
 
     # ..........................................................................
     def __call__(self, target, dt=None):
@@ -157,9 +140,9 @@ class PID(object):
         '''
         _now = self._current_time()
         if dt is None:
-            dt = _now - self._last_time #if _now - self._last_time else 1e-16
+            dt = _now - self._last_time
 #           dt = _now - self._last_time if _now - self._last_time else 1e-16
-            self._log.info(Fore.RED + '__call__  dt: {:7.4f}'.format(dt) + Style.RESET_ALL)
+            self._log.info(Fore.BLUE + '__call__  dt: {:7.4f}'.format(dt) + Style.RESET_ALL)
         elif dt <= 0:
             raise ValueError("dt has nonpositive value {}. Must be positive.".format(dt))
 
@@ -265,22 +248,22 @@ class PID(object):
     # ..........................................................................
     def print_state(self):
         _fore = Fore.RED if self._orientation == Orientation.PORT else Fore.GREEN
-        self._log.info(_fore + 'kp:           \t{}'.format(self.kp))
-        self._log.info(_fore + 'ki:           \t{}'.format(self.ki))
-        self._log.info(_fore + 'kd:           \t{}'.format(self.kd))
+        self._log.info(_fore + 'kp:             \t{}'.format(self.kp))
+        self._log.info(_fore + 'ki:             \t{}'.format(self.ki))
+        self._log.info(_fore + 'kd:             \t{}'.format(self.kd))
 
-        self._log.info(_fore + 'min_output:   \t{}'.format(self._min_output))
-        self._log.info(_fore + 'max_output:   \t{}'.format(self._max_output))
-        self._log.info(_fore + 'setpoint:     \t{}'.format(self._setpoint))
-        self._log.info(_fore + 'max_velocity: \t{}'.format(self._max_velocity))
-        self._log.info(_fore + 'sample_time:  \t{}'.format(self._sample_time))
+        self._log.info(_fore + 'min_output:     \t{}'.format(self._min_output))
+        self._log.info(_fore + 'max_output:     \t{}'.format(self._max_output))
+        self._log.info(_fore + 'setpoint:       \t{}'.format(self._setpoint))
+        self._log.info(_fore + 'setpoint limit: \t{}'.format(self._setpoint_limit))
+        self._log.info(_fore + 'sample_time:    \t{}'.format(self._sample_time))
 
-        self._log.info(_fore + 'proportional: \t{}'.format(self._proportional))
-        self._log.info(_fore + 'integral:     \t{}'.format(self._integral))
-        self._log.info(_fore + 'derivative:   \t{}'.format(self._derivative))
-        self._log.info(_fore + 'last_output:  \t{}'.format(self._last_output))
-        self._log.info(_fore + 'last_input:   \t{}'.format(self._last_input))
-        self._log.info(_fore + 'last_time:    \t{}'.format(self._last_time))
+        self._log.info(_fore + 'proportional:   \t{}'.format(self._proportional))
+        self._log.info(_fore + 'integral:       \t{}'.format(self._integral))
+        self._log.info(_fore + 'derivative:     \t{}'.format(self._derivative))
+        self._log.info(_fore + 'last_output:    \t{}'.format(self._last_output))
+        self._log.info(_fore + 'last_input:     \t{}'.format(self._last_input))
+        self._log.info(_fore + 'last_time:      \t{}'.format(self._last_time))
 
     # ..........................................................................
     def reset(self):
@@ -296,12 +279,12 @@ class PID(object):
         any stored state.
         '''
         self._log.info(Fore.YELLOW + 'reset ========================= ')
+        self.setpoint      = 0.0
         self._proportional = 0.0
         self._integral     = 0.0
         self._derivative   = 0.0
         self._last_output  = 0.0
         self._last_input   = 0.0
-        self._last_time    = self._current_time()
         self._last_time    = self._current_time()
 
     # ..........................................................................

@@ -178,57 +178,47 @@ class Motors():
     # ..........................................................................
     def halt(self):
         '''
-            Quickly (but not immediately) stops both motors.
+        Quickly (but not immediately) stops both motors.
         '''
         self._log.info('halting...')
         if self.is_stopped():
+            _tp = Thread(name='halt-port', target=self.processStop, args=(Event.HALT, Orientation.PORT))
+            _ts = Thread(name='hapt-stbd', target=self.processStop, args=(Event.HALT, Orientation.STBD))
+            _tp.start()
+            _ts.start()
+        else:
             self._log.debug('already stopped.')
-            return True
-
-        # source: https://stackoverflow.com/questions/2957116/make-2-functions-run-at-the-same-time
-        _tp = Thread(name='halt-port', target=self.processStop, args=(Event.HALT, Orientation.PORT))
-        _ts = Thread(name='hapt-stbd', target=self.processStop, args=(Event.HALT, Orientation.STBD))
-        _tp.start()
-        _ts.start()
-#       _tp.join()
-#       _ts.join()
-
         self._log.info('halted.')
         return True
 
     # ..........................................................................
     def brake(self):
         '''
-            Slowly coasts both motors to a stop.
+        Slowly coasts both motors to a stop.
         '''
         self._log.info('braking...')
         if self.is_stopped():
+            _tp = Thread(name='brake-port', target=self.processStop, args=(Event.BRAKE, Orientation.PORT))
+            _ts = Thread(name='brake-stbd', target=self.processStop, args=(Event.BRAKE, Orientation.STBD))
+            _tp.start()
+            _ts.start()
+        else:
             self._log.warning('already stopped.')
-            return True
-
-        _tp = Thread(name='brake-port', target=self.processStop, args=(Event.BRAKE, Orientation.PORT))
-        _ts = Thread(name='brake-stbd', target=self.processStop, args=(Event.BRAKE, Orientation.STBD))
-        _tp.start()
-        _ts.start()
-#       _tp.join()
-#       _ts.join()
-
         self._log.info('braked.')
         return True
 
     # ..........................................................................
     def stop(self):
         '''
-            Stops both motors immediately, with no slewing.
+        Stops both motors immediately, with no slewing.
         '''
         self._log.info('stopping...')
-        if self.is_stopped():
+        if not self.is_stopped():
+            self._port_motor.stop()
+            self._stbd_motor.stop()
+            self._log.info('stopped.')
+        else:
             self._log.warning('already stopped.')
-            return True
-
-        self._port_motor.stop()
-        self._stbd_motor.stop()
-        self._log.info('stopped.')
         return True
 
     # ..........................................................................
@@ -238,7 +228,7 @@ class Motors():
     # ..........................................................................
     def processStop(self, event, orientation):
         '''
-            Synchronised process control over various kinds of stopping.
+        Synchronised process control over various kinds of stopping.
         '''
         if orientation is Orientation.PORT:
             if event is Event.HALT:
@@ -265,7 +255,7 @@ class Motors():
     # ..........................................................................
     def get_current_power_levels(self):
         '''
-            Returns the last set power values.
+        Returns the last set power values.
         '''
         _port_power = self._port_motor.get_current_power_level()
         _stbd_power = self._stbd_motor.get_current_power_level()
@@ -274,7 +264,7 @@ class Motors():
     # ..........................................................................
     def print_current_power_levels(self):
         '''
-            Prints the last set power values.
+        Prints the last set power values.
         '''
         self._msgIndex += 1
         self._log.info('{}:\tcurrent power:\t{:6.1f}\t{:6.1f}'.format(self._msgIndex, self._last_set_power[0], self._last_set_power[1]))
@@ -282,7 +272,7 @@ class Motors():
     # ..........................................................................
     def disable(self):
         '''
-            Disable the motors, halting first if in motion.
+        Disable the motors, halting first if in motion.
         '''
         if self._enabled:
             self._log.info('disabling...')

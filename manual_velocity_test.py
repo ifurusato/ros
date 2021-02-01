@@ -23,82 +23,115 @@ from lib.rotary_ctrl import RotaryControl
 
 from lib.button import Button
 
-ROTATE = True
+USE_ROTARY_ENCODER           = False
+USE_POTENTIOMETER            = False
+DRY_RUN                      = False
+ROTATE                       = False # move forward or rotate in place?
+# motor configuration: starboard, port or both?
+ORIENTATION = Orientation.STBD       # STBD, PORT or BOTH?
+ACCELERATE_COUNTER_CLOCKWISE = True
+ACCELERATE_CLOCKWISE         = False
+_fixed_value                 = 15.0  # fixed setpoint value
 
 _level = Level.INFO
 _log = Logger('main', _level)
 
 # ..............................................................................
-def rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid):
+def rotate_in_place(_rotary_ctrl, _port_pid, _stbd_pid):
+    global action_B
     _log.info(Fore.BLUE + Style.BRIGHT + 'rotate in place...')
     _rotate = -1.0 if ROTATE else 1.0
     _min_value =  0.0
     _max_value = 50.0
-
-    ACCELERATE_COUNTER_CLOCKWISE = True
-    ACCELERATE_CLOCKWISE = True
+    _port_setpoint = 0.0
+    _stbd_setpoint = 0.0
 
     if ACCELERATE_COUNTER_CLOCKWISE:
+        _log.info(Fore.MAGENTA + Style.BRIGHT + 'ACCELERATE_COUNTER_CLOCKWISE ------------------------------------------ ')
         # accelerate
         _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
         for _value in numpy.arange(_min_value, _max_value, 1.0):
-            _port_pid.velocity = _rotate * _value 
-            _port_velocity = _port_pid.velocity
-            _stbd_pid.velocity = _value
-            _stbd_velocity = _stbd_pid.velocity
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+                _port_pid.setpoint = _rotate * _value 
+                _port_setpoint = _port_pid.setpoint
+            _stbd_pid.setpoint = _value
+            _stbd_setpoint = _stbd_pid.setpoint
             _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+                + Fore.YELLOW + ' setpoint: {:5.2f} / {:5.2f};'.format(_port_setpoint, _stbd_setpoint))
             time.sleep(0.1)
         # cruise
+        if not action_B:
+            _log.info('cancelled.')
+            return
         _log.info(Fore.MAGENTA + 'cruising...')
         time.sleep(5.0)
         # decelerate
         _log.info(Fore.MAGENTA + 'decelerating to zero...')
         for _value in numpy.arange(_max_value, 0.0, -1.0):
-            _port_pid.velocity = _rotate * _value 
-            _port_velocity = _port_pid.velocity
-            _stbd_pid.velocity = _value
-            _stbd_velocity = _stbd_pid.velocity
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+                _port_pid.setpoint = _rotate * _value 
+                _port_setpoint = _port_pid.setpoint
+            _stbd_pid.setpoint = _value
+            _stbd_setpoint = _stbd_pid.setpoint
             _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+                + Fore.YELLOW + ' setpoint: {:5.2f} / {:5.2f};'.format(_port_setpoint, _stbd_setpoint))
             time.sleep(0.1)
+
+    if not action_B:
+        _log.info('cancelled.')
+        return
+
     # wait a bit ...........................
-    _port_pid.velocity = 0.0
-    _stbd_pid.velocity = 0.0
-    _port_pid.print_state()
+    _log.info(Fore.MAGENTA + Style.BRIGHT + 'BEGIN PAUSE AT ZERO --------------------------------------------------- ')
+    if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+        _port_pid.reset()
+        _port_pid.print_state()
+    _stbd_pid.reset()
     _stbd_pid.print_state() 
     time.sleep(5.0)
+    _log.info(Fore.MAGENTA + Style.BRIGHT + 'END PAUSE AT ZERO ----------------------------------------------------- ')
 
+    if not action_B:
+        _log.info('cancelled.')
+        return
     if ACCELERATE_CLOCKWISE:
+        _log.info(Fore.MAGENTA + Style.BRIGHT + 'ACCELERATE_CLOCKWISE -------------------------------------------------- ')
         # accelerate
         _log.info(Fore.MAGENTA + 'accelerating to set point: {:<5.2f}...'.format(_max_value))
         for _value in numpy.arange(_min_value, _max_value, 1.0):
-            _port_pid.velocity = _value 
-            _port_velocity = _port_pid.velocity
-            _stbd_pid.velocity = _rotate * _value
-            _stbd_velocity = _stbd_pid.velocity
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+                _port_pid.setpoint = _value 
+                _port_setpoint = _port_pid.setpoint
+            _stbd_pid.setpoint = _rotate * _value
+            _stbd_setpoint = _stbd_pid.setpoint
             _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+                + Fore.YELLOW + ' setpoint: {:5.2f} / {:5.2f};'.format(_port_setpoint, _stbd_setpoint))
             time.sleep(0.1)
+        if not action_B:
+            _log.info('cancelled.')
+            return
         # cruise
         _log.info(Fore.MAGENTA + 'cruising...')
         time.sleep(5.0)
         # decelerate
         _log.info(Fore.MAGENTA + 'decelerating to zero...')
         for _value in numpy.arange(_max_value, 0.0, -1.0):
-            _port_pid.velocity = _value 
-            _port_velocity = _port_pid.velocity
-            _stbd_pid.velocity = _rotate * _value
-            _stbd_velocity = _stbd_pid.velocity
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+                _port_pid.setpoint = _value 
+                _port_setpoint = _port_pid.setpoint
+            _stbd_pid.setpoint = _rotate * _value
+            _stbd_setpoint = _stbd_pid.setpoint
             _log.info(Fore.MAGENTA + 'set point: {:<5.2f};'.format(_value) \
-                + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity))
+                + Fore.YELLOW + ' setpoint: {:5.2f} / {:5.2f};'.format(_port_setpoint, _stbd_setpoint))
             time.sleep(0.1)
 
-    # wait a bit ...........................
-    _port_pid.velocity = 0.0
-    _stbd_pid.velocity = 0.0
-    _port_pid.print_state()
-    _stbd_pid.print_state() 
+        # wait a bit ...........................
+        if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+            _port_pid.setpoint = 0.0
+            _port_pid.print_state()
+        _stbd_pid.setpoint = 0.0
+        _stbd_pid.print_state() 
+
     _log.info(Fore.MAGENTA + 'end of test.')
     time.sleep(5.0)
 
@@ -132,14 +165,7 @@ def main():
     _button_24 = Button(_pin_B, callback_method_B, Level.INFO)
     _log.info(Style.BRIGHT + 'press button B connected to pin {:d}) to exit.'.format(_pin_B))
 
-    _rot_ctrl = None
-
     try:
-
-        # motor configuration: starboard, port or both?
-        _orientation = Orientation.BOTH
-        USE_ROTARY_ENCODER = True
-        DRY_RUN = False
 
         # .........................................
         _motors = Motors(_config, None, Level.INFO)
@@ -148,29 +174,31 @@ def main():
 
         _limit  = 90.0
 #       _min    = -127
-        _stbd_velocity  = 0.0
-        _port_velocity  = 0.0
+        _stbd_setpoint  = 0.0
+        _port_setpoint  = 0.0
         _unscaled_value = 0.0
         _scaled_value   = 0.0
         _value          = 0.0
         _rotate = -1.0 if ROTATE else 1.0
+        _port_pid       = None
+        _stbd_pid       = None
 
         # rotary controller
         _min    = 90
         _max    = 0
         _step   = 5
-        _rot_ctrl = RotaryControl(_config, _min, _max, _step, Level.INFO)
+        _rotary_ctrl = RotaryControl(_config, _min, _max, _step, Level.INFO)
 
         # configure motors/PID controllers
-        if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+        if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
             _port_motor = _motors.get_motor(Orientation.PORT)
             _port_pid = PIDController(_config, _port_motor, level=Level.INFO)
-            _port_pid.set_max_velocity(_limit)
+            _port_pid.set_limit(_limit)
             _port_pid.enable()
-        if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+        if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.STBD:
             _stbd_motor = _motors.get_motor(Orientation.STBD)
             _stbd_pid = PIDController(_config, _stbd_motor, level=Level.INFO)
-            _stbd_pid.set_max_velocity(_limit)
+            _stbd_pid.set_limit(_limit)
             _stbd_pid.enable()
 
 #       sys.exit(0)
@@ -180,15 +208,15 @@ def main():
                 if action_A:
                     _log.info(Fore.BLUE + Style.BRIGHT + 'action A.')
                     action_A = False # trigger once
-                    rotate_in_place(_rot_ctrl, _port_pid, _stbd_pid)
+                    rotate_in_place(_rotary_ctrl, _port_pid, _stbd_pid)
                     action_B = False # quit after action
                     time.sleep(1.0)
                     # and we now return to our regularly scheduled broadcast...
                 else:
                     if USE_ROTARY_ENCODER:
-                        _value = _rot_ctrl.read()
+                        _value = _rotary_ctrl.read()
                         _log.info(Fore.BLUE + Style.BRIGHT + 'rotary value: {:<5.2f}'.format(_value))
-                    else:
+                    elif USE_POTENTIOMETER:
                         _unscaled_value = _pot.get_value()
                         _pot.set_rgb(_unscaled_value)
                         _scaled_value = _pot.get_scaled_value()
@@ -199,19 +227,22 @@ def main():
                             _value = _limit
                         elif _value < -120.0:
                             _value = -1.0 * _limit
+                    else:
+                        _value = _fixed_value
+
                     if _value > -2.0 and _value < 2.0: # hysteresis?
                         _value = 0.0
     
                     if not DRY_RUN:
-                        if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
-                            _port_pid.velocity = _rotate * _value #* 100.0
-                            _port_velocity = _port_pid.velocity
-                        if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
-                            _stbd_pid.velocity = _value #* 100.0
-                            _stbd_velocity = _stbd_pid.velocity
+                        if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
+                            _port_pid.setpoint = _rotate * _value #* 100.0
+                            _port_setpoint = _port_pid.setpoint
+                        if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.STBD:
+                            _stbd_pid.setpoint = _value #* 100.0
+                            _stbd_setpoint = _stbd_pid.setpoint
     
                     _log.info(Fore.MAGENTA + 'set point: {:<5.2f} (unscaled/scaled: {:<7.4f}/{:<5.2f});'.format(_value, _unscaled_value, _scaled_value) \
-                            + Fore.YELLOW + ' velocity: {:5.2f} / {:5.2f};'.format(_port_velocity, _stbd_velocity) + Fore.WHITE + ' action_B: {}'.format(action_B))
+                            + Fore.YELLOW + ' setpoint: {:5.2f} / {:5.2f};'.format(_port_setpoint, _stbd_setpoint) + Fore.WHITE + ' action_B: {}'.format(action_B))
                     time.sleep(0.1)
 
             _log.info(Fore.YELLOW + 'end of test.')
@@ -219,14 +250,14 @@ def main():
         except KeyboardInterrupt:
             _log.info(Fore.CYAN + Style.BRIGHT + 'Ctrl-C caught: closing...')
         finally:
-            if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
                 _port_pid.disable()
-            if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
+            if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.STBD:
                 _stbd_pid.disable()
             _motors.brake()
-            if _rot_ctrl:
+            if _rotary_ctrl:
                 _log.info('resetting rotary encoder...')
-                _rot_ctrl.reset()
+                _rotary_ctrl.reset()
             time.sleep(1.0)
             _log.info('complete.')
 

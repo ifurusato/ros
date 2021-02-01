@@ -13,6 +13,7 @@
 #
 
 import time, itertools
+from datetime import datetime as dt
 from threading import Thread
 from colorama import init, Fore, Style
 init()
@@ -51,6 +52,7 @@ class Clock(object):
         self._thread      = None
         self._enabled     = False
         self._closed      = False
+        self._last_time   = dt.now()
         self._tick_type   = type(Tick(None, Event.CLOCK_TICK, None))
         self._tock_type   = type(Tock(None, Event.CLOCK_TOCK, None))
         self._log.info('ready.')
@@ -73,8 +75,35 @@ class Clock(object):
             self._log.warn('message consumer was not in list.')
 
     # ..........................................................................
+    @property
+    def trim(self):
+        '''
+        Returns the loop trim value. The value is returned from the
+        internal Rate object. Default is zero.
+        '''
+        return self._rate.trim
+
+    # ..........................................................................
+    @property
+    def dt_ms(self):
+        '''
+        Returns the time loop delay in milliseconds.
+        The value is returned from Rate.
+        '''
+        return self._rate.dt_ms
+
+    # ..........................................................................
     def _loop(self, f_is_enabled):
         while f_is_enabled():
+            _now = dt.now()
+
+            # trim control ...................
+            _dt = self.dt_ms
+            _delta = ( _now - self._last_time).total_seconds()
+            _error = ( self.dt_ms / 1000.0 ) - _delta
+            self._last_time = _now
+            _trim = self._rate.trim
+
             _count = next(self._counter)
             if (( _count % self._tock_modulo ) == 0 ):
                 _message = self._message_factory.get_message_of_type(self._tock_type, Event.CLOCK_TOCK, _count)
@@ -89,8 +118,11 @@ class Clock(object):
                     consumer.add(_message);
                 self._message_bus.add(_message)
 
+            self._rate.trim = _error
 #           time.sleep(0.003)
             self._rate.wait()
+            self._log.info(Fore.GREEN + 'dt: {:7.4f}ms; delta {:8.5f}s; error: {:8.5f}s; trim: {:7.4f}'.format(self.dt_ms, _delta, _error, _trim))
+
         self._log.info('exited clock loop.')
 
     # ..........................................................................

@@ -34,9 +34,13 @@ def test_rot_control():
         _config = _loader.configure(filename)
 
       # def __init__(self, config, minimum, maximum, step, level):
-        _min  = -127
-        _max  = 127
-        _step = 5
+#       _min  = -127
+#       _max  = 127
+#       _step = 1
+
+        _min  = 0
+        _max  = 10
+        _step = 0.5
         _rot_ctrl = RotaryControl(_config, _min, _max, _step, Level.INFO)
 
         _rate = Rate(20)

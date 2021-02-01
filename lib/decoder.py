@@ -6,8 +6,9 @@
 # Please see the LICENSE file included as part of this package.
 #
 
-import sys
+import sys, traceback
 import pigpio
+import RPi.GPIO as GPIO
 
 from colorama import init, Fore, Style
 init()
@@ -26,35 +27,35 @@ from lib.logger import Level, Logger
 
 class Decoder:
     '''
-       Class to decode mechanical rotary encoder pulses.
+    Class to decode mechanical rotary encoder pulses.
+
+    Originally written with pigpio's pi.callback() method, now 
+    re-implemented using interrupts from the RPi.GPIO library.
     '''
 
     # ..........................................................................
     def __init__(self, pi, orientation, gpio_a, gpio_b, callback, level):
         '''
-           Instantiate the class with the pi and gpios connected to
-           rotary encoder contacts A and B. The common contact should
-           be connected to ground. The callback is called when the
-           rotary encoder is turned. It takes one parameter which is
-           +1 for clockwise and -1 for counterclockwise.
+        Instantiate the class with the pi and gpios connected to
+        rotary encoder contacts A and B. The common contact should
+        be connected to ground. The callback is called when the
+        rotary encoder is turned. It takes one parameter which is
+        +1 for clockwise and -1 for counterclockwise.
 
-           EXAMPLE
+        EXAMPLE
 
-           import time
-           import pigpio
+        from lib.decoder import Decoder
 
-           from lib.decoder import Decoder
+        pos = 0
 
-           pos = 0
+        def callback(way):
+           global pos
+           pos += way
+           print("pos={}".format(pos))
 
-           def callback(way):
-              global pos
-              pos += way
-              print("pos={}".format(pos))
-
-           decoder = Decoder(pi, 7, 8, callback)
-           time.sleep(300)
-           decoder.cancel()
+        decoder = Decoder(pi, 7, 8, callback)
+        ...
+        decoder.cancel()
 
         :param pi:           the Pigpio connection to the Raspberry Pi
         :param orientation:  the motor orientation
@@ -72,32 +73,50 @@ class Decoder:
         self._level_a = 0
         self._level_b = 0
         self._last_gpio = None
+
         self._pi.set_mode(self._gpio_a, pigpio.INPUT)
         self._pi.set_mode(self._gpio_b, pigpio.INPUT)
         self._pi.set_pull_up_down(self._gpio_a, pigpio.PUD_UP)
         self._pi.set_pull_up_down(self._gpio_b, pigpio.PUD_UP)
         self.cbA = self._pi.callback(self._gpio_a, pigpio.EITHER_EDGE, self._pulse)
         self.cbB = self._pi.callback(self._gpio_b, pigpio.EITHER_EDGE, self._pulse)
-        self._log.info('ready.')
+
+#       _success = False
+#       try:
+#           GPIO.setmode(GPIO.BCM)
+#           GPIO.setup(self._gpio_a, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+#           GPIO.setup(self._gpio_b, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+#           # RISING, FALLING or BOTH?
+#           GPIO.add_event_detect(self._gpio_a, GPIO.RISING, callback=self._pulse_a, bouncetime=100)
+#           GPIO.add_event_detect(self._gpio_b, GPIO.RISING, callback=self._pulse_b, bouncetime=100)
+#           _success = True
+#       except Exception as e:
+#           self._log.error('error configuring interrupts: {}\n{}'.format( e, traceback.format_exc()))
+#       finally:
+#           if _success:
+#               self._log.info('ready.')
+#           else:
+#               self._log.warning('failed to configure GPIO interrupts for motor encoders.')
+#               sys.exit(1)
 
     # ..........................................................................
     def _pulse(self, gpio, level, tick):
         '''
-           Decode the rotary encoder pulse.
+        Decode the rotary encoder pulse.
 
-                        +---------+         +---------+      0
-                        |         |         |         |
-              A         |         |         |         |
-                        |         |         |         |
-              +---------+         +---------+         +----- 1
+                     +---------+         +---------+      0
+                     |         |         |         |
+           A         |         |         |         |
+                     |         |         |         |
+           +---------+         +---------+         +----- 1
 
-                  +---------+         +---------+            0
-                  |         |         |         |
-              B   |         |         |         |
-                  |         |         |         |
-              ----+         +---------+         +---------+  1
+               +---------+         +---------+            0
+               |         |         |         |
+           B   |         |         |         |
+               |         |         |         |
+           ----+         +---------+         +---------+  1
+
         '''
-#       self._log.info(Fore.BLACK + 'pulse on pin: {:d}; level: {:d}'.format(gpio, level))
         if gpio == self._gpio_a:
            self._level_a = level
         else:
@@ -106,22 +125,17 @@ class Decoder:
            self._last_gpio = gpio
            if gpio == self._gpio_a and level == 1:
               if self._level_b == 1:
-#                self._log.info('gpio B step.')
                  self.callback(1)
            elif gpio == self._gpio_b and level == 1:
               if self._level_a == 1:
-#                self._log.info('gpio B step.')
                  self.callback(-1)
 
     # ..........................................................................
     def cancel(self):
         '''
-           Cancel the rotary encoder decoder.
+        Cancel the rotary encoder decoder.
         '''
         self.cbA.cancel()
         self.cbB.cancel()
-        # this is now done by motors.py
-#       if self._pi is not None:
-#           self._pi.stop()
 
 #EOF

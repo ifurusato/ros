@@ -5,40 +5,40 @@
 # the Robot OS project and is released under the "Apache Licence, Version 2.0".
 # Please see the LICENSE file included as part of this package.
 #
+# created:  2020-05-17
+# modified: 2021-01-29
+#
 
-from colorama import init, Fore, Style
-init()
+import sys
 
 from lib.logger import Level, Logger
 from lib.motors import Motors
 from lib.config_loader import ConfigLoader
 
-def brake():
-    _log.info('braking...')
-    _motors.brake()
-    _motors.stop()
-    _motors.close()
-    _log.info('done.')
-
-# ..............................................................................
 _motors = None
-_log = Logger('brake', Level.INFO)
 
-try:
+# main .........................................................................
+def main(argv):
 
-    _log.info('configuring...')
-    # read YAML configuration
-    _loader = ConfigLoader(Level.WARN)
-    filename = 'config.yaml'
-    _config = _loader.configure(filename)
-    _motors = Motors(_config, None, Level.WARN)
-
-except KeyboardInterrupt:
-    _log.error('Ctrl-C caught in main: exiting...')
-finally:
-    _log.info('complete.')
+    try:
+        _log = Logger('brake', Level.INFO)
+        _log.info('configuring...')
+        # read YAML configuration
+        _loader = ConfigLoader(Level.WARN)
+        _config = _loader.configure()
+        _motors = Motors(_config, None, Level.INFO)
+        _log.info('braking...')
+        _motors.brake()
+        _log.info('done.')
+    except KeyboardInterrupt:
+        _log.error('Ctrl-C caught in main: exiting...')
+    finally:
+        if _motors:
+            _motors.stop()
+            _motors.close()
+        _log.info('complete.')
 
 if __name__ == '__main__':
-    brake()
+    main(sys.argv[1:])
 
 #EOF

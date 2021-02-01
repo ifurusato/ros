@@ -151,7 +151,6 @@ class CruiseBehaviour():
     def clamp(n, minn, maxn):
         return max(min(maxn, n), minn)
 
-
    # ..........................................................................
     @staticmethod
     def remap(x, in_min, in_max, out_min, out_max):
