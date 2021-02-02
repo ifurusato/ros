@@ -39,10 +39,12 @@ class RotaryEncoder(object):
             raise ValueError('null configuration argument.')
         _config          = config['ros'].get('rotary_encoder')
         self._brightness = _config.get('brightness') # effectively the maximum fraction of the period that the LED will be on
+        self._log.info("brightness:\t{:5.2f}".format(self._brightness))
         self.increment   = _config.get('increment')  # the count change per rotary tick
-        self._log.info("configured for I²C address of 0x{:02x}".format(i2c_address))
+        self._log.info("I²C address:\t0x{:02x}".format(i2c_address))
 
-        I2C_ADDR = 0x19 # default address
+#       i2c_address = 0x0f # found via i2cdetect
+        I2C_ADDR    = 0x16 
 #       self._log.info("default I²C address:  0x{:02X}".format(I2C_ADDR))
 #       self._log.info("assigned I²C address: 0x{:02X}".format(i2c_address))
 #       sys.exit(0)
@@ -58,16 +60,17 @@ class RotaryEncoder(object):
 #           if I2C_ADDR == 0x0F:
             self._ioe.enable_interrupt_out(pin_swap=True)
             # change address to 
-            if I2C_ADDR != i2c_address:
-                self._log.warning("force-setting I²C address of 0x{:02x}".format(i2c_address))
-                self._ioe.set_i2c_addr(i2c_address)
+#           if I2C_ADDR != i2c_address:
+#               self._log.warning("force-setting I²C address of 0x{:02X}".format(i2c_address))
+#               self._ioe.set_i2c_addr(i2c_address)
+#           self._ioe.set_i2c_addr(0x0F)
         
             _POT_ENC_A = 12
             _POT_ENC_B = 3
             _POT_ENC_C = 11
             self._ioe.setup_rotary_encoder(1, _POT_ENC_A, _POT_ENC_B, pin_c=_POT_ENC_C, count_microsteps=False)
 
-            self._period    = int(255 / self._brightness)  # add a period large enough to get 0-255 steps at the desired brightness
+            self._period = int(255 / self._brightness) # add a period large enough to get 0-255 steps at the desired brightness
             self._log.info("running LED with {} brightness steps.".format(int(self._period * self._brightness)))
             self._ioe.set_pwm_period(self._period)
             self._ioe.set_pwm_control(divider=2)  # PWM as fast as we can to avoid LED flicker

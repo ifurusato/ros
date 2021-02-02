@@ -31,6 +31,21 @@ class Decoder:
 
     Originally written with pigpio's pi.callback() method, now 
     re-implemented using interrupts from the RPi.GPIO library.
+
+    Decodes the rotary encoder A and B pulses, e.g.:
+
+                     +---------+         +---------+      0
+                     |         |         |         |
+           A         |         |         |         |
+                     |         |         |         |
+           +---------+         +---------+         +----- 1
+
+               +---------+         +---------+            0
+               |         |         |         |
+           B   |         |         |         |
+               |         |         |         |
+           ----+         +---------+         +---------+  1
+
     '''
 
     # ..........................................................................
@@ -48,12 +63,14 @@ class Decoder:
 
         pos = 0
 
-        def callback(way):
+        def callback(self, gpio, level, tick):
            global pos
            pos += way
            print("pos={}".format(pos))
 
-        decoder = Decoder(pi, 7, 8, callback)
+        pin_a = 17
+        pin_b = 18
+        decoder = Decoder(pi, pin_a, pin_b, callback)
         ...
         decoder.cancel()
 
@@ -78,8 +95,14 @@ class Decoder:
         self._pi.set_mode(self._gpio_b, pigpio.INPUT)
         self._pi.set_pull_up_down(self._gpio_a, pigpio.PUD_UP)
         self._pi.set_pull_up_down(self._gpio_b, pigpio.PUD_UP)
-        self.cbA = self._pi.callback(self._gpio_a, pigpio.EITHER_EDGE, self._pulse)
-        self.cbB = self._pi.callback(self._gpio_b, pigpio.EITHER_EDGE, self._pulse)
+#       _edge = pigpio.RISING_EDGE   # default
+#       _edge = pigpio.FALLING_EDGE
+        _edge = pigpio.EITHER_EDGE
+        self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse_a)
+        self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse_b)
+
+#       self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse)
+#       self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse)
 
 #       _success = False
 #       try:
@@ -97,26 +120,24 @@ class Decoder:
 #               self._log.info('ready.')
 #           else:
 #               self._log.warning('failed to configure GPIO interrupts for motor encoders.')
-#               sys.exit(1)
+#           sys.exit(0 if _success else 1)
+
+    # ..........................................................................
+    def _pulse_a(self, gpio, level, tick):
+#       self._log.info('_pulse_A level: {}; tick: {}'.format(level, tick))
+        self._level_a = level
+        if level == 1 and self._level_b == 1:
+            self.callback(1)
+
+    # ..........................................................................
+    def _pulse_b(self, gpio, level, tick):
+#       self._log.info('_pulse_B level: {}; tick: {}'.format(level, tick))
+        self._level_b = level;
+        if level == 1 and self._level_a == 1:
+            self.callback(-1)
 
     # ..........................................................................
     def _pulse(self, gpio, level, tick):
-        '''
-        Decode the rotary encoder pulse.
-
-                     +---------+         +---------+      0
-                     |         |         |         |
-           A         |         |         |         |
-                     |         |         |         |
-           +---------+         +---------+         +----- 1
-
-               +---------+         +---------+            0
-               |         |         |         |
-           B   |         |         |         |
-               |         |         |         |
-           ----+         +---------+         +---------+  1
-
-        '''
         if gpio == self._gpio_a:
            self._level_a = level
         else:

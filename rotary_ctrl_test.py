@@ -48,7 +48,7 @@ def test_rot_control():
 
         while True:
             _value = _rot_ctrl.read() 
-            _log.info(Fore.YELLOW + ' value: {:d}'.format(_value))
+            _log.info(Fore.YELLOW + ' value: {:5.2f}'.format(_value))
             _rate.wait()
 
     finally:

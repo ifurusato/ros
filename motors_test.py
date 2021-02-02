@@ -20,8 +20,9 @@ from lib.motor_configurer import MotorConfigurer
 from lib.rotary_ctrl import RotaryControl
 from lib.button import Button
 
-STBD_ROTATE = True
+STBD_ROTATE = False
 PORT_ROTATE = False
+ENABLE_PORT = False
 
 _stbd_rotate = -1.0 if STBD_ROTATE else 1.0
 _port_rotate = -1.0 if PORT_ROTATE else 1.0
@@ -39,7 +40,8 @@ def close_motors(_log):
             for _power in numpy.arange(_init_power, 0.0, -0.01):
                 _log.info('setting motor power: {:5.2f}'.format(_power))
                 _stbd_motor.set_motor_power(_stbd_rotate * _power)
-                _port_motor.set_motor_power(_port_rotate * _power)
+                if ENABLE_PORT:
+                    _port_motor.set_motor_power(_port_rotate * _power)
                 time.sleep(0.05)
         else:
             _log.warning('motor power already appears at zero.')
@@ -47,8 +49,9 @@ def close_motors(_log):
     except Exception as e:
         _log.error('error during motor close: {}'.format(e))
     finally:
-        if _port_motor != None:
-            _port_motor.set_motor_power(0.0)
+        if ENABLE_PORT:
+            if _port_motor != None:
+                _port_motor.set_motor_power(0.0)
         if _stbd_motor != None:
             _stbd_motor.set_motor_power(0.0)
 
@@ -67,20 +70,21 @@ def test_motors():
     _motors = _motor_configurer.configure()
     _motors.enable()
 
-    _pin_A = 12
-    _button_24 = Button(_pin_A, reset_step_count, Level.INFO)
-    _log.info(Style.BRIGHT + 'press button A (connected to pin {:d}) to toggle or initiate action.'.format(_pin_A))
+#   _pin_A = 12
+#   _button_24 = Button(_pin_A, reset_step_count, Level.INFO)
+#   _log.info(Style.BRIGHT + 'press button A (connected to pin {:d}) to toggle or initiate action.'.format(_pin_A))
 
     _min  = 0
     _max  = 100
     _step = 5
-    _rot_ctrl = RotaryControl(_config, _min, _max, _step, Level.INFO)
+    _rot_ctrl = RotaryControl(_config, _min, _max, _step, Level.WARN)
 
     _log.info('starting motors...')
 
     _port_motor = _motors.get_motor(Orientation.PORT)
     _stbd_motor = _motors.get_motor(Orientation.STBD)
-    _port_motor.enable()
+    if ENABLE_PORT:
+        _port_motor.enable()
     _stbd_motor.enable()
 
     _rate = Rate(10)
@@ -91,12 +95,14 @@ def test_motors():
             _power = _read_value / 100.0
             _log.debug(Fore.YELLOW + 'power: {:5.2f};'.format(_power) + Fore.BLACK + ' read value: {:5.2f}'.format(_read_value))
             _stbd_motor.set_motor_power(_stbd_rotate * _power)
-            _port_motor.set_motor_power(_port_rotate * _power)
-            _log.info(Fore.RED   + 'power {:5.2f}/{:5.2f}; {:>4d} steps; \t'.format(_stbd_motor.get_current_power_level(), _power, _port_motor.steps) \
-                    + Fore.GREEN + 'power {:5.2f}/{:5.2f}; {:>4d} steps.'.format(_port_motor.get_current_power_level(), _power, _stbd_motor.steps))
+            if ENABLE_PORT:
+                _port_motor.set_motor_power(_port_rotate * _power)
+#           _log.info(Fore.RED   + 'power {:5.2f}/{:5.2f}; {:>4d} steps; \t'.format(_stbd_motor.get_current_power_level(), _power, _port_motor.steps) \
+#                   + Fore.GREEN + 'power {:5.2f}/{:5.2f}; {:>4d} steps.'.format(_port_motor.get_current_power_level(), _power, _stbd_motor.steps))
             _rate.wait()
     
-        _log.info('port motor: {:d} steps.'.format(_port_motor.steps))
+        if ENABLE_PORT:
+            _log.info('port motor: {:d} steps.'.format(_port_motor.steps))
         _log.info('stbd motor: {:d} steps.'.format(_stbd_motor.steps))
 
     except KeyboardInterrupt:

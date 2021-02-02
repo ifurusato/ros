@@ -268,10 +268,13 @@ ros:
             11: 'DNP'
 #           12: 'DNP'
     rotary_ctrl:
-        i2c_address:   0x16                      # the I²C address for the device
+        i2c_address:   0x16                      # KD01: the I²C address for the device
+#       i2c_address:   0x0f                      # KR01: the I²C address for the device
         update_led:    True                      # update the RGB LED according to the value
     rotary_encoder:
-        i2c_address:   0x19                      # the I²C address for the device
+        i2c_address:   0x16                      # the I²C address for the device
+#       i2c_address:   0x0f                      # the I²C address for the device
+#       i2c_address:   0x19                      # the I²C address for the device
         brightness:     1.0                      # the brightness of the RGB LED (0.0-1.0)
         increment:        1                      # the count change per rotary tick
     features:

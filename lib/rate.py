@@ -124,11 +124,14 @@ class Rate():
             if self._dt > _diff:
                 time.sleep(_delay_sec)
             if _delay_sec < self._dt:
-                self._log.info(Fore.CYAN + Style.DIM    + '< dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.CYAN  + ' delay: {:7.4f}ms; diff: {:7.4f}ms'.format(_delay_sec * 1000.0, _diff * 1000.0))
+                self._log.debug(Fore.CYAN + Style.DIM    + '< dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.CYAN  \
+                        + ' delay: {:7.4f}ms; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))
             elif _delay_sec > self._dt:
-                self._log.info(Fore.CYAN + Style.DIM    + '> dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.CYAN  + ' delay: {:7.4f}ms; diff: {:7.4f}ms'.format(_delay_sec * 1000.0, _diff * 1000.0))
+                self._log.debug(Fore.CYAN + Style.DIM    + '> dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.CYAN  \
+                        + ' delay: {:7.4f}ms; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))
             else:
-                self._log.info(Fore.CYAN + Style.NORMAL + '= dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.WHITE + ' delay: {:7.4f}s; diff: {:7.4f}ms'.format(_delay_sec * 1000.0, _diff * 1000.0))
+                self._log.debug(Fore.CYAN + Style.NORMAL + '= dt: {:7.4f}ms;'.format(self._dt * 1000.0) + Fore.WHITE \
+                        + ' delay: {:7.4f}s; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))
             self._last_time = time.time()
 
 #       self._log.info(Fore.BLACK + Style.BRIGHT + 'elapsed: {:>6.3f}ms'.format(_elapsed))

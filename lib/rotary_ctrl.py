@@ -29,13 +29,16 @@ class RotaryControl(object):
         if config is None:
             raise ValueError('no configuration provided.')
         _config = config['ros'].get('rotary_ctrl')
-        print('config: {}'.format(_config))
         # configuration ....................
         _i2c_address      = _config.get('i2c_address')
+#       _i2c_address      = 0x0F
+        self._log.info('configured rotary control at I²C address: 0x{:02X}'.format(_i2c_address))
         self._update_led  = _config.get('update_led')
+        self._log.info('update LED: {}'.format(self._update_led))
         self._min         = minimum
         self._max         = maximum
         self._step        = step
+        self._log.info('min: {:5.2f}; max: {:5.2f}; step: {:5.2f}'.format(self._min, self._max, self._step))
         self._rot = RotaryEncoder(config, _i2c_address, level)
         self._value       = 0
         self._last_delta  = 0
@@ -48,7 +51,7 @@ class RotaryControl(object):
             self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
         elif _delta < self._last_delta: # if decreasing in value
             self._value = RotaryControl.clamp(self._value - self._step, self._min, self._max)
-        self._log.debug(Fore.MAGENTA + 'delta: {:d} (last: {:d});'.format(_delta, self._last_delta) + Fore.WHITE + ' value: {:d}'.format(self._value))
+        self._log.info(Fore.MAGENTA + 'delta: {:5.2f} (last: {:5.2f});'.format(_delta, self._last_delta) + Fore.WHITE + ' value: {:5.2f}'.format(self._value))
         self._last_delta = _delta
         return self._value
 

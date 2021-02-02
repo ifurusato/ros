@@ -38,7 +38,7 @@ def test_rot_encoder():
         _loader = ConfigLoader(Level.INFO)
         filename = 'config.yaml'
         _config = _loader.configure(filename)
-        _rot = RotaryEncoder(_config, 0x16, Level.INFO)
+        _rot = RotaryEncoder(_config, 0x0F, Level.INFO)
 
         _count      = 0
         _updates    = 0
