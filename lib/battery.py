@@ -264,9 +264,7 @@ class BatteryCheck(Feature):
     def disable(self):
         if self._enabled:
             self._enabled = False
-            self._clock.remove_consumer(self)
-            _color = Color.BLACK
-            self._tb.SetLed1( _color.red, _color.green, _color.blue )
+            self._tb.SetLed1( Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue )
             self._tb.SetLedShowBattery(True)
             self._log.info('disabled.')
         else:

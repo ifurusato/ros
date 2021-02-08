@@ -51,7 +51,7 @@ class RotaryControl(object):
             self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
         elif _delta < self._last_delta: # if decreasing in value
             self._value = RotaryControl.clamp(self._value - self._step, self._min, self._max)
-        self._log.info(Fore.MAGENTA + 'delta: {:5.2f} (last: {:5.2f});'.format(_delta, self._last_delta) + Fore.WHITE + ' value: {:5.2f}'.format(self._value))
+#       self._log.info(Style.DIM + 'delta: {:5.2f} (last: {:5.2f});'.format(_delta, self._last_delta) + Fore.WHITE + Style.NORMAL + ' value: {:5.2f}'.format(self._value))
         self._last_delta = _delta
         return self._value
 

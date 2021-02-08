@@ -12,12 +12,13 @@ import numpy
 from colorama import init, Fore, Style
 init()
 
-from lib.velocity import Velocity
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 
 from lib.motors import Motors
 from lib.enums import Orientation
+from lib.rotary_ctrl import RotaryControl
+from lib.ioe_pot import Potentiometer
 #from lib.status import Status
 #from lib.pot import Potentiometer 
 from lib.pid_ctrl import PIDController
@@ -29,6 +30,15 @@ def main():
     _log = Logger('main', _level)
     _loader = ConfigLoader(_level)
     _config = _loader.configure('config.yaml')
+    _rot_min  = 0
+    _rot_max  = 100
+    _rot_step = 5
+    _rot_ctrl = RotaryControl(_config, _rot_min, _rot_max, _rot_step, Level.WARN)
+
+    _pot_min  = 0.0
+    _pot_max  = 0.00030
+    _pot = Potentiometer(_config, Level.INFO)
+    _pot.set_output_limits(_pot_min, _pot_max)
 
     try:
         _motors = Motors(_config, None, _level)
@@ -48,14 +58,17 @@ def main():
 
             _log.info(Fore.YELLOW + 'accelerating...')
 
-            _stbd_pid.velocity = 10.0
+            _read_value = _rot_ctrl.read() 
+            _velocity = _read_value / 100.0
+            _log.info(Fore.YELLOW + 'value: {}'.format(_read_value))
+            _stbd_pid.setpoint = 10.0
 
 #           for _velocity in numpy.arange(0.0, _max_velocity, 0.3):
 #               _log.info(Fore.YELLOW + '_velocity={:>5.2f}.'.format(_velocity))
-#               _stbd_pid.velocity = _velocity
-#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.velocity))
-#               _port_pid.velocity = _velocity
-#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.velocity))
+#               _stbd_pid.setpoint = _velocity
+#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.setpoint))
+#               _port_pid.setpoint = _velocity
+#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.setpoint))
 
 #               time.sleep(1.0)
                 # ..........................................
@@ -67,14 +80,16 @@ def main():
 #           _log.info(Fore.YELLOW + 'decelerating...')
 #           for _velocity in numpy.arange(_max_velocity, 0.0, -0.25):
 #               _log.info(Fore.YELLOW + '_velocity={:>5.2f}.'.format(_velocity))
-#               _port_pid.velocity = _velocity
-#               _stbd_pid.velocity = _velocity
-#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.velocity))
-#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.velocity))
+#               _port_pid.setpoint = _velocity
+#               _stbd_pid.setpoint = _velocity
+#               _log.info(Fore.GREEN + 'STBD setpoint={:>5.2f}.'.format(_stbd_pid.setpoint))
+#               _log.info(Fore.RED   + 'PORT setpoint={:>5.2f}.'.format(_port_pid.setpoint))
 #               time.sleep(1.0)
 
 #           _log.info(Fore.YELLOW + 'stopped...')
-#           time.sleep(1.0)
+            _stbd_pid.setpoint = 0.0
+            time.sleep(3.0)
+            _log.info(Fore.YELLOW + 'end of test.')
 
         except KeyboardInterrupt:
             _log.info(Fore.CYAN + Style.BRIGHT + 'PID test complete.')

@@ -318,7 +318,7 @@ class Gamepad():
         if _control != None:
             _message = self._message_factory.get_message(_control.event, event.value)
             self._log.debug(Fore.CYAN + Style.BRIGHT + "triggered control with message {}".format(_message))
-            self._message_bus.handle(_message)
+            self._message_bus.add(_message)
 
 
 # ..............................................................................

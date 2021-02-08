@@ -94,11 +94,10 @@ def test_motors():
         while True:
 
             _rot_value = _rotary_ctrl.read()
-            _unscaled_value = _pot.get_value()
-            _pot.set_rgb(_unscaled_value)
-            _scaled_value = _pot.get_scaled_value()
-            _value = _scaled_value
-            _log.info('rotary : {:<5.2f};'.format(_rot_value) + ' pot: {:<5.2f}'.format(_value))
+#           _unscaled_value = _pot.get_value()
+#           _pot.set_rgb(_unscaled_value)
+            _scaled_value = _pot.get_scaled_value(True)
+            _log.info('rotary : {:<5.2f};'.format(_rot_value) + ' pot: {:<5.2f}'.format(_scaled_value))
 
             if POT_CONTROL:
                 _power = _scaled_value
@@ -116,7 +115,7 @@ def test_motors():
                 if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
                     _port_pid.setpoint = _rot_value
                 _stbd_pid.setpoint = _rot_value
-#               _log.info(Fore.RED + 'STBD value: {:5.2f} setpoint: {:5.2f}'.format(_value, _stbd_pid.setpoint) + Style.RESET_ALL)
+#               _log.info(Fore.RED + 'STBD value: {:5.2f} setpoint: {:5.2f}'.format(_scaled_value, _stbd_pid.setpoint) + Style.RESET_ALL)
                 _log.info('[{:d}]\t'.format(i) \
                         + Fore.RED   + 'motor power {:5.2f}; {:>4d} steps; setpoint: {:5.2f}; velocity: {:5.2f};\t'.format(\
                                 _stbd_motor.get_current_power_level(), _port_pid.steps, _port_pid.setpoint, _port_pid.velocity) \

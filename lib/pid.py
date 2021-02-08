@@ -14,7 +14,7 @@
 # helpful discussions with David Anderson of the DPRG.
 #
 
-import numpy, time
+import time
 from colorama import init, Fore, Style
 init()
 
@@ -106,12 +106,9 @@ class PID(object):
                 self._setpoint = -1.0 * self._setpoint_limit
             else:
                 self._setpoint = setpoint
-#           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._setpoint_limit))
+#           self._log.info(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._setpoint_limit))
         else:
             self._setpoint = setpoint
-#       if self._setpoint == 0.0:
-#           self.reset()
-#           self._log.debug(Fore.BLACK + 'set setpoint: {:5.2f}'.format(setpoint))
 
     # ..........................................................................
     def set_limit(self, limit):
@@ -142,9 +139,10 @@ class PID(object):
         if dt is None:
             dt = _now - self._last_time
 #           dt = _now - self._last_time if _now - self._last_time else 1e-16
-            self._log.info(Fore.BLUE + '__call__  dt: {:7.4f}'.format(dt) + Style.RESET_ALL)
         elif dt <= 0:
             raise ValueError("dt has nonpositive value {}. Must be positive.".format(dt))
+        # display dt in milliseconds
+#       self._log.info(Fore.MAGENTA + Style.BRIGHT + '>> dt: {:7.4f}ms;'.format(dt * 1000.0))
 
         if dt < self._sample_time and self._last_output is not None:
             # only update every sample_time seconds
@@ -152,7 +150,7 @@ class PID(object):
             return self._last_output
 
         # compute error terms
-        _error = self.setpoint - target
+        _error = self._setpoint - target
         d_input = target - (self._last_input if self._last_input is not None else target)
 
         # compute the proportional, integral and derivative terms
@@ -161,15 +159,15 @@ class PID(object):
         self._integral     = self.clamp(self._integral)  # avoid integral windup
         self._derivative   = -self.kd * d_input / dt
 
-        # compute output
+        # compute output, clamping to limits
         output = self.clamp(self._proportional + self._integral + self._derivative)
 
         kp, ki, kd = self.constants
         cp, ci, cd = self.components
-#       self._log.info(Fore.CYAN + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
-#               + Fore.MAGENTA + '\tKD={:8.5f};'.format(kd) \
-#               + Fore.CYAN + Style.BRIGHT + '\tP={:8.5f}; I={:8.5f}; D={:8.5f}; setpoint={:6.3f};'.format(cp, ci, cd, self._setpoint) \
-#               + Style.DIM + ' output: {:>6.3f}'.format(output))
+        self._log.info(Fore.CYAN + Style.DIM + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
+                + Fore.MAGENTA + ' KP={:<8.5f}; KD={:<8.5f};'.format(kp, kd) \
+                + Fore.CYAN + Style.BRIGHT + ' P={:8.5f}; I={:8.5f}; D={:8.5f}; setpoint={:6.3f};'.format(cp, ci, cd, self._setpoint) \
+                + Style.DIM + ' output: {:>6.3f}'.format(output))
 
         # keep track of state
         self._last_output = output
@@ -279,7 +277,7 @@ class PID(object):
         any stored state.
         '''
         self._log.info(Fore.YELLOW + 'reset ========================= ')
-        self.setpoint      = 0.0
+        self._setpoint     = 0.0
         self._proportional = 0.0
         self._integral     = 0.0
         self._derivative   = 0.0
@@ -292,6 +290,7 @@ class PID(object):
         '''
         Clamp the value between the lower and upper limits.
         '''
-        return numpy.clip(value, self._min_output, self._max_output)
+        return max(self._min_output, min(value, self._max_output))
+#       return numpy.clip(value, self._min_output, self._max_output)
 
 #EOF

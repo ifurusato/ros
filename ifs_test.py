@@ -51,8 +51,8 @@ class MockMessageQueue():
         self._log.info('ready.')
 
     # ......................................................
-    def handle(self, message):
-        self._log.debug(Fore.BLUE + 'handle message {}'.format(message))
+    def add(self, message):
+        self._log.debug(Fore.BLUE + 'add message {}'.format(message))
         self.add(message)
 
     # ......................................................
@@ -159,7 +159,7 @@ def test_ifs():
     _message_factory = MessageFactory(Level.INFO)
     _queue = MockMessageQueue(Level.INFO)
     _message_bus = MessageBus(Level.INFO)
-    _message_bus.add_handler(Message, _queue.handle)
+    _message_bus.add_handler(Message, _queue.add)
     _ifs = IntegratedFrontSensor(_config, _message_bus, _message_factory, Level.INFO)
     _ifs.enable()
     while not _queue.all_triggered:

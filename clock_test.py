@@ -20,13 +20,12 @@ from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.event import Event
 from lib.message_factory import MessageFactory
-from lib.queue import MessageQueue
 from lib.clock import Clock
 
 INFINITE = True
 
 # ..............................................................................
-class MockMessageQueue():
+class MockMessageBus():
     '''
     This message queue just displays filtered, clock-related events as they arrive.
     '''
@@ -85,10 +84,9 @@ def test_clock():
 
     tock_count = 0
     _message_factory = MessageFactory(Level.INFO)
-#   _queue = MessageQueue(_message_factory, Level.INFO)
-    _queue = MockMessageQueue(Level.INFO)
-    _clock = Clock(_config, _queue, _message_factory, Level.INFO)
-    _queue.set_clock(_clock)
+    _message_bus = MockMessageBus(Level.INFO)
+    _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
+    _message_bus.set_clock(_clock)
     _clock.enable()
     _log.info('ready; begin test.')
     _loops = 3

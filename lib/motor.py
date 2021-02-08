@@ -24,6 +24,7 @@ from lib.logger import Level, Logger
 from lib.enums import Orientation
 from lib.slew import SlewRate
 from lib.decoder import Decoder
+from lib.velocity import Velocity
 
 # ..............................................................................
 class Motor():
@@ -34,12 +35,14 @@ class Motor():
     This uses the ros:motors: section of the configuration.
 
     :param config:      application configuration
+    :param clock:       used to provide the velocity calculator with a steady
+                        clock; if None velocity will always return zero
     :param tb:          reference to the ThunderBorg motor controller
     :param pi:          reference to the Raspberry Pi
     :param orientation: motor orientation
     :param level:       log level
     '''
-    def __init__(self, config, tb, pi, orientation, level):
+    def __init__(self, config, clock, tb, pi, orientation, level=Level.INFO):
         global TB
         super(Motor, self).__init__()
         if config is None:
@@ -62,9 +65,19 @@ class Motor():
             self._orientation = Orientation.STBD if orientation is Orientation.PORT else Orientation.PORT
         else:
             self._orientation = orientation
+        # velocity calculation .............................
+        if clock:
+            self._velocity = Velocity(config, clock, self, Level.INFO)
+        else:
+            self._velocity = None
         # NOW we can create the logger
         self._log = Logger('motor:{}'.format(orientation.label), level)
         self._log.info('initialising {} motor...'.format(orientation))
+        # acceleration loop delay
+        self._accel_loop_delay_sec = cfg.get('accel_loop_delay_sec') # default: 0.10
+        self._log.debug('acceleration loop delay: {:>5.2f} sec'.format(self._accel_loop_delay_sec))
+
+        # TODO move this configuration to its own Decoder section
         self._log.debug('_reverse_motor_orientation: {}'.format(self._reverse_motor_orientation))
         self._reverse_encoder_orientation = cfg.get('reverse_encoder_orientation')
         self._log.debug('_reverse_encoder_orientation: {}'.format(self._reverse_encoder_orientation))
@@ -78,12 +91,9 @@ class Motor():
         self._motor_encoder_b2_stbd = cfg.get('motor_encoder_b2_stbd') # default: 18
         self._log.debug('motor_encoder_b2_stbd: {:d}'.format(self._motor_encoder_b2_stbd))
 
-        # acceleration loop delay
-        self._accel_loop_delay_sec = cfg.get('accel_loop_delay_sec') # default: 0.10
-        self._log.debug('acceleration loop delay: {:>5.2f} sec'.format(self._accel_loop_delay_sec))
         # end configuration ................................
 
-        self._motor_power_limit = 0.99       # power limit to motor
+        self._motor_power_limit = 0.80       # power limit to motor
         self._counter = itertools.count()
         self._over_power_count = 0           # limit to disable motor
         self._over_power_count_limit = 4     # how many times we can be overpowered before disabling
@@ -92,7 +102,8 @@ class Motor():
         self._max_driving_power = 0.0        # capture maximum adjusted power applied
         self._interrupt = False              # used to interrupt loops
         self._stepcount_timestamp = time.time()  # timestamp at beginning of velocity measurement
-        self._enabled = True                 # default enabled
+        self._enabled = False                # was by default enabled
+        self._killed  = False                # if killed we never re-enable
         self._start_timestamp = time.time()  # timestamp at beginning of velocity measurement
 
         # configure encoder ................................
@@ -130,6 +141,14 @@ class Motor():
 
     # ..........................................................................
     @property
+    def velocity(self):
+        if self._velocity:
+            return self._velocity()
+        else:
+            return 0.0
+
+    # ..........................................................................
+    @property
     def enabled(self):
         return self._enabled
 
@@ -156,7 +175,7 @@ class Motor():
         '''
         This callback is used to capture encoder steps.
         '''
-        self._log.info(Fore.BLACK + Style.BRIGHT + '_callback_step_count({})'.format(pulse))
+#       self._log.info(Fore.BLACK + Style.BRIGHT + '_callback_step_count({})'.format(pulse))
         if not self._reverse_encoder_orientation:
             if self._orientation is Orientation.PORT:
                 self._steps = self._steps + pulse
@@ -167,18 +186,35 @@ class Motor():
                 self._steps = self._steps - pulse
             else:
                 self._steps = self._steps + pulse
-        self._log.info(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
+#       self._log.info(Fore.BLACK + '{}: {:+d} steps'.format(self._orientation.label, self._steps))
 
     # ..........................................................................
     def enable(self):
-        self._enabled = True
-        self._log.info('enabled.')
+        if not self._killed:
+            if self._enabled:
+                self._log.warning('already enabled.')
+            else:
+                self._enabled = True
+                if self._velocity:
+                    self._velocity.enable()
+                self._log.info('enabled.')
+        else:
+            self._log.warning('cannot enable: motor has been killed.')
 
     # ..........................................................................
     def disable(self):
-        self._enabled = False
-        self.set_motor_power(0.0)
-        self._log.info('disabled.')
+        if not self._enabled:
+            self._log.warning('already disabled.')
+        else:
+            self._enabled = False
+            if self._velocity:
+                self._velocity.disable()
+#           self.set_motor_power(0.0)
+            if self._orientation is Orientation.PORT:
+                self._tb.SetMotor1(0.0)
+            else:
+                self._tb.SetMotor2(0.0)
+            self._log.info('disabled.')
 
     # ..........................................................................
     def close(self):
@@ -239,6 +275,7 @@ class Motor():
         if self._over_power_count >= self._over_power_count_limit:
             self._log.error('over power limit reached, disabling...')
             self.disable()
+            self._killed = True # don't permit re-enabling
 
     # ..........................................................................
     def set_motor_power(self, power_level):
@@ -248,7 +285,10 @@ class Motor():
         the _max_power_ratio, which alters the value to match the
         power/motor voltage ratio.
         '''
-        if not self.enabled and power_level > 0.0: # though we'll let the power be set to zero
+        if self._killed: # though we'll let the power be set to zero
+            self._log.warning('motor killed, ignoring setting of {:<5.2f}'.format(power_level))
+            return
+        elif not self.enabled and power_level > 0.0: # though we'll let the power be set to zero
             self._log.warning('motor disabled, ignoring setting of {:<5.2f}'.format(power_level))
             return
         # safety checks ..........................
@@ -399,7 +439,7 @@ class Motor():
         _current_power_level = self.get_current_power_level()
         if _current_power_level is None:
             raise RuntimeError('cannot continue: unable to read current power from motor.')
-        self._log.info('current power: {:>5.2f} max power ratio: {:>5.2f}...'.format(_current_power_level, self._max_power_ratio))
+        self._log.info('ACCELERATE:' + Fore.YELLOW + ' current power: {:>5.2f} max power ratio: {:>5.2f}...'.format(_current_power_level, self._max_power_ratio))
         _current_power_level = _current_power_level * ( 1.0 / self._max_power_ratio )
 
         # accelerate to desired speed
