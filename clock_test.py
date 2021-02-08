@@ -61,10 +61,10 @@ class MockMessageBus():
 
         if _event is Event.CLOCK_TICK:
 #           self._log.info(Fore.YELLOW + Style.NORMAL + 'CLOCK_TICK: {}; value: {}'.format(_event.description, _value))
-            self._log.info(Fore.BLACK  + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tick loop: {:5.2f}ms elapsed; total: {:5.2f}ms;    \t'.format(\
+            self._log.info(Fore.BLACK  + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tick loop: {:5.2f}ms; total: {:5.2f}ms; '.format(\
                     _event.description, _value, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, _trim))
         elif _event is Event.CLOCK_TOCK:
-            self._log.info(Fore.YELLOW + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tock loop: {:5.2f}ms elapsed; total: {:6.3f}ms;\t'.format(\
+            self._log.info(Fore.YELLOW + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tock loop: {:5.2f}ms; total: {:6.3f}ms; '.format(\
                     _event.description, _value, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, _trim))
             self._start_time = _now
             tock_count += 1
