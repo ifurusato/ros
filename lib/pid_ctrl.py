@@ -70,7 +70,12 @@ class PIDController(object):
 #        if self._pot_ctrl:
 #            self._pot = Potentiometer(config, Level.INFO)
         _period_sec = 1.0 / _config.get('sample_freq_hz')
-        self._pid = PID(config, self._orientation, sample_time=_period_sec, level=level)
+        _kp         = _config.get('kp') # proportional gain
+        _ki         = _config.get('ki') # integral gain
+        _kd         = _config.get('kd') # derivative gain
+        _min_output = _config.get('min_output')
+        _max_output = _config.get('max_output')
+        self._pid = PID(self._orientation.label, _kp, _ki, _kd, _min_output, _max_output, sample_time=_period_sec, level=level)
 
         # used for hysteresis, if queue too small will zero-out motor power too quickly
         _queue_len = _config.get('hyst_queue_len')

@@ -26,28 +26,35 @@ class PID(object):
     '''
     The PID controller itself.
 
-    Note that the setpoint of this PID controller is a velocity setting;
-    this is not to be confused with the velocity property of the motors.
+    :param label:       a label for logging
+    :param kp:          proportional gain constant
+    :param ki:          integral gain constant
+    :param kd:          derivative gain constant
+    :param min_output:  minimum output limit
+    :param max_output:  maximum output limit
+    :param setpoint:    initial setpoint
+    :param sample_time: sample time, used as a limit to determine if called too soon
+    :param level:       log level
     '''
     def __init__(self,
-                 config,
-                 orientation, # used only for logging
+                 label,
+                 kp,
+                 ki,
+                 kd,
+                 min_output,
+                 max_output,
                  setpoint=0.0,
                  sample_time=0.01,
                  level=Level.INFO):
-        if config is None:
-            raise ValueError('null configuration argument.')
-        _config = config['ros'].get('motors').get('pid')
-        self.kp            = _config.get('kp') # proportional gain
-        self.ki            = _config.get('ki') # integral gain
-        self.kd            = _config.get('kd') # derivative gain
-        self._min_output   = _config.get('min_output')
-        self._max_output   = _config.get('max_output')
-        self._setpoint     = setpoint
-        self._orientation  = orientation
+        self._kp             = kp # proportional gain
+        self._ki             = ki # integral gain
+        self._kd             = kd # derivative gain
+        self._setpoint       = setpoint
+        self._min_output     = min_output
+        self._max_output     = max_output
         self._setpoint_limit = None
-        self._log = Logger('pid:{}'.format(orientation.label), level)
-        self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self.ki, self.kd, self._min_output, self._max_output))
+        self._log = Logger('pid:{}'.format(label), level)
+        self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
         if sample_time is None:
             raise Exception('no sample time argument provided')
         self._sample_time  = sample_time
@@ -126,11 +133,12 @@ class PID(object):
     # ..........................................................................
     def __call__(self, target, dt=None):
         '''
-        Call the PID controller with *target* and calculate and return a
-        control output if sample_time seconds has passed since the last
+        Call the PID controller with a target value and calculate and return
+        a control output if sample_time seconds has passed since the last
         update. If no new output is calculated, return the previous output
         instead (or None if no value has been calculated yet).
 
+        :param target: the target value for the setpoint.
         :param dt: If set, uses this value for timestep instead of real time.
                    This can be used in simulations when simulation time is
                    different from real time.
@@ -154,10 +162,10 @@ class PID(object):
         d_input = target - (self._last_input if self._last_input is not None else target)
 
         # compute the proportional, integral and derivative terms
-        self._proportional = self.kp * _error
-        self._integral    += self.ki * _error * dt
-        self._integral     = self.clamp(self._integral)  # avoid integral windup
-        self._derivative   = -self.kd * d_input / dt
+        self._proportional = self._kp * _error
+        self._integral    += self._ki * _error * dt
+        self._integral     = self.clamp(self._integral) # avoid integral windup
+        self._derivative   = -self._kd * d_input / dt
 
         # compute output, clamping to limits
         output = self.clamp(self._proportional + self._integral + self._derivative)
@@ -166,8 +174,8 @@ class PID(object):
         cp, ci, cd = self.components
         self._log.info(Fore.CYAN + Style.DIM + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
                 + Fore.MAGENTA + ' KP={:<8.5f}; KD={:<8.5f};'.format(kp, kd) \
-                + Fore.CYAN + Style.BRIGHT + ' P={:8.5f}; I={:8.5f}; D={:8.5f}; setpoint={:6.3f};'.format(cp, ci, cd, self._setpoint) \
-                + Style.DIM + ' output: {:>6.3f}'.format(output))
+                + Fore.CYAN + Style.BRIGHT + ' P={:8.5f}; I={:8.5f}; D={:8.5f}; sp={:6.3f};'.format(cp, ci, cd, self._setpoint) \
+                + Style.BRIGHT + ' out: {:<8.5f}'.format(output))
 
         # keep track of state
         self._last_output = output
@@ -189,7 +197,7 @@ class PID(object):
         '''
         The P-, I- and D- fixed terms, as a tuple.
         '''
-        return self.kp, self.ki, self.kd
+        return self._kp, self._ki, self._kd
 
     # ..........................................................................
     @property
@@ -207,7 +215,7 @@ class PID(object):
         '''
         The tunings used by the controller as a tuple: (Kp, Ki, Kd)
         '''
-        return self.kp, self.ki, self.kd
+        return self._kp, self._ki, self._kd
 
     # ..........................................................................
     @tunings.setter
@@ -245,11 +253,10 @@ class PID(object):
 
     # ..........................................................................
     def print_state(self):
-        _fore = Fore.RED if self._orientation == Orientation.PORT else Fore.GREEN
-        self._log.info(_fore + 'kp:             \t{}'.format(self.kp))
-        self._log.info(_fore + 'ki:             \t{}'.format(self.ki))
-        self._log.info(_fore + 'kd:             \t{}'.format(self.kd))
-
+        _fore = Fore.YELLOW
+        self._log.info(_fore + 'kp:             \t{}'.format(self._kp))
+        self._log.info(_fore + 'ki:             \t{}'.format(self._ki))
+        self._log.info(_fore + 'kd:             \t{}'.format(self._kd))
         self._log.info(_fore + 'min_output:     \t{}'.format(self._min_output))
         self._log.info(_fore + 'max_output:     \t{}'.format(self._max_output))
         self._log.info(_fore + 'setpoint:       \t{}'.format(self._setpoint))

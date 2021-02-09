@@ -12,7 +12,7 @@
 # A system clock that ticks and tocks.
 #
 
-import time, itertools
+import sys, time, itertools
 from datetime import datetime as dt
 from threading import Thread
 from colorama import init, Fore, Style
@@ -20,6 +20,7 @@ init()
 
 from lib.message import Message
 from lib.logger import Logger, Level
+from lib.pid import PID
 from lib.event import Event
 from lib.rate import Rate
 
@@ -42,6 +43,7 @@ class Clock(object):
         _config            = config['ros'].get('clock')
         self._loop_freq_hz = _config.get('loop_freq_hz')
         self._tock_modulo  = _config.get('tock_modulo')
+        self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
         self._counter      = itertools.count()
         self._rate         = Rate(self._loop_freq_hz)
         self._tick_type    = type(Tick(None, Event.CLOCK_TICK, None))
@@ -49,11 +51,25 @@ class Clock(object):
         self._log.info('tick frequency: {:d}Hz'.format(self._loop_freq_hz))
         self._log.info('tock frequency: {:d}Hz'.format(round(self._loop_freq_hz / self._tock_modulo)))
         self._enable_trim  = _config.get('enable_trim')
-        self._log.info('trim enabled.' if self._enable_trim else 'trim disabled.')
+        if self._enable_trim:
+            _kp = 0.005
+            _ki = 0.0
+            _kd = 0.0
+            _setpoint = self._rate.get_period_ms()
+            _min_output = 0.0
+            _max_output = 0.0
+            _sample_time = 0.05
+            self._pid = PID('clock', _kp, _ki, _kd, _min_output, _max_output, _setpoint, _sample_time, Level.INFO)
+            self._log.info('trim enabled.')
+        else:
+            self._pid = None
+            self._log.info('trim disabled.')
+
         self._thread       = None
         self._enabled      = False
         self._closed       = False
         self._last_time    = dt.now()
+        self._kp           = 0.09 # proportional constant for trim
         self._log.info('ready.')
 
     # ..........................................................................
@@ -86,6 +102,11 @@ class Clock(object):
 
     # ..........................................................................
     def _loop(self, f_is_enabled):
+        '''
+        The clock loop, which executes while the f_is_enabled flag is True. If 
+        the trim function is enabled a Proportional control is used to draw the
+        clock period towards its set point.
+        '''
         while f_is_enabled():
 
             _now = dt.now()
@@ -97,18 +118,25 @@ class Clock(object):
                 _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
             self._message_bus.add(_message)
 
+            _pid_output = 0.0
             _delta_s = (_now - self._last_time).total_seconds()
             _delta_ms = _delta_s * 1000.0
-            _error_s = (self.dt_ms / 1000.0) - _delta_s
+#           _error_s = (self.dt_ms / 1000.0) - _delta_s
+            _error_s = _delta_s - (self.dt_ms / 1000.0)
             if self._enable_trim:
-                self._rate.trim = -0.5 * _error_s
+                _pid_output = self._pid(_delta_ms)
+                _trim = self._rate.trim
+                self._rate.trim = _trim + _pid_output
 
             # display stats
-            if _delta_ms > -50.050 and _delta_ms < 50.050:
+#           if _delta_ms > -50.050 and _delta_ms < 50.050:
+            if _error_s < 0.001:
                 self._log.info(Fore.GREEN  + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_s * 1000.0) \
+                        + Fore.RED + ' po: {:9.6f}'.format(_pid_output) \
                         + Fore.BLUE + ' trim: {:9.6f}'.format(self._rate.trim))
             else:
                 self._log.info(Fore.YELLOW + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_s * 1000.0) \
+                        + Fore.RED + ' po: {:9.6f}'.format(_pid_output) \
                         + Fore.BLUE + ' trim: {:9.6f}'.format(self._rate.trim))
 
             self._last_time = _now

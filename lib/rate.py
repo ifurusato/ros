@@ -65,11 +65,11 @@ class Rate():
         mode, not the nanosecond timer. Note that the argument's units 
         are seconds, not milliseconds.
         '''
-        self._log.info(Fore.BLACK + 'trim argument: {:9.6f}ms'.format(trim_s))
+#       self._log.info(Fore.BLACK + 'trim argument: {:9.6f}ms'.format(trim_s))
         if trim_s < self._dt_s:
             # trim value is in seconds
             self._trim = trim_s
-            self._log.info('trim set to: {:9.6f}s'.format(self._trim))
+            self._log.debug('trim set to: {:9.7f}s'.format(self._trim))
         else:
             self._log.warning('trim argument {:8.5f}s larger than dt ({:8.5f}s): ignored.'.format(trim_s, self._dt_s))
 
@@ -124,10 +124,14 @@ class Rate():
         else:
             _diff = time.time() - self._last_time
 #           _delay_sec = self._dt_s - _diff
-            _delay_sec = self._dt_s - ( _diff + self._trim )
+            _delay_sec = self._dt_s - _diff
+            # adjust for error
+            _delay_sec += self._trim
 
             if self._dt_s > _diff:
                 time.sleep(_delay_sec)
+            else:
+                self._log.info(Fore.RED + 'no additiontal delay in rate loop.')
 #           if _delay_sec < self._dt_s:
 #               self._log.debug(Fore.CYAN + Style.DIM    + '< dt: {:7.4f}ms;'.format(self._dt_s * 1000.0) + Fore.CYAN  \
 #                       + ' delay: {:7.4f}ms; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))
