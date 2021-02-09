@@ -52,9 +52,12 @@ class PID(object):
         self._setpoint       = setpoint
         self._min_output     = min_output
         self._max_output     = max_output
-        self._setpoint_limit = None
+        self._limit          = None
         self._log = Logger('pid:{}'.format(label), level)
-        self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
+        if self._min_output is None or self._max_output is None:
+            self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={}; max={}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
+        else:
+            self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
         if sample_time is None:
             raise Exception('no sample time argument provided')
         self._sample_time  = sample_time
@@ -94,9 +97,7 @@ class PID(object):
     @property
     def setpoint(self):
         '''
-        The setpoint used by the controller as a tuple: (Kp, Ki, Kd)
-        If a setpoint limit has been set the returned value is
-        limited by the set value.
+        Returns the setpoint used by the controller.
         '''
         return self._setpoint
 
@@ -104,21 +105,30 @@ class PID(object):
     def setpoint(self, setpoint):
         '''
         Setter for the set point. If setpoint limit has been set and the
-        argument exceeds the limit, the value is set to the setpoint limit.
+        argument exceeds the limit, the value is set to the limit.
         '''
-        if self._setpoint_limit:
-            if setpoint > self._setpoint_limit:
-                self._setpoint = self._setpoint_limit
-            elif setpoint < -1.0 * self._setpoint_limit:
-                self._setpoint = -1.0 * self._setpoint_limit
+        if self._limit:
+            if setpoint > self._limit:
+                self._setpoint = self._limit
+            elif setpoint < -1.0 * self._limit:
+                self._setpoint = -1.0 * self._limit
             else:
                 self._setpoint = setpoint
-#           self._log.info(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._setpoint_limit))
+#           self._log.info(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._limit))
         else:
             self._setpoint = setpoint
+        if self._setpoint is None:
+            self._log.info('setpoint: None')
+        else:
+            self._log.info('setpoint: {:<5.2f}'.format(self._setpoint))
 
     # ..........................................................................
-    def set_limit(self, limit):
+    @property
+    def limit(self):
+        return self._limit
+
+    @limit.setter
+    def limit(self, limit):
         '''
         Setter for the setpoint limit. Set to None (the default) to
         disable this feature. Note that this doesn't affect the setting
@@ -128,7 +138,7 @@ class PID(object):
             self._log.info(Fore.CYAN + Style.DIM + 'setpoint limit: disabled')
         else:
             self._log.info(Fore.CYAN + 'setpoint limit: {:5.2f}'.format(limit))
-        self._setpoint_limit = limit
+        self._limit = limit
 
     # ..........................................................................
     def __call__(self, target, dt=None):
@@ -238,7 +248,8 @@ class PID(object):
     @output_limits.setter
     def output_limits(self, limits):
         '''
-        Setter for the output limits.
+        Setter for the output limits using a tuple: (lower, upper).
+        Setting 'None' for a value means there is no limit.
         '''
         if limits is None:
             self._min_output, self._max_output = None, None
@@ -260,7 +271,7 @@ class PID(object):
         self._log.info(_fore + 'min_output:     \t{}'.format(self._min_output))
         self._log.info(_fore + 'max_output:     \t{}'.format(self._max_output))
         self._log.info(_fore + 'setpoint:       \t{}'.format(self._setpoint))
-        self._log.info(_fore + 'setpoint limit: \t{}'.format(self._setpoint_limit))
+        self._log.info(_fore + 'setpoint limit: \t{}'.format(self._limit))
         self._log.info(_fore + 'sample_time:    \t{}'.format(self._sample_time))
 
         self._log.info(_fore + 'proportional:   \t{}'.format(self._proportional))
@@ -284,7 +295,7 @@ class PID(object):
         any stored state.
         '''
         self._log.info(Fore.YELLOW + 'reset ========================= ')
-        self._setpoint     = 0.0
+#       self._setpoint     = 0.0
         self._proportional = 0.0
         self._integral     = 0.0
         self._derivative   = 0.0
@@ -295,9 +306,13 @@ class PID(object):
     # ..........................................................................
     def clamp(self, value):
         '''
-        Clamp the value between the lower and upper limits.
+        Clamp the value between the lower and upper limits. If either limit
+        is not set ('None') the original argument is returned.
         '''
-        return max(self._min_output, min(value, self._max_output))
+        if self._min_output is None or self._max_output is None:
+            return value
+        else:
+            return max(self._min_output, min(value, self._max_output))
 #       return numpy.clip(value, self._min_output, self._max_output)
 
 #EOF

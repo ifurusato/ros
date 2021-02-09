@@ -23,6 +23,9 @@ from lib.logger import Logger, Level
 from lib.pid import PID
 from lib.event import Event
 from lib.rate import Rate
+from lib.ioe_pot import Potentiometer
+
+SCALE_KP = True # else scale KD
 
 # ...............................................................
 class Clock(object):
@@ -52,24 +55,30 @@ class Clock(object):
         self._log.info('tock frequency: {:d}Hz'.format(round(self._loop_freq_hz / self._tock_modulo)))
         self._enable_trim  = _config.get('enable_trim')
         if self._enable_trim:
-            _kp = 0.005
+            _min_pot = 0.0
+            _max_pot = 0.1
+            self._pot = Potentiometer(config, Level.WARN)
+            self._pot.set_output_limits(_min_pot, _max_pot)
+
+            _kp = 0.000
             _ki = 0.0
             _kd = 0.0
             _setpoint = self._rate.get_period_ms()
-            _min_output = 0.0
-            _max_output = 0.0
+            self._log.info(Style.BRIGHT + 'initial PID setpoint: {:6.3f}'.format(_setpoint))
+            _min_output = None
+            _max_output = None
             _sample_time = 0.05
-            self._pid = PID('clock', _kp, _ki, _kd, _min_output, _max_output, _setpoint, _sample_time, Level.INFO)
-            self._log.info('trim enabled.')
+            self._pid = PID('clock', _kp, _ki, _kd, _min_output, _max_output, _setpoint, _sample_time, Level.WARN)
+            self._log.info(Style.BRIGHT + 'trim enabled.')
         else:
             self._pid = None
-            self._log.info('trim disabled.')
-
+            self._pot = None
+            self._log.info(Style.DIM + 'trim disabled.')
+        # .........................
         self._thread       = None
         self._enabled      = False
         self._closed       = False
         self._last_time    = dt.now()
-        self._kp           = 0.09 # proportional constant for trim
         self._log.info('ready.')
 
     # ..........................................................................
@@ -108,9 +117,7 @@ class Clock(object):
         clock period towards its set point.
         '''
         while f_is_enabled():
-
             _now = dt.now()
-
             _count = next(self._counter)
             if (( _count % self._tock_modulo ) == 0 ):
                 _message = self._message_factory.get_message_of_type(self._tock_type, Event.CLOCK_TOCK, _count)
@@ -118,26 +125,45 @@ class Clock(object):
                 _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
             self._message_bus.add(_message)
 
+            if self._pot:
+                if SCALE_KP:
+                    _scaled_value = self._pot.get_scaled_value(True)
+                    self._pid.kp = _scaled_value
+#                   self._log.info(Fore.GREEN  + 'scaled value kp: {:8.5f}'.format(_scaled_value))
+                else:
+                    _scaled_value = self._pot.get_scaled_value(True) / 10.0
+                    self._pid.kd = _scaled_value
+#                   self._log.info(Fore.GREEN  + 'scaled value kd: {:8.5f}'.format(_scaled_value))
+
+            _kp = 0.0
+            _kd = 0.0
             _pid_output = 0.0
+
             _delta_s = (_now - self._last_time).total_seconds()
             _delta_ms = _delta_s * 1000.0
 #           _error_s = (self.dt_ms / 1000.0) - _delta_s
             _error_s = _delta_s - (self.dt_ms / 1000.0)
+            _error_ms = _error_s * 1000.0
+
             if self._enable_trim:
                 _pid_output = self._pid(_delta_ms)
                 _trim = self._rate.trim
-                self._rate.trim = _trim + _pid_output
+                self._rate.trim = _trim - ( _pid_output / 10000.0 )
+                _kp = self._pid.kp
+                _kd = self._pid.kd
 
             # display stats
 #           if _delta_ms > -50.050 and _delta_ms < 50.050:
-            if _error_s < 0.001:
-                self._log.info(Fore.GREEN  + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_s * 1000.0) \
-                        + Fore.RED + ' po: {:9.6f}'.format(_pid_output) \
-                        + Fore.BLUE + ' trim: {:9.6f}'.format(self._rate.trim))
+            if ( _error_ms ) < 0.110:
+                self._log.info(Fore.GREEN  + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
+                        + Fore.BLUE + ' kp: {:7.4f}; kd: {:7.4f}; '.format(_kp, _kd) \
+                        + Fore.RED + ' sp: {:9.6f}; out: {:9.6f}'.format(self._pid.setpoint, _pid_output) \
+                        + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
             else:
-                self._log.info(Fore.YELLOW + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_s * 1000.0) \
-                        + Fore.RED + ' po: {:9.6f}'.format(_pid_output) \
-                        + Fore.BLUE + ' trim: {:9.6f}'.format(self._rate.trim))
+                self._log.info(Fore.YELLOW + Style.DIM + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
+                        + Fore.BLUE + Style.NORMAL + ' kp: {:7.4f}; kd: {:7.4f}; '.format(_kp, _kd) \
+                        + Fore.RED + ' sp: {:9.6f}; out: {:9.6f}'.format(self._pid.setpoint, _pid_output) \
+                        + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
 
             self._last_time = _now
             self._rate.wait()
