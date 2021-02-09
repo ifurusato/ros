@@ -56,6 +56,10 @@ class MessageBus():
 #       self._log.debug('added consumer \'{}()\' for type: {}'.format(type(consumer), Message.__name__))
 
     # ..........................................................................
+    def handle(self, message: Message):
+        self.add(message)
+
+    # ..........................................................................
     def add(self, message: Message):
         '''
         Add a new Message to the bus, then additionally to any handlers.
