@@ -69,7 +69,7 @@ class Rate():
         if trim_s < self._dt_s:
             # trim value is in seconds
             self._trim = trim_s
-            self._log.debug('trim set to: {:9.7f}s'.format(self._trim))
+            self._log.info('trim set to: {:9.7f}s'.format(self._trim))
         else:
             self._log.warning('trim argument {:8.5f}s larger than dt ({:8.5f}s): ignored.'.format(trim_s, self._dt_s))
 
