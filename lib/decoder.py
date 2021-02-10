@@ -25,7 +25,7 @@ from lib.logger import Level, Logger
 #    pi = MockPi()
 #    sys.exit(1)
 
-class Decoder:
+class Decoder(object):
     '''
     Class to decode mechanical rotary encoder pulses.
 
