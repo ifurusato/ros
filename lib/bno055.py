@@ -18,9 +18,9 @@ init()
 try:
     from adafruit_extended_bus import ExtendedI2C as I2C
 except ImportError as ie:
-    print(Fore.RED + 'unable to import adafruit_extended_bus: {}'.format(ie))
-    sys.exit("This script requires the adafruit-circuitpython-register, adafruit-circuitpython-busdevice and adafruit_extended_bus modules.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-register adafruit-circuitpython-busdevice adafruit_extended_bus")
+#   print(Fore.RED + 'unable to import adafruit_extended_bus: {}'.format(ie))
+    print(Fore.RED + "This script requires the adafruit-circuitpython-register, adafruit-circuitpython-busdevice and adafruit_extended_bus modules.\n"\
+           + "Install with: sudo pip3 install adafruit-circuitpython-register adafruit-circuitpython-busdevice adafruit_extended_bus" + Style.RESET_ALL)
 
 try:
     import adafruit_bno055
