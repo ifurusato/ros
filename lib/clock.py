@@ -23,9 +23,15 @@ from lib.logger import Logger, Level
 from lib.pid import PID
 from lib.event import Event
 from lib.rate import Rate
-#from lib.ioe_pot import Potentiometer
+try:
+    from lib.ioe_pot import Potentiometer
+except Exception:
+    pass
 
-SCALE_KP = True # else scale KD
+# one of these must be true to enable potentiometer
+SCALE_KP = False
+SCALE_KI = False
+SCALE_KD = False
 
 # ...............................................................
 class MockPotentiometer(object):
@@ -77,16 +83,41 @@ class Clock(object):
         self._log.info('tick frequency: {:d}Hz'.format(self._loop_freq_hz))
         self._log.info('tock frequency: {:d}Hz'.format(round(self._loop_freq_hz / self._tock_modulo)))
         self._enable_trim  = _config.get('enable_trim')
+        self._log.info('enable clock trim.' if self._enable_trim else 'disable clock trim.')
+        self._pot = None
         if self._enable_trim:
-            _min_pot = 0.3
-            _max_pot = 0.9
-#           self._pot = Potentiometer(config, Level.WARN)
-            self._pot = MockPotentiometer()
-            self._pot.set_output_limits(_min_pot, _max_pot)
-
-            _kp = 0.0
-            _ki = 0.0
-            _kd = 0.0
+            if SCALE_KP:
+                _min_pot = 0.2
+                _max_pot = 0.6
+                _kp = 0.0
+                _ki = 0.0
+                _kd = 0.00001
+            elif SCALE_KI:
+                _min_pot = 0.0
+                _max_pot = 0.01
+                _kp = 0.3333
+                _ki = 0.0
+                _kd = 0.00001
+            elif SCALE_KD:
+                _min_pot = 0.0
+                _max_pot = 0.01
+                _kp = 0.3333
+                _ki = 0.0
+                _kd = 0.0
+            else: # use these constants for the PID with no potentiometer control
+                _kp = 0.3333
+                _ki = 0.0
+                _kd = 0.00001
+            if ( SCALE_KP or SCALE_KI or SCALE_KD ):
+                try:
+                    self._pot = Potentiometer(config, Level.WARN)
+                except Exception:
+                    self._log.info(Fore.YELLOW + 'using mock potentiometer.')
+                    self._pot = MockPotentiometer()
+                self._pot.set_output_limits(_min_pot, _max_pot)
+            else:
+                self._log.info('using fixed PID constants; no potentiometer.')
+            # initial constants
             _setpoint = self._rate.get_period_ms()
             self._log.info(Style.BRIGHT + 'initial PID setpoint: {:6.3f}'.format(_setpoint))
             _min_output = None
@@ -96,7 +127,6 @@ class Clock(object):
             self._log.info(Style.BRIGHT + 'trim enabled.')
         else:
             self._pid = None
-            self._pot = None
             self._log.info(Style.DIM + 'trim disabled.')
         # .........................
         self._thread       = None
@@ -140,6 +170,11 @@ class Clock(object):
         the trim function is enabled a Proportional control is used to draw the
         clock period towards its set point.
         '''
+        _kp = 0.0
+        _ki = 0.0
+        _kd = 0.0
+        _pid_output = 0.0
+
         while f_is_enabled():
             _now = dt.now()
             _count = next(self._counter)
@@ -154,46 +189,41 @@ class Clock(object):
                     _scaled_value = self._pot.get_scaled_value(True)
                     self._pid.kp = _scaled_value
 #                   self._log.info(Fore.GREEN  + 'scaled value kp: {:8.5f}'.format(_scaled_value))
-                else:
-                    _scaled_value = self._pot.get_scaled_value(True) / 10.0
+                elif SCALE_KI:
+                    _scaled_value = self._pot.get_scaled_value(True)
+                    self._pid.ki = _scaled_value
+#                   self._log.info(Fore.GREEN  + 'scaled value kp: {:8.5f}'.format(_scaled_value))
+                elif SCALE_KD:
+                    _scaled_value = self._pot.get_scaled_value(True)
                     self._pid.kd = _scaled_value
 #                   self._log.info(Fore.GREEN  + 'scaled value kd: {:8.5f}'.format(_scaled_value))
 
-            _kp = 0.0
-            _kd = 0.0
-            _pid_output = 0.0
+            _delta_ms = 1000.0 * (_now - self._last_time).total_seconds()
+            _error_ms = _delta_ms - self.dt_ms
 
-            _delta_s = (_now - self._last_time).total_seconds()
-            _delta_ms = _delta_s * 1000.0
-#           _error_s = (self.dt_ms / 1000.0) - _delta_s
-            _error_s = _delta_s - (self.dt_ms / 1000.0)
-            _error_ms = _error_s * 1000.0
-
-            if self._enable_trim:
+            if self._pid:
                 _pid_output = self._pid(_delta_ms)
-                _trim = self._rate.trim
-                self._rate.trim = _trim + ( _pid_output / 1000.0 )
-#               self._rate.trim = ( _pid_output / 1000.0 )
+                self._rate.trim = self._rate.trim + ( _pid_output / 1000.0 )
                 _kp = self._pid.kp
+                _ki = self._pid.ki
                 _kd = self._pid.kd
 
             # display stats
-#           if _delta_ms > -50.050 and _delta_ms < 50.050:
-            if ( _error_ms ) < 0.110:
-                self._log.info(Fore.GREEN  + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
-                        + Fore.BLUE + ' kp: {:7.4f}; kd: {:7.4f}; '.format(_kp, _kd) \
-                        + Fore.RED + ' out: {:9.6f}'.format(_pid_output) \
-                        + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
-            elif ( _error_ms ) > 1.5:
-                self._log.info(Fore.RED    + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
-                        + Fore.BLUE + ' kp: {:7.4f}; kd: {:7.4f}; '.format(_kp, _kd) \
-                        + Fore.RED + ' out: {:9.6f}'.format(_pid_output) \
-                        + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
+            if _error_ms < 0.005:
+                _fore = Fore.GREEN
+            elif _error_ms < 0.01:
+                _fore = Fore.GREEN + Style.DIM
+            elif _error_ms < 0.10:
+                _fore = Fore.YELLOW + Style.DIM
+            elif _error_ms < 0.5:
+                _fore = Fore.WHITE + Style.DIM 
             else:
-                self._log.info(Fore.YELLOW + Style.DIM + 'dt: {:8.5f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
-                        + Fore.BLUE + Style.NORMAL + ' kp: {:7.4f}; kd: {:7.4f}; '.format(_kp, _kd) \
-                        + Fore.RED + ' out: {:9.6f}'.format(_pid_output) \
-                        + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
+                _fore = Fore.RED 
+
+            self._log.info(_fore + 'dt: {:6.2f}ms; delta {:8.5f}ms; error: {:8.5f}ms; '.format(self.dt_ms, _delta_ms, _error_ms) \
+                    + Fore.BLUE + ' kx({:>8.5f},{:>8.5f},{:>8.5f}) '.format(_kp, _ki, _kd) \
+                    + Fore.RED + ' out: {:9.6f}'.format(_pid_output) \
+                    + Fore.YELLOW + ' trim: {:9.6f}'.format(self._rate.trim))
 
             self._last_time = _now
             self._rate.wait()
