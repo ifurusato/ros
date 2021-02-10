@@ -61,16 +61,12 @@ class Decoder(object):
 
         from lib.decoder import Decoder
 
-        pos = 0
-
-        def callback(self, gpio, level, tick):
-           global pos
-           pos += way
-           print("pos={}".format(pos))
+        def my_callback(self, step):
+           self._steps += step
 
         pin_a = 17
         pin_b = 18
-        decoder = Decoder(pi, pin_a, pin_b, callback)
+        decoder = Decoder(pi, pin_a, pin_b, my_callback)
         ...
         decoder.cancel()
 
@@ -95,59 +91,23 @@ class Decoder(object):
         self._pi.set_mode(self._gpio_b, pigpio.INPUT)
         self._pi.set_pull_up_down(self._gpio_a, pigpio.PUD_UP)
         self._pi.set_pull_up_down(self._gpio_b, pigpio.PUD_UP)
-#       _edge = pigpio.RISING_EDGE   # default
+#       _edge = pigpio.RISING_EDGE  # default
 #       _edge = pigpio.FALLING_EDGE
         _edge = pigpio.EITHER_EDGE
         self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse_a)
         self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse_b)
 
-#       the following (untested) implementation uses GPIO interrupts:
-#       _success = False
-#       try:
-#           GPIO.setmode(GPIO.BCM)
-#           GPIO.setup(self._gpio_a, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-#           GPIO.setup(self._gpio_b, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-#           # RISING, FALLING or BOTH?
-#           GPIO.add_event_detect(self._gpio_a, GPIO.RISING, callback=self._pulse_a, bouncetime=100)
-#           GPIO.add_event_detect(self._gpio_b, GPIO.RISING, callback=self._pulse_b, bouncetime=100)
-#           _success = True
-#       except Exception as e:
-#           self._log.error('error configuring interrupts: {}\n{}'.format( e, traceback.format_exc()))
-#       finally:
-#           if _success:
-#               self._log.info('ready.')
-#           else:
-#               self._log.warning('failed to configure GPIO interrupts for motor encoders.')
-#           sys.exit(0 if _success else 1)
-
     # ..........................................................................
     def _pulse_a(self, gpio, level, tick):
-#       self._log.info('_pulse_A level: {}; tick: {}'.format(level, tick))
         self._level_a = level
         if level == 1 and self._level_b == 1:
             self.callback(1)
 
     # ..........................................................................
     def _pulse_b(self, gpio, level, tick):
-#       self._log.info('_pulse_B level: {}; tick: {}'.format(level, tick))
         self._level_b = level;
         if level == 1 and self._level_a == 1:
             self.callback(-1)
-
-    # ..........................................................................
-    def _pulse(self, gpio, level, tick):
-        if gpio == self._gpio_a:
-           self._level_a = level
-        else:
-           self._level_b = level;
-        if gpio != self._last_gpio: # debounce
-           self._last_gpio = gpio
-           if gpio == self._gpio_a and level == 1:
-              if self._level_b == 1:
-                 self.callback(1)
-           elif gpio == self._gpio_b and level == 1:
-              if self._level_a == 1:
-                 self.callback(-1)
 
     # ..........................................................................
     def cancel(self):
