@@ -25,7 +25,7 @@ from lib.logger import Level, Logger
 #    pi = MockPi()
 #    sys.exit(1)
 
-class Decoder:
+class Decoder(object):
     '''
     Class to decode mechanical rotary encoder pulses.
 
@@ -101,9 +101,7 @@ class Decoder:
         self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse_a)
         self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse_b)
 
-#       self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse)
-#       self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse)
-
+#       the following (untested) implementation uses GPIO interrupts:
 #       _success = False
 #       try:
 #           GPIO.setmode(GPIO.BCM)
