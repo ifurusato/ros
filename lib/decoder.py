@@ -6,31 +6,20 @@
 # Please see the LICENSE file included as part of this package.
 #
 
-import sys, traceback
-import pigpio
-import RPi.GPIO as GPIO
-
 from colorama import init, Fore, Style
 init()
+try:
+    import pigpio
+except ImportError as ie:
+    print(Fore.RED + "This script requires the pigpio module.\n"\
+        + "Install with: sudo pip3 install pigpio" + Style.RESET_ALL)
 
-from lib.logger import Level, Logger
-
-#try:
-#    import pigpio
-#    pi = pigpio.pi()
-#    print('import            :' + Fore.BLACK + ' INFO  : successfully imported pigpio.' + Style.RESET_ALL)
-#except ImportError:
-#    print('import            :' + Fore.RED + ' ERROR : failed to import pigpio, using mock...' + Style.RESET_ALL)
-#    from mock_pi import MockPi as Pi
-#    pi = MockPi()
-#    sys.exit(1)
+from lib.logger import Logger
 
 class Decoder(object):
     '''
-    Class to decode mechanical rotary encoder pulses.
-
-    Originally written with pigpio's pi.callback() method, now 
-    re-implemented using interrupts from the RPi.GPIO library.
+    Class to decode mechanical rotary encoder pulses, implemented
+    using pigpio's pi.callback() method.
 
     Decodes the rotary encoder A and B pulses, e.g.:
 
@@ -82,7 +71,7 @@ class Decoder(object):
         self._gpio_a = gpio_a
         self._gpio_b = gpio_b
         self._log.info('pin A: {:d}; pin B: {:d}'.format(self._gpio_a,self._gpio_b))
-        self.callback = callback
+        self._callback = callback
         self._level_a = 0
         self._level_b = 0
         self._last_gpio = None
@@ -94,27 +83,27 @@ class Decoder(object):
 #       _edge = pigpio.RISING_EDGE  # default
 #       _edge = pigpio.FALLING_EDGE
         _edge = pigpio.EITHER_EDGE
-        self.cbA = self._pi.callback(self._gpio_a, _edge, self._pulse_a)
-        self.cbB = self._pi.callback(self._gpio_b, _edge, self._pulse_b)
+        self.callback_a = self._pi.callback(self._gpio_a, _edge, self._pulse_a)
+        self.callback_b = self._pi.callback(self._gpio_b, _edge, self._pulse_b)
 
     # ..........................................................................
     def _pulse_a(self, gpio, level, tick):
         self._level_a = level
         if level == 1 and self._level_b == 1:
-            self.callback(1)
+            self._callback(1)
 
     # ..........................................................................
     def _pulse_b(self, gpio, level, tick):
         self._level_b = level;
         if level == 1 and self._level_a == 1:
-            self.callback(-1)
+            self._callback(-1)
 
     # ..........................................................................
     def cancel(self):
         '''
         Cancel the rotary encoder decoder.
         '''
-        self.cbA.cancel()
-        self.cbB.cancel()
+        self.callback_a.cancel()
+        self.callback_b.cancel()
 
 #EOF
