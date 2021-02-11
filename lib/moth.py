@@ -84,21 +84,23 @@ class Moth(object):
     def get_int_values(self):
         '''
         Return the values of the port and starboard moth sensors
-        (resp.) as a two-element array, in the range 0-MAX.
+        (resp.) as a two-element array, in the range 0-MAX, where
+        MAX is likely 330.
         '''
         return self._ioe.get_moth_values()
 
     def get_values(self):
         '''
         Return the values of the port and starboard moth sensors
-        (resp.) as a two-element array, in the range 0.0-MAX.
+        (resp.) as a two-element array, in the range 0.0-MAX_V,
+        where MAX_V is likely 3.3v.
         '''
         return self._ioe.get_raw_moth_values()
 
     def get_bias(self):
         '''
-        Returns a value from -MAX (port) to +MAX (starboard), with zero
-        as no rotational bias. There is no hysteresis in the result.
+        Returns a value from -MAX_V (port) to +MAX_V (starboard), with
+        zero as no rotational bias. There is no hysteresis in the result.
         '''
         _values = self._ioe.get_raw_moth_values()
         return ( -1.0 * _values[0] ) + _values[1]

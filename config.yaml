@@ -237,6 +237,8 @@ ros:
         port_bmp_pin:       6                    # pin connected to port bumper
         center_bmp_pin:     4                    # pin connected to center bumper
         stbd_bmp_pin:       5                    # pin connected to starboard bumper
+        port_moth_pin:     13                    # pin connected to port moth sensor
+        stbd_moth_pin:     14                    # pin connected to starboard moth sensor
     integrated_front_sensor:
         use_potentiometer:  False                # use potentiometer to adjust distance setting
         ignore_duplicates:  False                # don't fire messages for duplicate events
@@ -248,7 +250,8 @@ ros:
         cntr_trigger_distance_cm:        90.0    # center analog IR sensor max distance before triggering
         oblq_trigger_distance_cm:        70.0    # port or starboard oblique analog IR sensor max distance before triggering
         side_trigger_distance_cm:        70.0    # port or starboard side analog IR sensor max distance before triggering
-
+    moth:
+        hysteresis:   10                         # permissable range for int values being considered equal
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel

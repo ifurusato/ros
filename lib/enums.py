@@ -15,8 +15,8 @@ from enum import Enum
 
 # ..............................................................................
 class Orientation(Enum):
-    NONE  = ( 0, "none", "none")          # not generally used
-    BOTH  = ( 1, "both", "both")          # not generally used
+    NONE  = ( 0, "none", "none")
+    BOTH  = ( 1, "both", "both")
     PORT  = ( 2, "port", "port")
     CNTR  = ( 3, "center", "cntr")
     STBD  = ( 4, "starboard", "stbd")
