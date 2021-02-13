@@ -54,7 +54,7 @@ class MockConsumer():
 def test_battery_check():
 
     _log = Logger("batcheck test", Level.INFO)
-    _log.header('battery check', 'Starting test...', '[1/3]')
+    _log.heading('battery check', 'Starting test...', '[1/3]')
     _log.info(Fore.RED + 'Press Ctrl+C to exit.')
 
     # read YAML configuration
@@ -62,7 +62,7 @@ def test_battery_check():
     filename = 'config.yaml'
     _config = _loader.configure(filename)
 
-    _log.header('battery check', 'Creating objects...', '[2/3]')
+    _log.heading('battery check', 'Creating objects...', '[2/3]')
 
     _log.info('creating message factory...')
     _message_factory = MessageFactory(Level.INFO)
@@ -81,7 +81,7 @@ def test_battery_check():
     _battery_check = BatteryCheck(_config, _clock, _queue, _message_factory, Level.INFO)
     _battery_check.enable()
 #   _battery_check.set_enable_messaging(True)
-    _log.header('battery check', 'Enabling battery check...', '[3/3]')
+    _log.heading('battery check', 'Enabling battery check...', '[3/3]')
 
     _clock.enable()
 

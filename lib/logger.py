@@ -170,7 +170,7 @@ class Logger:
 
     # headings .................................................................
 
-    def header(self, title, message, info):
+    def heading(self, title, message, info):
         '''
            Print a formatted, titled message to info(), inspired by maven console messaging.
 

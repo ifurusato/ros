@@ -30,7 +30,7 @@ try:
     _main_thread = threading.main_thread()
     _main_thread.name = 'main'
 
-    _log.header('test', 'starting gamepad demo...', None)
+    _log.heading('test', 'starting gamepad demo...', None)
     _gamepad_demo = GamepadDemo(Level.INFO)
     _gamepad_demo.enable()
     _motors = _gamepad_demo.get_motors()

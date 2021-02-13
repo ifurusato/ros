@@ -31,7 +31,7 @@ def test_offset():
 # ..............................................................................
 @pytest.mark.unit
 def _test_offset(log, angle, offset, expected):
-    log.header('Rotate Test','{:5.2f}°, offset {:5.2f}°, expected {:5.2f}°'.format(angle, offset, expected),'1/4')
+    log.heading('Rotate Test','{:5.2f}°, offset {:5.2f}°, expected {:5.2f}°'.format(angle, offset, expected),'1/4')
     result = Convert.offset_in_degrees(angle, offset)
     if not math.isclose(result, expected):
         log.error('expected {:5.2f}°, not {:5.2f}°\n'.format(expected, result))
@@ -49,7 +49,7 @@ def test_offset_rotate():
     _count = 0
     for offset in arange(0.0, 360.0, 90.0):
         _count += 1
-        _log.header('Offset Rotate Test', 'offset={:<5.2f};'.format(offset), '{:d}/4'.format(_count))
+        _log.heading('Offset Rotate Test', 'offset={:<5.2f};'.format(offset), '{:d}/4'.format(_count))
         for angle in arange(0.0, 360.0, 30.0):
             _alt = Convert.offset_in_degrees(angle, offset)
             _log.info(Fore.GREEN + 'from {:>5.2f}°\tto {:>5.2f}°;'.format(angle, _alt) + Fore.BLACK + '\toffset={:<5.2f};'.format(offset))

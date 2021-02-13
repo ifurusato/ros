@@ -102,7 +102,7 @@ class Gamepad():
 
     # ..........................................................................
     def _connect(self):
-        self._log.header('gamepad','Connecting Gamepad...',None)
+        self._log.heading('gamepad','Connecting Gamepad...',None)
         try:
             self._gamepad = InputDevice(self._device_path)
             # display device info

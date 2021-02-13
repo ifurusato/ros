@@ -52,7 +52,7 @@ class GamepadDemo():
         filename     = 'config.yaml'
         _config      = _loader.configure(filename)
         self._log = Logger("gamepad-demo", level)
-        self._log.header('gamepad-demo','Configuring Gamepad...',None)
+        self._log.heading('gamepad-demo','Configuring Gamepad...',None)
         self._config = _config['ros'].get('gamepad_demo')
         self._enable_ifs       = self._config.get('enable_ifs')
         self._enable_compass   = self._config.get('enable_compass')
