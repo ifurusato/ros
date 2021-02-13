@@ -24,6 +24,8 @@ from lib.enums import Orientation
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.moth import Moth
+from lib.rgbmatrix import RgbMatrix, Color, DisplayType
+
 
 # ..............................................................................
 @pytest.mark.unit
@@ -40,15 +42,25 @@ def test_moth():
     _config = _loader.configure(filename)
     _moth = Moth(_config, None, Level.INFO)
 
-    for i in range(50):
+    _rgbmatrix = RgbMatrix(Level.INFO)
+    _rgbmatrix.set_display_type(DisplayType.SOLID)
+
+#   for i in range(50):
+    while True:
         # orientation and bias .............................
         _orientation = _moth.get_orientation()
         _bias = _moth.get_bias()
         if _orientation is Orientation.PORT:
+            _rgbmatrix.show_color(Color.BLACK, Orientation.STBD)
+            _rgbmatrix.show_color(Color.RED, Orientation.PORT)
             _log.info(Fore.RED    + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias))
         elif _orientation is Orientation.STBD:
+            _rgbmatrix.show_color(Color.BLACK, Orientation.PORT)
+            _rgbmatrix.show_color(Color.GREEN, Orientation.STBD)
             _log.info(Fore.GREEN  + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias))
         else:
+            _rgbmatrix.show_color(Color.YELLOW, Orientation.PORT)
+            _rgbmatrix.show_color(Color.YELLOW, Orientation.STBD)
             _log.info(Fore.YELLOW + '{}\t {:6.3f}'.format(_orientation.name, _bias))
         # int values .......................................
         _int_values = _moth.get_int_values()
@@ -56,7 +68,8 @@ def test_moth():
         # float values .....................................
         _values = _moth.get_values()
         _log.info(Fore.RED   + '{:<6.3f}\t'.format(_values[0]) + Fore.GREEN + '{:<6.3f}\t'.format(_values[1]) )
-        time.sleep(1.0)
+#       time.sleep(1.0)
+        time.sleep(0.1)
 
 # ..............................................................................
 def main():

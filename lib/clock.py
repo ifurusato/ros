@@ -26,35 +26,13 @@ from lib.rate import Rate
 try:
     from lib.ioe_pot import Potentiometer
 except Exception:
+    from mock.mock_pot import MockPotentiometer
     pass
 
 # one of these must be true to enable potentiometer
 SCALE_KP = False
 SCALE_KI = False
 SCALE_KD = False
-
-# ...............................................................
-class MockPotentiometer(object):
-    '''
-    For testing, or when we don't have an RGB LED Potentiometer attached.
-    '''
-    def __init__(self):
-        self._min_pot = 0.0
-        self._max_pot = 0.0
-        self._value   = 0.0
-        self._step    = 0.0
-
-    def set_output_limits(self, min_pot, max_pot):
-        self._min_pot = min_pot
-        self._max_pot = max_pot
-        self._step    = max_pot / 20.0
-
-    def get_scaled_value(self, update_led=True):
-        if self._value < self._max_pot:
-            self._value += self._step
-        else:
-            self._value = self._min_pot
-        return self._value
 
 # ...............................................................
 class Clock(object):
@@ -78,8 +56,8 @@ class Clock(object):
         self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
         self._counter      = itertools.count()
         self._rate         = Rate(self._loop_freq_hz)
-        self._tick_type    = type(Tick(None, Event.CLOCK_TICK, None))
-        self._tock_type    = type(Tock(None, Event.CLOCK_TOCK, None))
+#       self._tick_type    = type(Tick(None, Event.CLOCK_TICK, None))
+#       self._tock_type    = type(Tock(None, Event.CLOCK_TOCK, None))
         self._log.info('tick frequency: {:d}Hz'.format(self._loop_freq_hz))
         self._log.info('tock frequency: {:d}Hz'.format(round(self._loop_freq_hz / self._tock_modulo)))
         self._enable_trim  = _config.get('enable_trim')
@@ -179,10 +157,12 @@ class Clock(object):
             _now = dt.now()
             _count = next(self._counter)
             if (( _count % self._tock_modulo ) == 0 ):
-                _message = self._message_factory.get_message_of_type(self._tock_type, Event.CLOCK_TOCK, _count)
+#               _message = self._message_factory.get_message_of_type(self._tock_type, Event.CLOCK_TOCK, _count)
+                _message = self._message_factory.get_message(Event.CLOCK_TOCK, _count)
             else:
-                _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
-            self._message_bus.add(_message)
+#               _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
+                _message = self._message_factory.get_message(Event.CLOCK_TICK, _count)
+            self._message_bus.handle(_message)
 
             if self._pot:
                 if SCALE_KP:
@@ -273,13 +253,13 @@ class Clock(object):
             self._log.warning('already closed.')
 
 # ...............................................................
-class Tick(Message):
-    def __init__(self, eid, event, value):
-        super().__init__(eid, Event.CLOCK_TICK, value)
+#class Tick(Message):
+#    def __init__(self, eid, event, value):
+#        super().__init__(eid, Event.CLOCK_TICK, value)
 
 # ...............................................................
-class Tock(Message):
-    def __init__(self, eid, event, value):
-        super().__init__(eid, Event.CLOCK_TOCK, value)
+#class Tock(Message):
+#    def __init__(self, eid, event, value):
+#        super().__init__(eid, Event.CLOCK_TOCK, value)
 
 #EOF

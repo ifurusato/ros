@@ -43,29 +43,16 @@ class MessageBus():
         Add a handler to the message bus for the given message type.
         '''
         self._message_bus.add_handler(message_type, handler)
-        self._log.info(Fore.MAGENTA + 'added message handler \'{}()\' for type: {}'.format(type(handler), message_type.__name__))
-#       self._log.info(Fore.MAGENTA + 'added message handler \'{}()\' for type: {}'.format(handler.__name__, message_type.__name__))
-
-#   # ..........................................................................
-#   def add_consumer(self, consumer):
-#       '''
-#       An alias/shortcut for add_handler() that adds a message handler as an 
-#       object with an add() function to the list of message bus handlers.
-#       '''
-#       self.add_handler(Message, consumer.add)
-#       self._log.debug('added consumer \'{}()\' for type: {}'.format(type(consumer), Message.__name__))
+        self._log.info('added message handler \'{}()\' for type: {}'.format(type(handler), message_type.__name__))
 
     # ..........................................................................
     def handle(self, message: Message):
-        self.add(message)
-
-    # ..........................................................................
-    def add(self, message: Message):
         '''
-        Add a new Message to the bus, then additionally to any handlers.
+        Add a new Message to the message bus, and any associated handlers.
         '''
-        _result = self._message_bus.handle(message)
-        self._log.info(Fore.BLACK + 'handle message eid#{}; priority={}; description: {};\t'.format(message.eid, message.priority, message.description) \
-                + Fore.WHITE + 'result: {}'.format(_result))
+        self._message_bus.handle(message)
+#       _result = self._message_bus.handle(message)
+#       self._log.debug(Fore.BLACK + 'handle message eid#{}; priority={}; description: {};\t'.format(message.eid, message.priority, message.description) \
+#               + Fore.WHITE + 'result: {}'.format(len(_result)))
 
 #EOF

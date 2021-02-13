@@ -20,7 +20,7 @@ from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
 from lib.queue import MessageQueue
 from lib.battery import BatteryCheck
-from lib.clock import Clock, Tick, Tock
+from lib.clock import Clock
 
 INDEFINITE = True
 

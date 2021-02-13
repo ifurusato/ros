@@ -178,8 +178,8 @@ ros:
         motor_encoder_b2_stbd:  18               # stbd B
         reverse_motor_orientation:   False       # in case you wire something up backwards
         reverse_encoder_orientation: False       # ditto
+        motor_power_limit: 0.85                  # limit set on power sent to motors
 #       sample_rate: 10                          # how many pulses per encoder measurement?
-#       max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
             kp:                 0.09500          # proportional gain

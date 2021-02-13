@@ -105,8 +105,7 @@ class Velocity(object):
         if motor is None:
             raise ValueError('null motor argument.')
         self._motor = motor
-#       self._log = Logger('velocity:{}'.format(motor.orientation.label), level)
-        self._log = Logger('velocity:{}'.format(motor.orientation.label), Level.INFO)
+        self._log = Logger('velocity:{}'.format(motor.orientation.label), level)
         # now calculate some geometry-based conversions
         _config = config['ros'].get('geometry')
         self._steps_per_rotation  = _config.get('steps_per_rotation') # 494 encoder steps per wheel rotation
@@ -136,18 +135,17 @@ class Velocity(object):
     def steps_to_cm(self, steps):
         return steps / self._steps_per_cm
 
-    # ......................................................
-    def handle_message(self, message):
-        self._log.warning('handle_message() triggered.')
-        self.add(message)
+#   # ......................................................
+#   def handle_message(self, message):
+#       self._log.warning('handle_message() triggered.')
+#       self.add(message)
 
     # ..........................................................................
-    def add(self, message):
+    def handle(self, message):
         '''
         This receives a TICK message every 50ms (i.e., at 20Hz), calculating
         velocity based on the tick/step count of the motor encoder.
         '''
-        self._log.warning('add() triggered.')
         if self._enabled and ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
             if self._motor.enabled: # then calculate velocity from motor encoder's step count
                 _time_diff_ms = 0.0
@@ -172,7 +170,7 @@ class Velocity(object):
                 self._stepcount_timestamp = time.time()
                 self._steps_begin = _steps
             else:
-                self._log.warning('add() failed: motor disabled.')
+                self._log.warning('handle() failed: motor disabled.')
                 self._velocity = 0.0
         else:
             self._velocity = 0.0 # or None?
@@ -196,9 +194,8 @@ class Velocity(object):
     def enable(self):
         if not self._closed:
             self._enabled = True
-            self._clock.message_bus.add_handler(Message, self)
-#           self._clock.message_bus.add_handler(Message, self.add)
-            self._log.info(Fore.YELLOW + 'enabled.')
+            self._clock.message_bus.add_handler(Message, self.handle)
+            self._log.info('enabled.')
         else:
             self._log.warning('cannot enable: already closed.')
 

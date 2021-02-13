@@ -16,13 +16,13 @@ init()
 
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
-from lib.clock import Clock, Tick, Tock
+from lib.clock import Clock
 from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
 from lib.motor_configurer import MotorConfigurer
 from lib.motors import Motors
 from lib.enums import Orientation
-from lib.gamepad import Gamepad
+#from lib.gamepad import Gamepad
 from lib.pid_ctrl import PIDController
 from lib.ioe_pot import Potentiometer
 from lib.rotary_ctrl import RotaryControl
@@ -60,7 +60,7 @@ def main():
     _config = _loader.configure('config.yaml')
 
     _pin_A = 12
-    _button_24 = Button(_pin_A, callback_method_A, Level.INFO)
+    _button_12 = Button(_pin_A, callback_method_A, Level.INFO)
     _log.info(Style.BRIGHT + 'press button A (connected to pin {:d}) to toggle or initiate action.'.format(_pin_A))
 
     _pin_B = 24
@@ -90,18 +90,18 @@ def main():
         _min_rot        = 0
         _max_rot        = 30
         _step_rot       = 1
-        _rotary_ctrl = RotaryControl(_config, _min_rot, _max_rot, _step_rot, Level.INFO)
+        _rotary_ctrl = RotaryControl(_config, _min_rot, _max_rot, _step_rot, Level.WARN)
 
         # configure motors/PID controllers
         if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
             _port_motor = _motors.get_motor(Orientation.PORT)
             _port_pid_ctrl = PIDController(_config, _clock, _port_motor, level=Level.INFO)
-            _port_pid_ctrl.set_limit(_limit)
+            _port_pid_ctrl.limit = _limit
             _port_pid_ctrl.enable()
         if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.STBD:
             _stbd_motor = _motors.get_motor(Orientation.STBD)
             _stbd_pid_ctrl = PIDController(_config, _clock, _stbd_motor, level=Level.INFO)
-            _stbd_pid_ctrl.set_limit(_limit)
+            _stbd_pid_ctrl.limit = _limit
             _stbd_pid_ctrl.enable()
 
         _max_pot = 1.0

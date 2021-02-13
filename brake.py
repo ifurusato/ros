@@ -13,7 +13,7 @@ import sys
 
 from lib.config_loader import ConfigLoader
 from lib.logger import Level, Logger
-from lib.clock import Clock, Tick, Tock
+from lib.clock import Clock
 from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
 from lib.motor_configurer import MotorConfigurer

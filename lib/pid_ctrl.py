@@ -20,6 +20,7 @@ init()
 
 from lib.logger import Logger, Level
 from lib.enums import Orientation
+from lib.message import Message
 from lib.event import Event
 from lib.pid import PID
 from lib.slew import SlewRate, SlewLimiter
@@ -194,7 +195,7 @@ class PIDController(object):
         return self._enabled
 
     # ..........................................................................
-    def add(self, message):
+    def handle(self, message):
         '''
         The PID loop that continues while the enabled flag is True.
 
@@ -203,24 +204,22 @@ class PIDController(object):
         perhaps cheap approach to hysteresis.
         '''
         if self._enabled and ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
-
             # calculate velocity from motor encoder's step count
             _velocity = self._motor.velocity
-#           self._log.info(Fore.BLACK + 'add({}): {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._motor.steps, _velocity))
+#           self._log.info(Fore.BLACK + 'handle({}): {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._motor.steps, _velocity))
             _pid_output = self._pid(_velocity)
             self._power += _pid_output
             _motor_power = self._power / 100.0
-            self._log.info(Fore.WHITE + Style.NORMAL + 'add() _steps: {:d}; _power: {:>5.2f}/_motor_power: {:>5.2f};\t'.format(self._motor.steps, self._power, _motor_power) \
-                    + 'pid output: {:5.2f};\t'.format(_pid_output) + Style.BRIGHT + 'velocity: {:5.2f}'.format(_velocity))
-
+#           self._log.info(Fore.WHITE + Style.NORMAL + 'handle() _steps: {:d}; _power: {:>5.2f}/_motor_power: {:>5.2f};\t'.format(self._motor.steps, self._power, _motor_power) \
+#                   + 'pid output: {:5.2f};\t'.format(_pid_output) + Style.BRIGHT + 'velocity: {:5.2f}'.format(_velocity))
             self._motor.set_motor_power(_motor_power)
             self._last_power = self._power
-
 #           _mean_setpoint = self._get_mean_setpoint(self._pid.setpoint)
 #           if _mean_setpoint == 0.0:
 #               self._motor.set_motor_power(0.0)
 #           else:
 #               self._motor.set_motor_power(self._power / 100.0)
+        pass
 
     # ..........................................................................
     def _get_mean_setpoint(self, value):
@@ -258,7 +257,7 @@ class PIDController(object):
             if self._enabled:
                 self._log.warning('PID loop already enabled.')
             else:
-                self._clock.add_consumer(self)
+                self._clock.message_bus.add_handler(Message, self.handle)
                 self._enabled = True
         else:
             self._log.warning('cannot enable PID loop: already closed.')

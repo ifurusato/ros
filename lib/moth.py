@@ -50,6 +50,9 @@ class Moth(object):
             self._ioe = ioe
         else:
             self._ioe = IoExpander(config, Level.INFO)
+        self._max_v = 3.3 # maximum sensor voltage expected
+        self._max_port_bias = 0.0
+        self._max_stbd_bias = 0.0
         self._log.info('ready.')
 
     # ..........................................................................
@@ -99,10 +102,15 @@ class Moth(object):
 
     def get_bias(self):
         '''
-        Returns a value from -MAX_V (port) to +MAX_V (starboard), with
-        zero as no rotational bias. There is no hysteresis in the result.
+        Returns a two-element array containing a port and starboard value 
+        between 0.0 and 1.0. There is no hysteresis in the result.
         '''
         _values = self._ioe.get_raw_moth_values()
-        return ( -1.0 * _values[0] ) + _values[1]
+        _port_bias = _values[0] / self._max_v
+        self._max_port_bias = max(self._max_port_bias, _port_bias)
+        _stbd_bias = _values[1] / self._max_v
+        self._max_stbd_bias = max(self._max_stbd_bias, _stbd_bias)
+#       self._log.debug(Fore.RED + '{:5.2f}/{:5.2f}\t'.format(_port_bias, self._max_port_bias) + Fore.GREEN + '{:5.2f}/{:5.2f}'.format(_stbd_bias, self._max_stbd_bias))
+        return _port_bias, _stbd_bias
 
 #EOF

@@ -128,11 +128,10 @@ class Rate():
             # adjust for error
             if _delay_sec + self._trim > 0.0:
                 _delay_sec += self._trim
-
             if self._dt_s > _diff:
                 time.sleep(_delay_sec)
             else:
-                self._log.info(Fore.RED + 'no additiontal delay in rate loop.')
+                self._log.warning('no additional delay in rate loop (diff: {:7.4f}ms)'.format(_diff * 1000.0))
 #           if _delay_sec < self._dt_s:
 #               self._log.debug(Fore.CYAN + Style.DIM    + '< dt: {:7.4f}ms;'.format(self._dt_s * 1000.0) + Fore.CYAN  \
 #                       + ' delay: {:7.4f}ms; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))

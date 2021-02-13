@@ -14,7 +14,7 @@
 # helpful discussions with David Anderson of the DPRG.
 #
 
-import time
+import time, math
 from colorama import init, Fore, Style
 init()
 
@@ -117,10 +117,10 @@ class PID(object):
 #           self._log.info(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._limit))
         else:
             self._setpoint = setpoint
-        if self._setpoint is None:
-            self._log.info('setpoint: None')
-        else:
-            self._log.info('setpoint: {:<5.2f}'.format(self._setpoint))
+#       if self._setpoint is None:
+#           self._log.info('setpoint: None')
+#       else:
+#           self._log.info('setpoint: {:<5.2f}'.format(self._setpoint))
 
     # ..........................................................................
     @property
@@ -162,9 +162,10 @@ class PID(object):
         # display dt in milliseconds
 #       self._log.info(Fore.MAGENTA + Style.BRIGHT + '>> dt: {:7.4f}ms;'.format(dt * 1000.0))
 
-        if dt < self._sample_time and self._last_output is not None:
+        if dt < self._sample_time and not math.isclose(dt, self._sample_time) and self._last_output is not None:
             # only update every sample_time seconds
-            self._log.info(Fore.RED + '__call__() last output: {:5.2f}'.format(self._last_output) + Style.RESET_ALL)
+            self._log.info(Fore.RED + Style.BRIGHT + '__call__() dt {:9.7f} < sample time: {:9.7f}; last output: {:5.2f}'.format(\
+                    dt, self._sample_time, self._last_output) + Style.RESET_ALL)
             return self._last_output
 
         # compute error terms
@@ -182,7 +183,8 @@ class PID(object):
 
         kp, ki, kd = self.constants
         cp, ci, cd = self.components
-        self._log.info(Fore.CYAN + Style.DIM + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
+        self._log.info(Fore.WHITE + 'dt={:7.4f}ms '.format(dt * 1000.0) \
+                + Fore.CYAN + Style.DIM + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
                 + Fore.MAGENTA + ' KP={:<8.5f}; KD={:<8.5f};'.format(kp, kd) \
                 + Fore.CYAN + Style.BRIGHT + ' P={:8.5f}; I={:8.5f}; D={:8.5f}; sp={:6.3f};'.format(cp, ci, cd, self._setpoint) \
                 + Style.BRIGHT + ' out: {:<8.5f}'.format(output))
@@ -294,7 +296,7 @@ class PID(object):
         problems when starting up again. The reset() function cleans 
         any stored state.
         '''
-        self._log.info(Fore.YELLOW + 'reset ========================= ')
+        self._log.info(Fore.YELLOW + 'reset.')
 #       self._setpoint     = 0.0
         self._proportional = 0.0
         self._integral     = 0.0
