@@ -28,8 +28,9 @@ class IoExpander():
     '''
     Wraps an IO Expander board as input from an integrated front sensor
     array of infrareds and bumper switches.
-    '''
 
+    Optional are a pair of analog imputs wired up as a Moth sensor.
+    '''
     def __init__(self, config, level):
         super().__init__()
         if config is None:
@@ -46,6 +47,12 @@ class IoExpander():
                 + Fore.RED + ' port side={:d}; port={:d};'.format(self._port_side_ir_pin, self._port_ir_pin) \
                 + Fore.BLUE + ' center={:d};'.format(self._center_ir_pin) \
                 + Fore.GREEN + ' stbd={:d}; stbd side={:d}'.format(self._stbd_ir_pin, self._stbd_side_ir_pin))
+        # moth/anti-moth
+        self._port_moth_pin = _config.get('port_moth_pin')  # pin connected to port moth sensor
+        self._stbd_moth_pin = _config.get('stbd_moth_pin')  # pin connected to starboard moth sensor
+        self._log.info('moth pin assignments:\t' \
+                + Fore.RED + ' moth port={:d};'.format(self._port_moth_pin) \
+                + Fore.GREEN + ' moth stbd={:d};'.format(self._stbd_moth_pin))
         # bumpers
         self._port_bmp_pin     = _config.get('port_bmp_pin')      # pin connected to port bumper
         self._cntr_bmp_pin     = _config.get('center_bmp_pin')    # pin connected to center bumper
@@ -70,7 +77,10 @@ class IoExpander():
         self._ioe.set_mode(self._center_ir_pin,    io.ADC)
         self._ioe.set_mode(self._stbd_ir_pin,      io.ADC)
         self._ioe.set_mode(self._stbd_side_ir_pin, io.ADC)
-        # digital bumpers
+        # moth sensors
+        self._ioe.set_mode(self._port_moth_pin,    io.ADC)
+        self._ioe.set_mode(self._stbd_moth_pin,    io.ADC)
+        # digital bumper
         self._ioe.set_mode(self._port_bmp_pin,     io.IN_PU)
         self._ioe.set_mode(self._cntr_bmp_pin,     io.IN_PU)
         self._ioe.set_mode(self._stbd_bmp_pin,     io.IN_PU)
@@ -121,6 +131,12 @@ class IoExpander():
     def get_stbd_side_ir_value(self):
         return int(round(self._ioe.input(self._stbd_side_ir_pin) * 100.0))
 
+    # moth/anti-moth ...........................................................
+
+    def get_moth_values(self):
+        return [ int(round(self._ioe.input(self._port_moth_pin) * 100.0)), \
+                 int(round(self._ioe.input(self._stbd_moth_pin) * 100.0)) ]
+
     # bumpers ..................................................................
 
     def get_port_bmp_value(self):
@@ -161,6 +177,17 @@ class IoExpander():
 
     def get_raw_stbd_side_ir_value(self):
         return self._ioe.input(self._stbd_side_ir_pin)
+
+    # raw moth sensors .........................................................
+
+    def get_raw_moth_values(self):
+        return [ self._ioe.input(self._port_moth_pin), self._ioe.input(self._stbd_moth_pin) ]
+
+    def get_raw_port_moth_value(self):
+        return self._ioe.input(self._port_moth_pin)
+
+    def get_raw_stbd_moth_value(self):
+        return self._ioe.input(self._stbd_moth_pin)
 
     # raw bumpers ..............................................................
 

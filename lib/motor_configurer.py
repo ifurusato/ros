@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#### - - coding: latin-1 -*-
-
-# import dependency libraries ..................................................
+#
+# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
+# the Robot Operating System project and is released under the "Apache Licence, 
+# Version 2.0". Please see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2020-10-05
+# modified: 2021-02-07
+#
 
 import sys, traceback
 from fractions import Fraction
@@ -13,19 +19,20 @@ from lib.logger import Logger, Level
 # ..............................................................................
 class MotorConfigurer():
     '''
-        Configures the Thunderborg motor controller. 
+    Configures the Thunderborg motor controller for a pair of motors. 
+
+    :param config:    the application configuration
+    :param clock:     the 'system' clock providing timing for velocity calculation
+    :param level:     the logging level
     '''
-    def __init__(self, config, level):
-        self._log = Logger("mtrconf", level)
+    def __init__(self, config, clock, level):
+        self._log = Logger("motor-conf", level)
         if config is None:
             raise ValueError('null configuration argument.')
+        if clock is None:
+            raise ValueError('null clock argument.')
         self._config = config
-
-    # ..........................................................................
-    def configure(self):
-        '''
-            Import the ThunderBorg library, then configure and return the Motors.
-        '''
+        # Import the ThunderBorg library, then configure and return the Motors.
         self._log.info('configure thunderborg & motors...')
         try:
             self._log.info('importing ThunderBorg...')
@@ -80,14 +87,21 @@ class MotorConfigurer():
         try:
             self._log.info('getting raspberry pi...')
             self._log.info('configuring motors...')
-            self._motors = Motors(self._config, TB, Level.INFO)
+            self._motors = Motors(self._config, clock, TB, Level.INFO)
             self._motors.get_motor(Orientation.PORT).set_max_power_ratio(_max_power_ratio)
             self._motors.get_motor(Orientation.STBD).set_max_power_ratio(_max_power_ratio)
-            return self._motors
         except OSError as oe:
             self._log.error('failed to configure motors: {}'.format(oe))
+            self._motors = None
 #           sys.stderr = DevNull()
             sys.exit(1)
+        self._log.info('ready.')
 
+    # ..........................................................................
+    def get_motors(self):
+        '''
+        Return the configured motors.
+        '''
+        return self._motors
             
 #EOF

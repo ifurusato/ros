@@ -13,19 +13,17 @@
 # the PID class.
 #
 
-import sys, time, itertools
+import sys, time
 from collections import deque as Deque
-from threading import Thread
-from enum import Enum
 from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
 from lib.enums import Orientation
+from lib.message import Message
+from lib.event import Event
 from lib.pid import PID
 from lib.slew import SlewRate, SlewLimiter
-from lib.rate import Rate
-from lib.pot import Potentiometer
 
 # ..............................................................................
 class PIDController(object):
@@ -41,6 +39,7 @@ class PIDController(object):
 
     def __init__(self,
                  config,
+                 clock,
                  motor,
                  setpoint=0.0,
                  sample_time=0.01,
@@ -53,6 +52,9 @@ class PIDController(object):
                              This PID is expected to be called at a constant rate.
         :param level:        The log level, e.g., Level.INFO.
         '''
+        if clock is None:
+            raise ValueError('null clock argument.')
+        self._clock = clock
         if motor is None:
             raise ValueError('null motor argument.')
         self._motor = motor
@@ -65,23 +67,20 @@ class PIDController(object):
         if config is None:
             raise ValueError('null configuration argument.')
         _config = config['ros'].get('motors').get('pid-controller')
-        self._pot_ctrl = _config.get('pot_ctrl')
-        if self._pot_ctrl:
-            self._pot = Potentiometer(config, Level.INFO)
-        self._rate = Rate(_config.get('sample_freq_hz'), level)
-        _sample_time = self._rate.get_period_sec()
-        self._pid = PID(config, self._orientation, sample_time=_sample_time, level=level)
+#        self._pot_ctrl = _config.get('pot_ctrl')
+#        if self._pot_ctrl:
+#            self._pot = Potentiometer(config, Level.INFO)
+        _period_sec = 1.0 / _config.get('sample_freq_hz')
+        _kp         = _config.get('kp') # proportional gain
+        _ki         = _config.get('ki') # integral gain
+        _kd         = _config.get('kd') # derivative gain
+        _min_output = _config.get('min_output')
+        _max_output = _config.get('max_output')
+        self._pid = PID(self._orientation.label, _kp, _ki, _kd, _min_output, _max_output, sample_time=_period_sec, level=level)
 
         # used for hysteresis, if queue too small will zero-out motor power too quickly
         _queue_len = _config.get('hyst_queue_len')
         self._deque = Deque([], maxlen=_queue_len)
-
-        # how many pulses per encoder measurement?
-        self._sample_rate = _config.get('sample_rate') # default: 10
-        self._log.info('sample_rate: {:d}'.format(self._sample_rate))
-        # convert raw velocity to approximate a percentage
-        self._velocity_fudge_factor = _config.get('velocity_fudge_factor') # default: 14.0
-        self._log.info('velocity fudge factor: {:>5.2f}'.format(self._velocity_fudge_factor))
 
         self._enable_slew = True #_config.get('enable_slew')
         self._slewlimiter = SlewLimiter(config, orientation=self._motor.orientation, level=Level.INFO)
@@ -93,15 +92,10 @@ class PIDController(object):
         else:
             self._log.info('slew limiter disabled.')
 
-        self._velocity     = 0.0       # current velocity
-        self._max_velocity = 0.0       # capture maximum velocity attained
-        self._steps_begin  = 0         # step count at beginning of velocity measurement
         self._power        = 0.0
         self._last_power   = 0.0
         self._enabled      = False
-        self._disabling    = False
         self._closed       = False
-        self._thread       = None
 #       self._last_steps   = 0
 #       self._max_diff_steps = 0
         self._log.info('ready.')
@@ -113,13 +107,28 @@ class PIDController(object):
 
     # ..............................................................................
     @property
-    def velocity(self):
-        return self._velocity
+    def kp(self):
+        return self._pid.kp
 
-    # ..............................................................................
+    @kp.setter
+    def kp(self, kp):
+        self._pid.kp = kp
+
     @property
-    def max_velocity(self):
-        return self._max_velocity
+    def ki(self):
+        return self._pid.ki
+
+    @ki.setter
+    def ki(self, ki):
+        self._pid.ki = ki
+
+    @property
+    def kd(self):
+        return self._pid.kd
+
+    @kd.setter
+    def kd(self, kd):
+        self._pid.kd = kd
 
     # ..............................................................................
     def enable_slew(self, enable):
@@ -178,7 +187,7 @@ class PIDController(object):
         '''
         kp, ki, kd = self._pid.constants
         cp, ci, cd = self._pid.components
-        return kp, ki, kd, cp, ci, cd, self._last_power, self._motor.get_current_power_level(), self._power, self._velocity, self._pid.setpoint, self._motor.steps
+        return kp, ki, kd, cp, ci, cd, self._last_power, self._motor.get_current_power_level(), self._power, self._motor.velocity, self._pid.setpoint, self._motor.steps
 
     # ..........................................................................
     @property
@@ -186,7 +195,7 @@ class PIDController(object):
         return self._enabled
 
     # ..........................................................................
-    def _loop(self, f_is_enabled):
+    def handle(self, message):
         '''
         The PID loop that continues while the enabled flag is True.
 
@@ -194,44 +203,23 @@ class PIDController(object):
         at zero when it's clear the target velocity is zero. This is a
         perhaps cheap approach to hysteresis.
         '''
-        _counter = itertools.count()
-
-        while f_is_enabled() and self._motor.enabled:
-            _count = next(_counter)
-
+        if self._enabled and ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
             # calculate velocity from motor encoder's step count
-            _steps = self._motor.steps
-            if _steps % self._sample_rate == 0:
-                if self._steps_begin != 0:
-                    self._velocity = ( (_steps - self._steps_begin) / (time.time() - self._stepcount_timestamp) / self._velocity_fudge_factor ) # steps / duration
-#                   self._max_velocity = max(self._velocity, self._max_velocity)
-                    self._stepcount_timestamp = time.time()
-                self._stepcount_timestamp = time.time()
-                self._steps_begin = _steps
-            self._log.info(Fore.BLACK + '{}: {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._motor.steps, self._velocity))
-
-            if self._pot_ctrl:
-                _pot_value = self._pot.get_scaled_value()
-                self._pid.kd = _pot_value
-                self._log.debug('pot: {:8.5f}.'.format(_pot_value))
-            _pid_output = self._pid(self._velocity)
-
+            _velocity = self._motor.velocity
+#           self._log.info(Fore.BLACK + 'handle({}): {:+d} steps; velocity: {:<5.2f}'.format(self._orientation.label, self._motor.steps, _velocity))
+            _pid_output = self._pid(_velocity)
             self._power += _pid_output
-            self._log.info(Fore.WHITE + Style.BRIGHT + '_power: {:>5.2f};\t'.format(self._power) \
-                    + Style.NORMAL + 'pid output: {:5.2f};\t'.format(_pid_output)
-                    + Fore.RED + 'velocity: {:5.2f}'.format(self._velocity))
-            self._motor.set_motor_power(self._power / 100.0)
+            _motor_power = self._power / 100.0
+#           self._log.info(Fore.WHITE + Style.NORMAL + 'handle() _steps: {:d}; _power: {:>5.2f}/_motor_power: {:>5.2f};\t'.format(self._motor.steps, self._power, _motor_power) \
+#                   + 'pid output: {:5.2f};\t'.format(_pid_output) + Style.BRIGHT + 'velocity: {:5.2f}'.format(_velocity))
+            self._motor.set_motor_power(_motor_power)
             self._last_power = self._power
-
-            self._rate.wait() # 20Hz
-
 #           _mean_setpoint = self._get_mean_setpoint(self._pid.setpoint)
 #           if _mean_setpoint == 0.0:
 #               self._motor.set_motor_power(0.0)
 #           else:
 #               self._motor.set_motor_power(self._power / 100.0)
-
-        self._log.info('exited PID loop.')
+        pass
 
     # ..........................................................................
     def _get_mean_setpoint(self, value):
@@ -268,46 +256,26 @@ class PIDController(object):
         if not self._closed:
             if self._enabled:
                 self._log.warning('PID loop already enabled.')
-                return
-            self._log.info('enabling PID loop...')
-            self._enabled = True
-            # if we haven't started the thread yet, do so now...
-            if self._thread is None:
-                self._thread = Thread(name = 'pid-ctrl:{}'.format(self._motor.orientation.label), \
-                        target=PIDController._loop, args=[self, lambda: self.enabled])
-                self._thread.start()
-                self._log.info(Style.BRIGHT + 'PID loop enabled.')
             else:
-                self._log.warning('cannot enable PID loop: thread already exists.')
+                self._clock.message_bus.add_handler(Message, self.handle)
+                self._enabled = True
         else:
             self._log.warning('cannot enable PID loop: already closed.')
 
     # ..........................................................................
     def disable(self):
-        if self._disabling:
-            self._log.warning('already disabling.')
-            return
+        if not self._enabled:
+            self._log.warning('already disabled.')
         elif self._closed:
             self._log.warning('already closed.')
-            return
-        self._enabled = False
-        self._disabling = True
-#       time.sleep(0.06) # just a bit more than 1 loop in 20Hz
-#       if self._thread is not None:
-#           self._thread.join(timeout=1.0)
-#           self._log.debug('pid thread joined.')
-        self._thread = None
-        self._disabling = False
-        self._log.info('disabled.')
+        else:
+            self._enabled = False
+            self._log.info('disabled.')
 
     # ..........................................................................
     def close(self):
-        if self._enabled:
-            self.disable()
+        self.disable()
         self._closed = True
-#       if self._velocity > 0 or self._max_velocity > 0:
-#           self._log.info('on closing: velocity: {:5.2f}; max velocity: {:>5.2f}.'.format(self._velocity, self._max_velocity))
-#       self.close_filewriter()
         self._log.info('closed.')
 
 #EOF

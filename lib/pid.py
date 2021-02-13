@@ -14,7 +14,7 @@
 # helpful discussions with David Anderson of the DPRG.
 #
 
-import numpy, time
+import time, math
 from colorama import init, Fore, Style
 init()
 
@@ -26,28 +26,38 @@ class PID(object):
     '''
     The PID controller itself.
 
-    Note that the setpoint of this PID controller is a velocity setting;
-    this is not to be confused with the velocity property of the motors.
+    :param label:       a label for logging
+    :param kp:          proportional gain constant
+    :param ki:          integral gain constant
+    :param kd:          derivative gain constant
+    :param min_output:  minimum output limit
+    :param max_output:  maximum output limit
+    :param setpoint:    initial setpoint
+    :param sample_time: sample time, used as a limit to determine if called too soon
+    :param level:       log level
     '''
     def __init__(self,
-                 config,
-                 orientation, # used only for logging
+                 label,
+                 kp,
+                 ki,
+                 kd,
+                 min_output,
+                 max_output,
                  setpoint=0.0,
                  sample_time=0.01,
                  level=Level.INFO):
-        if config is None:
-            raise ValueError('null configuration argument.')
-        _config = config['ros'].get('motors').get('pid')
-        self.kp            = _config.get('kp') # proportional gain
-        self.ki            = _config.get('ki') # integral gain
-        self.kd            = _config.get('kd') # derivative gain
-        self._min_output   = _config.get('min_output')
-        self._max_output   = _config.get('max_output')
-        self._setpoint     = setpoint
-        self._orientation  = orientation
-        self._setpoint_limit = None
-        self._log = Logger('pid:{}'.format(orientation.label), level)
-        self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self.ki, self.kd, self._min_output, self._max_output))
+        self._kp             = kp # proportional gain
+        self._ki             = ki # integral gain
+        self._kd             = kd # derivative gain
+        self._setpoint       = setpoint
+        self._min_output     = min_output
+        self._max_output     = max_output
+        self._limit          = None
+        self._log = Logger('pid:{}'.format(label), level)
+        if self._min_output is None or self._max_output is None:
+            self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={}; max={}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
+        else:
+            self._log.info('kp:{:7.4f}; ki:{:7.4f}; kd:{:7.4f};\tmin={:>5.2f}; max={:>5.2f}'.format(self._kp, self._ki, self._kd, self._min_output, self._max_output))
         if sample_time is None:
             raise Exception('no sample time argument provided')
         self._sample_time  = sample_time
@@ -87,9 +97,7 @@ class PID(object):
     @property
     def setpoint(self):
         '''
-        The setpoint used by the controller as a tuple: (Kp, Ki, Kd)
-        If a setpoint limit has been set the returned value is
-        limited by the set value.
+        Returns the setpoint used by the controller.
         '''
         return self._setpoint
 
@@ -97,24 +105,30 @@ class PID(object):
     def setpoint(self, setpoint):
         '''
         Setter for the set point. If setpoint limit has been set and the
-        argument exceeds the limit, the value is set to the setpoint limit.
+        argument exceeds the limit, the value is set to the limit.
         '''
-        if self._setpoint_limit:
-            if setpoint > self._setpoint_limit:
-                self._setpoint = self._setpoint_limit
-            elif setpoint < -1.0 * self._setpoint_limit:
-                self._setpoint = -1.0 * self._setpoint_limit
+        if self._limit:
+            if setpoint > self._limit:
+                self._setpoint = self._limit
+            elif setpoint < -1.0 * self._limit:
+                self._setpoint = -1.0 * self._limit
             else:
                 self._setpoint = setpoint
-#           self._log.debug(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._setpoint_limit))
+#           self._log.info(Fore.RED + Style.BRIGHT + 'set setpoint: {:5.2f}; limited to: {:5.2f} from max vel: {:5.2f}'.format(setpoint, self._setpoint, self._limit))
         else:
             self._setpoint = setpoint
-#       if self._setpoint == 0.0:
-#           self.reset()
-#           self._log.debug(Fore.BLACK + 'set setpoint: {:5.2f}'.format(setpoint))
+#       if self._setpoint is None:
+#           self._log.info('setpoint: None')
+#       else:
+#           self._log.info('setpoint: {:<5.2f}'.format(self._setpoint))
 
     # ..........................................................................
-    def set_limit(self, limit):
+    @property
+    def limit(self):
+        return self._limit
+
+    @limit.setter
+    def limit(self, limit):
         '''
         Setter for the setpoint limit. Set to None (the default) to
         disable this feature. Note that this doesn't affect the setting
@@ -124,16 +138,17 @@ class PID(object):
             self._log.info(Fore.CYAN + Style.DIM + 'setpoint limit: disabled')
         else:
             self._log.info(Fore.CYAN + 'setpoint limit: {:5.2f}'.format(limit))
-        self._setpoint_limit = limit
+        self._limit = limit
 
     # ..........................................................................
     def __call__(self, target, dt=None):
         '''
-        Call the PID controller with *target* and calculate and return a
-        control output if sample_time seconds has passed since the last
+        Call the PID controller with a target value and calculate and return
+        a control output if sample_time seconds has passed since the last
         update. If no new output is calculated, return the previous output
         instead (or None if no value has been calculated yet).
 
+        :param target: the target value for the setpoint.
         :param dt: If set, uses this value for timestep instead of real time.
                    This can be used in simulations when simulation time is
                    different from real time.
@@ -142,34 +157,37 @@ class PID(object):
         if dt is None:
             dt = _now - self._last_time
 #           dt = _now - self._last_time if _now - self._last_time else 1e-16
-            self._log.info(Fore.BLUE + '__call__  dt: {:7.4f}'.format(dt) + Style.RESET_ALL)
         elif dt <= 0:
             raise ValueError("dt has nonpositive value {}. Must be positive.".format(dt))
+        # display dt in milliseconds
+#       self._log.info(Fore.MAGENTA + Style.BRIGHT + '>> dt: {:7.4f}ms;'.format(dt * 1000.0))
 
-        if dt < self._sample_time and self._last_output is not None:
+        if dt < self._sample_time and not math.isclose(dt, self._sample_time) and self._last_output is not None:
             # only update every sample_time seconds
-            self._log.info(Fore.RED + '__call__() last output: {:5.2f}'.format(self._last_output) + Style.RESET_ALL)
+            self._log.info(Fore.RED + Style.BRIGHT + '__call__() dt {:9.7f} < sample time: {:9.7f}; last output: {:5.2f}'.format(\
+                    dt, self._sample_time, self._last_output) + Style.RESET_ALL)
             return self._last_output
 
         # compute error terms
-        _error = self.setpoint - target
+        _error = self._setpoint - target
         d_input = target - (self._last_input if self._last_input is not None else target)
 
         # compute the proportional, integral and derivative terms
-        self._proportional = self.kp * _error
-        self._integral    += self.ki * _error * dt
-        self._integral     = self.clamp(self._integral)  # avoid integral windup
-        self._derivative   = -self.kd * d_input / dt
+        self._proportional = self._kp * _error
+        self._integral    += self._ki * _error * dt
+        self._integral     = self.clamp(self._integral) # avoid integral windup
+        self._derivative   = -self._kd * d_input / dt
 
-        # compute output
+        # compute output, clamping to limits
         output = self.clamp(self._proportional + self._integral + self._derivative)
 
         kp, ki, kd = self.constants
         cp, ci, cd = self.components
-#       self._log.info(Fore.CYAN + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
-#               + Fore.MAGENTA + '\tKD={:8.5f};'.format(kd) \
-#               + Fore.CYAN + Style.BRIGHT + '\tP={:8.5f}; I={:8.5f}; D={:8.5f}; setpoint={:6.3f};'.format(cp, ci, cd, self._setpoint) \
-#               + Style.DIM + ' output: {:>6.3f}'.format(output))
+        self._log.info(Fore.WHITE + 'dt={:7.4f}ms '.format(dt * 1000.0) \
+                + Fore.CYAN + Style.DIM + 'target={:5.2f}; error={:6.3f};'.format(target, _error) \
+                + Fore.MAGENTA + ' KP={:<8.5f}; KD={:<8.5f};'.format(kp, kd) \
+                + Fore.CYAN + Style.BRIGHT + ' P={:8.5f}; I={:8.5f}; D={:8.5f}; sp={:6.3f};'.format(cp, ci, cd, self._setpoint) \
+                + Style.BRIGHT + ' out: {:<8.5f}'.format(output))
 
         # keep track of state
         self._last_output = output
@@ -191,7 +209,7 @@ class PID(object):
         '''
         The P-, I- and D- fixed terms, as a tuple.
         '''
-        return self.kp, self.ki, self.kd
+        return self._kp, self._ki, self._kd
 
     # ..........................................................................
     @property
@@ -209,7 +227,7 @@ class PID(object):
         '''
         The tunings used by the controller as a tuple: (Kp, Ki, Kd)
         '''
-        return self.kp, self.ki, self.kd
+        return self._kp, self._ki, self._kd
 
     # ..........................................................................
     @tunings.setter
@@ -232,7 +250,8 @@ class PID(object):
     @output_limits.setter
     def output_limits(self, limits):
         '''
-        Setter for the output limits.
+        Setter for the output limits using a tuple: (lower, upper).
+        Setting 'None' for a value means there is no limit.
         '''
         if limits is None:
             self._min_output, self._max_output = None, None
@@ -247,15 +266,14 @@ class PID(object):
 
     # ..........................................................................
     def print_state(self):
-        _fore = Fore.RED if self._orientation == Orientation.PORT else Fore.GREEN
-        self._log.info(_fore + 'kp:             \t{}'.format(self.kp))
-        self._log.info(_fore + 'ki:             \t{}'.format(self.ki))
-        self._log.info(_fore + 'kd:             \t{}'.format(self.kd))
-
+        _fore = Fore.YELLOW
+        self._log.info(_fore + 'kp:             \t{}'.format(self._kp))
+        self._log.info(_fore + 'ki:             \t{}'.format(self._ki))
+        self._log.info(_fore + 'kd:             \t{}'.format(self._kd))
         self._log.info(_fore + 'min_output:     \t{}'.format(self._min_output))
         self._log.info(_fore + 'max_output:     \t{}'.format(self._max_output))
         self._log.info(_fore + 'setpoint:       \t{}'.format(self._setpoint))
-        self._log.info(_fore + 'setpoint limit: \t{}'.format(self._setpoint_limit))
+        self._log.info(_fore + 'setpoint limit: \t{}'.format(self._limit))
         self._log.info(_fore + 'sample_time:    \t{}'.format(self._sample_time))
 
         self._log.info(_fore + 'proportional:   \t{}'.format(self._proportional))
@@ -278,8 +296,8 @@ class PID(object):
         problems when starting up again. The reset() function cleans 
         any stored state.
         '''
-        self._log.info(Fore.YELLOW + 'reset ========================= ')
-        self.setpoint      = 0.0
+        self._log.info(Fore.YELLOW + 'reset.')
+#       self._setpoint     = 0.0
         self._proportional = 0.0
         self._integral     = 0.0
         self._derivative   = 0.0
@@ -290,8 +308,13 @@ class PID(object):
     # ..........................................................................
     def clamp(self, value):
         '''
-        Clamp the value between the lower and upper limits.
+        Clamp the value between the lower and upper limits. If either limit
+        is not set ('None') the original argument is returned.
         '''
-        return numpy.clip(value, self._min_output, self._max_output)
+        if self._min_output is None or self._max_output is None:
+            return value
+        else:
+            return max(self._min_output, min(value, self._max_output))
+#       return numpy.clip(value, self._min_output, self._max_output)
 
 #EOF

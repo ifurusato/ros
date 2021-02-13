@@ -48,7 +48,7 @@ class MessageQueue():
     # ..........................................................................
     def add_consumer(self, consumer):
         '''
-            Add a consumer to the optional list of message consumers.
+        Add a consumer to the optional list of message consumers.
         '''
         return self._consumers.append(consumer)
 
@@ -83,21 +83,21 @@ class MessageQueue():
     # ......................................................
     def empty(self):
         '''
-            Returns true if the queue is empty.
+        Returns true if the queue is empty.
         '''
         return self._queue.empty()
 
     # ......................................................
     def size(self):
         '''
-            Returns the current size of the queue. This returns "the approximate size of the queue (not reliable!)"
+        Returns the current size of the queue. This returns "the approximate size of the queue (not reliable!)"
         '''
         return self._queue.qsize()
 
     # ......................................................
     def next(self):
         '''
-            Return the next highest priority message in the queue.
+        Return the next highest priority message in the queue.
         '''
         try:
             message = self._queue.get()
@@ -109,8 +109,8 @@ class MessageQueue():
     # ......................................................
     def next_group(self, count):
         '''
-            Returns a list of the highest priority messages on the queue, whose size is either
-            the count or all the remaining messages if their number is less than the count.
+        Returns a list of the highest priority messages on the queue, whose size is either
+        the count or all the remaining messages if their number is less than the count.
         '''
         try:
             messages = []
@@ -138,7 +138,7 @@ class MessageQueue():
     # ......................................................
     def clear(self):
         '''
-            Clears all messages from the queue.
+        Clears all messages from the queue.
         '''
         while not self._queue.empty():
             try:

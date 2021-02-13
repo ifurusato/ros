@@ -11,7 +11,6 @@ import sys, traceback, time, itertools
 from colorama import init, Fore, Style
 init()
 
-from lib.velocity import Velocity
 from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.slew import SlewRate, SlewLimiter
@@ -32,7 +31,6 @@ def main():
     _loader = ConfigLoader(Level.INFO)
     filename = 'config.yaml'
     _config = _loader.configure(filename)
-#   Velocity.CONFIG.configure(_config)
     _pot = Potentiometer(_config, Level.INFO)
 #   _pot.set_out_max(3.0)
 

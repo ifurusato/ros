@@ -56,9 +56,6 @@ class SlewLimiter():
         self._stats_queue       = None
         self._start_time        = None
         self._enabled           = False
-        self._filewriter        = None   # optional: for statistics
-        self._filewriter_closed = False
-        self._stats_start_time  = None   # used only for gnuplot stats
         self._log.info('ready.')
 
     # ..........................................................................
@@ -81,21 +78,7 @@ class SlewLimiter():
         self._log.info('starting slew limiter with rate limit of {:5.3f}/cycle.'.format(self._rate_limit))
         self._enabled = True
         self._start_time = self._millis()
-        self._stats_start_time = self._start_time
         self._log.info('enabled.')
-
-#   # ..........................................................................
-#   def start(self):
-#       '''
-#           Call start() to start the timer.
-
-#           Note that this does not enable a slewed output; you must also
-#           enable the limiter.
-#       '''
-#       self._log.info('starting slew limiter with rate limit of {:5.3f}/cycle.'.format(self._rate_limit))
-#       self._enabled = True
-#       self._start_time = self._millis()
-#       self._stats_start_time = self._start_time
 
     # ..........................................................................
     def disable(self):
@@ -108,7 +91,6 @@ class SlewLimiter():
             Resets the elapsed timer.
         '''
         self._start_time = self._millis()
-        self._stats_start_time = self._start_time
 
     # ..........................................................................
     def slew(self, current_value, target_value):
@@ -139,11 +121,6 @@ class SlewLimiter():
             _value = numpy.clip(target_value, _min, _max)
 #           self._log.debug(Fore.RED + '-value: {:+06.2f} = numpy.clip(target_value: {:+06.2f}), _min: {:+06.2f}), _max: {:+06.2f}); elapsed: {:+06.2f}'.format(_value, target_value, _min, _max, _elapsed))
 
-        if self._filewriter: # write stats
-            _stats_elapsed = _now - self._stats_start_time
-            _data = '{:>5.3f}\t{:+06.2f}\t{:+06.2f}\n'.format(_stats_elapsed, _value, target_value)
-            self._stats_queue.append(_data)
-
         # clip the output between min and max set in config (if negative we fix it before and after)
         if _value < 0:
             _clamped_value = -1.0 * self._clamp(-1.0 * _value)
@@ -152,31 +129,6 @@ class SlewLimiter():
 #       self._log.debug('slew from current {:>6.2f} to target {:>6.2f} returns:'.format(current_value, target_value) \
 #               + Fore.MAGENTA + '\t{:>6.2f}'.format(_clamped_value) + Fore.BLACK + ' (clamped from {:>6.2f})'.format(_value))
         return _clamped_value
-
-   # ..............................................................................
-    def set_filewriter(self, filewriter):
-        '''
-            If a FileWriter is set then the SlewLimiter will generate data
-            and write this to a data file whose directory and filename are
-            determined by configuration.
-        '''
-        self._filewriter = filewriter
-        if self._filewriter:
-            if self._stats_queue is None:
-                self._stats_queue = deque()
-            self._filewriter.enable(self._stats_queue)
-            self._log.info('filewriter enabled.')
-
-   # ..........................................................................
-    def close_filewriter(self):
-        if not self._filewriter_closed:
-            self._filewriter_closed = True
-            if self._filewriter:
-                _tuning = [ '{:>4.2f}'.format(self._rate_limit) ] # this is actually a dummy
-                self._filewriter.write_gnuplot_settings(_tuning)
-                self._filewriter.disable()
-            self._filewriter = None
-
 
 # ..............................................................................
 class SlewRate(Enum): #       tested to 50.0 velocity:

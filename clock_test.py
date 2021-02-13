@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020 by Murray Altheim. All rights reserved. This file is part
@@ -20,13 +20,13 @@ from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.event import Event
 from lib.message_factory import MessageFactory
-from lib.queue import MessageQueue
 from lib.clock import Clock
 
 INFINITE = True
+SHOW_STATS = False
 
 # ..............................................................................
-class MockMessageQueue():
+class MockMessageBus():
     '''
     This message queue just displays filtered, clock-related events as they arrive.
     '''
@@ -58,19 +58,20 @@ class MockMessageQueue():
         _process_ms = _process_delta.total_seconds() * 1000.0
         _total_ms = _elapsed_loop_ms + _process_ms
 
-        _trim = self._clock.trim
-
-        if _event is Event.CLOCK_TICK:
-#           self._log.info(Fore.YELLOW + Style.NORMAL + 'CLOCK_TICK: {}; value: {}'.format(_event.description, _value))
-            self._log.info(Fore.BLACK  + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tick loop: {:5.2f}ms elapsed; total: {:5.2f}ms;    \t'.format(\
-                    _event.description, _value, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, _trim))
-        elif _event is Event.CLOCK_TOCK:
-            self._log.info(Fore.YELLOW + Style.DIM + 'event: {}; value: {}; proc time: {:5.2f}ms; tock loop: {:5.2f}ms elapsed; total: {:6.3f}ms;\t'.format(\
-                    _event.description, _value, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, _trim))
-            self._start_time = _now
-            tock_count += 1
-        else:
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
+        if SHOW_STATS:
+            if _event is Event.CLOCK_TICK:
+#               self._log.info(Fore.YELLOW + Style.NORMAL + 'CLOCK_TICK: {}; value: {}'.format(_event.description, _value))
+                self._log.info(Fore.BLACK  + Style.DIM + 'event: {}; proc time: {:8.5f}ms; tick loop: {:5.2f}ms; total: {:5.2f}ms; '.format(\
+                        _event.description, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL \
+                        + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, self._clock.trim))
+            elif _event is Event.CLOCK_TOCK:
+                self._log.info(Fore.YELLOW + Style.DIM + 'event: {}; proc time: {:8.5f}ms; tock loop: {:5.2f}ms; total: {:6.3f}ms; '.format(\
+                        _event.description, _process_ms, _elapsed_loop_ms, _total_ms) + Fore.WHITE + Style.NORMAL \
+                        + ' elapsed: {:6.3f}ms; trim: {:7.4f}'.format(_elapsed_ms, self._clock.trim))
+                self._start_time = _now
+                tock_count += 1
+            else:
+                self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
 
         self._last_time = _now
 
@@ -85,10 +86,9 @@ def test_clock():
 
     tock_count = 0
     _message_factory = MessageFactory(Level.INFO)
-#   _queue = MessageQueue(_message_factory, Level.INFO)
-    _queue = MockMessageQueue(Level.INFO)
-    _clock = Clock(_config, _queue, _message_factory, Level.INFO)
-    _queue.set_clock(_clock)
+    _message_bus = MockMessageBus(Level.INFO)
+    _clock = Clock(_config, _message_bus, _message_factory, Level.INFO)
+    _message_bus.set_clock(_clock)
     _clock.enable()
     _log.info('ready; begin test.')
     _loops = 3
@@ -112,5 +112,3 @@ if __name__== "__main__":
     main()
 
 #EOF
-
-

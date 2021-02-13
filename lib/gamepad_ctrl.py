@@ -342,7 +342,6 @@ class GamepadController():
                     self._cruise_behaviour.enable()
                     self._log.info(Fore.MAGENTA + 'enabled cruise.')
                 else:
-                    self._queue.remove_consumer(self._cruise_behaviour)
                     self._cruise_behaviour.disable()
 #                   self._cruise_behaviour.close()
                     self._cruise_behaviour = None

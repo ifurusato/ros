@@ -27,20 +27,24 @@ from lib.event import Event
 from lib.enums import Direction, Orientation
 from lib.slew import SlewRate
 
-
 # ..............................................................................
 class Motors():
     '''
         A dual motor controller with encoders.
     '''
-    def __init__(self, config, tb, level):
+    def __init__(self, config, clock, tb, level):
         super().__init__()
         self._log = Logger('motors', level)
         self._log.info('initialising motors...')
+        if config is None:
+            raise Exception('no config argument provided.')
+        if clock is None:
+            raise Exception('no clock argument provided.')
         if tb is None:
             tb = self._configure_thunderborg_motors(level)
             if tb is None:
                 raise Exception('unable to configure thunderborg.')
+        self._clock = clock
         self._tb = tb
         self._set_max_power_ratio()
         # config pigpio's pi and name its callback thread (ex-API)
@@ -54,12 +58,12 @@ class Motors():
             traceback.print_exc(file=sys.stdout)
             self._log.error('failed to import Motor, exiting...')
             sys.exit(1)
-        self._port_motor = Motor(config, self._tb, self._pi, Orientation.PORT, level)
+        self._port_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
-        self._stbd_motor = Motor(config, self._tb, self._pi, Orientation.STBD, level)
+        self._stbd_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.STBD, level)
         self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
         self._closed  = False
-        self._enabled = True # default enabled
+        self._enabled = False # used to be enabled by default
         # a dictionary of motor # to last set value
         self._msgIndex = 0
         self._last_set_power = { 0:0, 1:0 }
@@ -138,10 +142,6 @@ class Motors():
             return self._port_motor
         else:
             return self._stbd_motor
-
-    # ..........................................................................
-    def enable(self):
-        self._enabled = True
 
     # ..........................................................................
     def is_in_motion(self):
@@ -270,6 +270,23 @@ class Motors():
         self._log.info('{}:\tcurrent power:\t{:6.1f}\t{:6.1f}'.format(self._msgIndex, self._last_set_power[0], self._last_set_power[1]))
 
     # ..........................................................................
+    def enable(self):
+        '''
+        Enables the motors, clock and velocity calculator. This issues
+        a warning if already enabled, but no harm is done in calling
+        it repeatedly.
+        '''
+        if self._enabled:
+            self._log.warning('already enabled.')
+        if not self._port_motor.enabled:
+            self._port_motor.enable()
+        if not self._stbd_motor.enabled:
+            self._stbd_motor.enable()
+        self._clock.enable()
+        self._enabled = True
+        self._log.info('enabled.')
+
+    # ..........................................................................
     def disable(self):
         '''
         Disable the motors, halting first if in motion.
@@ -277,11 +294,13 @@ class Motors():
         if self._enabled:
             self._log.info('disabling...')
             self._enabled = False
-            self._log.info('disabling pigpio...')
-            self._pi.stop()
             if self.is_in_motion(): # if we're moving then halt
                 self._log.warning('event: motors are in motion (halting).')
                 self.halt()
+            self._port_motor.disable()
+            self._stbd_motor.disable()
+            self._log.info('disabling pigpio...')
+            self._pi.stop()
             self._log.info('disabled.')
         else:
             self._log.debug('already disabled.')
@@ -307,6 +326,5 @@ class Motors():
     def cancel():
         print('cancelling motors...')
         Motor.cancel()
-
 
 #EOF

@@ -294,6 +294,24 @@ class RgbMatrix(Feature):
             self._set_color(self._rgbmatrix5x5_STBD, self._color)
 
     # ..........................................................................
+    def show_hue(self, hue, orientation):
+        '''
+        Set the color of the display to the hue specified as a value from 0.0 - 1.0.
+
+        Not sure this works, abandoned for now.
+        '''
+        rgb = colorsys.hsv_to_rgb(abs(hue), 1.0, 1.0)
+        r = int(rgb[0]*255.0)
+        g = int(rgb[1]*255.0)
+        b = int(rgb[2]*255.0)
+        if orientation is Orientation.PORT or orientation is Orientation.BOTH:
+            self._rgbmatrix5x5_PORT.set_all(r, g, b)
+            self._rgbmatrix5x5_PORT.show()
+        if orientation is Orientation.STBD or orientation is Orientation.BOTH:
+            self._rgbmatrix5x5_STBD.set_all(r, g, b)
+            self._rgbmatrix5x5_STBD.show()
+
+    # ..........................................................................
     def _solid(self, rgbmatrix5x5):
         '''
             Display a specified static, solid color on only the port display.

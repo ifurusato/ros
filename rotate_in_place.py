@@ -7,7 +7,7 @@
 #
 # A quick test of the simple_pid library.
 
-import sys, time
+import sys, time, traceback
 import numpy
 from colorama import init, Fore, Style
 init()
@@ -62,20 +62,20 @@ def main():
 
         try:
 
-            for _value in numpy.arange(_min, _max, _step):
-#           while True:
+#           for _value in numpy.arange(_min, _max, _step):
+            while True:
                 # update RGB LED
-                _pot.set_rgb(_pot.get_value())
-#               _value = 127.0 - _pot.get_scaled_value()
+#               _pot.set_rgb(_pot.get_value())
+                _value = 127.0 - _pot.get_scaled_value(True)
                 if _value > 125.0:
                     _value = 127.0
                 _velocity = Gamepad.convert_range(_value)
                 if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
-                    _port_pid.velocity = _velocity * 100.0
-                    _port_velocity = _port_pid.velocity
+                    _port_pid.setpoint = _velocity * 100.0
+                    _port_velocity = _port_pid.setpoint
                 if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
-                    _stbd_pid.velocity = _rotate * _velocity * 100.0
-                    _stbd_velocity = _stbd_pid.velocity
+                    _stbd_pid.setpoint = _rotate * _velocity * 100.0
+                    _stbd_velocity = _stbd_pid.setpoint
                 _log.info(Fore.WHITE + 'value: {:<5.2f}; set-point: {:5.2f}; velocity: '.format(_value, _velocity) \
                         + Fore.RED   + ' port: {:5.2f}\t'.format(_port_velocity) + Fore.GREEN + ' stbd: {:5.2f}'.format(_stbd_velocity))
                 _rate.wait()
@@ -83,20 +83,20 @@ def main():
             _log.info(Fore.YELLOW + 'resting...')
             time.sleep(10.0)
 
-            for _value in numpy.arange(_min, _max, _step):
-#           while True:
+#           for _value in numpy.arange(_min, _max, _step):
+            while True:
                 # update RGB LED
-                _pot.set_rgb(_pot.get_value())
-#               _value = 127.0 - _pot.get_scaled_value()
+#               _pot.set_rgb(_pot.get_value())
+                _value = 127.0 - _pot.get_scaled_value(True)
                 if _value > 125.0:
                     _value = 127.0
                 _velocity = Gamepad.convert_range(_value)
                 if _orientation == Orientation.BOTH or _orientation == Orientation.PORT:
-                    _port_pid.velocity = _rotate * _velocity * 100.0
-                    _port_velocity = _port_pid.velocity
+                    _port_pid.setpoint = _rotate * _velocity * 100.0
+                    _port_velocity = _port_pid.setpoint
                 if _orientation == Orientation.BOTH or _orientation == Orientation.STBD:
-                    _stbd_pid.velocity = _velocity * 100.0
-                    _stbd_velocity = _stbd_pid.velocity
+                    _stbd_pid.setpoint = _velocity * 100.0
+                    _stbd_velocity = _stbd_pid.setpoint
                 _log.info(Fore.MAGENTA + 'value: {:<5.2f}; set-point: {:5.2f}; velocity: '.format(_value, _velocity) \
                         + Fore.RED   + ' port: {:5.2f}\t'.format(_port_velocity) + Fore.GREEN + ' stbd: {:5.2f}'.format(_stbd_velocity))
                 _rate.wait()
@@ -113,7 +113,8 @@ def main():
             _motors.brake()
 
     except Exception as e:
-        _log.info(Fore.RED + Style.BRIGHT + 'error in PID controller: {}'.format(e))
+        _log.info(Fore.RED + Style.BRIGHT + 'error in PID controller: {}\n{}'.format(e, traceback.format_exc()))
+
     finally:
         _log.info(Fore.YELLOW + Style.BRIGHT + 'C. finally.')
 

@@ -11,9 +11,13 @@
 
 import sys
 
-from lib.logger import Level, Logger
-from lib.motors import Motors
 from lib.config_loader import ConfigLoader
+from lib.logger import Level, Logger
+from lib.clock import Clock
+from lib.message_bus import MessageBus
+from lib.message_factory import MessageFactory
+from lib.motor_configurer import MotorConfigurer
+from lib.motors import Motors
 
 _motors = None
 
@@ -26,7 +30,17 @@ def main(argv):
         # read YAML configuration
         _loader = ConfigLoader(Level.WARN)
         _config = _loader.configure()
-        _motors = Motors(_config, None, Level.INFO)
+
+        _log.info('creating message factory...')
+        _message_factory = MessageFactory(Level.INFO)
+        _log.info('creating message bus...')
+        _message_bus = MessageBus(Level.INFO)
+        _log.info('creating clock...')
+        _clock = Clock(_config, _message_bus, _message_factory, Level.WARN)
+
+        _motor_configurer = MotorConfigurer(_config, _clock, Level.INFO)
+        _motors = _motor_configurer.get_motors()
+
         _log.info('braking...')
         _motors.brake()
         _log.info('done.')

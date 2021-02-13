@@ -134,17 +134,17 @@ class IntegratedFrontSensor():
             # port bumper sensor ...........................
             if self._ioe.get_raw_port_bmp_value() == 0:
                 self._log.info(Fore.RED + 'adding new message for BUMPER_PORT event.')
-                self._message_bus.handle(self._message_factory.get_message(Event.BUMPER_PORT, True))
+                self._message_bus.add(self._message_factory.get_message(Event.BUMPER_PORT, True))
 
             # center bumper sensor .........................
             if self._ioe.get_raw_center_bmp_value() == 0:
                 self._log.info(Fore.BLUE + 'adding new message for BUMPER_CNTR event.')
-                self._message_bus.handle(self._message_factory.get_message(Event.BUMPER_CNTR, True))
+                self._message_bus.add(self._message_factory.get_message(Event.BUMPER_CNTR, True))
 
             # stbd bumper sensor ...........................
             if self._ioe.get_raw_stbd_bmp_value() == 0:
                 self._log.info(Fore.GREEN + 'adding new message for BUMPER_STBD event.')
-                self._message_bus.handle(self._message_factory.get_message(Event.BUMPER_STBD, True))
+                self._message_bus.add(self._message_factory.get_message(Event.BUMPER_STBD, True))
 
         elif _group == 1: # center infrared group ..............................
             self._log.debug(Fore.BLUE + '[{:04d}] CNTR ifs poll start; group: {}'.format(count, _group))
@@ -157,7 +157,7 @@ class IntegratedFrontSensor():
                     self._log.info(Fore.BLUE + Style.DIM + 'CNTR     \tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._cntr_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_cntr_ir_data))
                     _cntr_ir_message = self._message_factory.get_message(Event.INFRARED_CNTR, _value)
-                    self._message_bus.handle(_cntr_ir_message)
+                    self._message_bus.add(_cntr_ir_message)
 
         elif _group == 2: # oblique infrared group .............................
             self._log.debug(Fore.YELLOW + '[{:04d}] OBLQ ifs poll start; group: {}'.format(count, _group))
@@ -172,7 +172,7 @@ class IntegratedFrontSensor():
                     self._log.debug(Fore.RED + Style.DIM + 'PORT     \tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._oblq_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_port_ir_data))
                     _port_ir_message = self._message_factory.get_message(Event.INFRARED_PORT, _value)
-                    self._message_bus.handle(_port_ir_message)
+                    self._message_bus.add(_port_ir_message)
 
             # starboard analog infrared sensor .............
             _stbd_ir_data      = self._ioe.get_stbd_ir_value()
@@ -184,7 +184,7 @@ class IntegratedFrontSensor():
                     self._log.debug(Fore.GREEN + Style.DIM + 'STBD     \tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._oblq_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_stbd_ir_data))
                     _stbd_ir_message = self._message_factory.get_message(Event.INFRARED_STBD, _value)
-                    self._message_bus.handle(_stbd_ir_message)
+                    self._message_bus.add(_stbd_ir_message)
 
         elif _group == 3: # side infrared group ................................
             self._log.debug(Fore.RED + '[{:04d}] SIDE ifs poll start; group: {}'.format(count, _group))
@@ -199,7 +199,7 @@ class IntegratedFrontSensor():
                     self._log.debug(Fore.RED + Style.DIM + 'PORT_SIDE\tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._side_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_port_side_ir_data))
                     _port_side_ir_message = self._message_factory.get_message(Event.INFRARED_PORT_SIDE, _value)
-                    self._message_bus.handle(_port_side_ir_message)
+                    self._message_bus.add(_port_side_ir_message)
 
             # starboard side analog infrared sensor ........
             _stbd_side_ir_data = self._ioe.get_stbd_side_ir_value()
@@ -211,7 +211,7 @@ class IntegratedFrontSensor():
                     self._log.debug(Fore.GREEN + Style.DIM + 'STBD_SIDE\tmean distance:\t{:5.2f}/{:5.2f}cm'.format(\
                             _value, self._side_trigger_distance_cm) + Style.DIM + '; raw: {:d}'.format(_stbd_side_ir_data))
                     _stbd_side_ir_message = self._message_factory.get_message(Event.INFRARED_STBD_SIDE, _value)
-                    self._message_bus.handle(_stbd_side_ir_message)
+                    self._message_bus.add(_stbd_side_ir_message)
         else:
             raise Exception('invalid group number: {:d}'.format(_group))
 
@@ -306,7 +306,7 @@ class IntegratedFrontSensor():
         if value == None or value == 0:
             return None
         if self._pot:
-            _EXPONENT = self._pot.get_scaled_value()
+            _EXPONENT = self._pot.get_scaled_value(True)
         else:
             _EXPONENT = 1.27 #1.33
         _NUMERATOR = 1000.0

@@ -20,13 +20,13 @@ ros:
     clock:
         loop_freq_hz: 20                         # main loop frequency
         tock_modulo:  20                         # modulo value for tock frequency
-        bus_first:    False                      # if True messages are passed to bus first, then consumers
+        enable_trim:  True                       # when true enable auto-trim clock accuracy
     wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
     enable_player: False                         # enables sound player (disable if no hardware support)
     main_loop_delay_ms:    5000                  # main os loop (doesn't have effect on performance)
     geometry:
-        wheel_diameter: 68.5                     # wheel diameter (mm)
+        wheel_diameter: 68.0                     # wheel diameter (mm)
         wheelbase: 160.0                         # wheelbase (mm)
         steps_per_rotation: 494                  # encoder steps per wheel rotation
     arbitrator:
@@ -178,22 +178,19 @@ ros:
         motor_encoder_b2_stbd:  18               # stbd B
         reverse_motor_orientation:   False       # in case you wire something up backwards
         reverse_encoder_orientation: False       # ditto
+        motor_power_limit: 0.85                  # limit set on power sent to motors
 #       sample_rate: 10                          # how many pulses per encoder measurement?
-#       max_power_limit: 1.0                     # limit set on power sent to motors
         accel_loop_delay_sec: 0.10
         pid-controller:
-            enable_slew:     False
-            sample_freq_hz:    20
-            hyst_queue_len:    20                # size of queue used for running average for hysteresis
-            pot_ctrl:       False                # if True enable potentiometer for setting PID terms
-            sample_rate:       10                # how many pulses per encoder measurement?
-            velocity_fudge_factor: 14.0          # convert raw velocity to approximate a percentage
-        pid:
-            kp:             0.09500
-            ki:             0.00000
-            kd:             0.00030
-            min_output:     -10.0                # lower output limit
-            max_output:      10.0                # upper output limit
+            kp:                 0.09500          # proportional gain
+            ki:                 0.00000          # integral gain
+            kd:                 0.00000          # derivative gain
+            min_output:           -10.0          # lower output limit
+            max_output:            10.0          # upper output limit
+            enable_slew:          False
+            sample_freq_hz:          20
+            hyst_queue_len:          20          # size of queue used for running average for hysteresis
+            pot_ctrl:             False          # if True enable potentiometer for setting PID terms
     elastic:                                     # ElasticSearch connection
 #       host: '192.168.1.81'
         host: '192.168.1.74'
@@ -240,6 +237,8 @@ ros:
         port_bmp_pin:       6                    # pin connected to port bumper
         center_bmp_pin:     4                    # pin connected to center bumper
         stbd_bmp_pin:       5                    # pin connected to starboard bumper
+        port_moth_pin:     13                    # pin connected to port moth sensor
+        stbd_moth_pin:     14                    # pin connected to starboard moth sensor
     integrated_front_sensor:
         use_potentiometer:  False                # use potentiometer to adjust distance setting
         ignore_duplicates:  False                # don't fire messages for duplicate events
@@ -251,7 +250,8 @@ ros:
         cntr_trigger_distance_cm:        90.0    # center analog IR sensor max distance before triggering
         oblq_trigger_distance_cm:        70.0    # port or starboard oblique analog IR sensor max distance before triggering
         side_trigger_distance_cm:        70.0    # port or starboard side analog IR sensor max distance before triggering
-
+    moth:
+        hysteresis:   10                         # permissable range for int values being considered equal
     i2c_master:
         device_id:  0x08                         # i2c hex address of slave device, must match Arduino's SLAVE_I2C_ADDRESS
         channel:       1                         # SMBus channel

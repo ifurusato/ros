@@ -23,9 +23,9 @@ from lib.fsm import IllegalStateError
 # ..............................................................................
 class Message():
     '''
-        Don't create one of these directly: use the factory MessageFactory class.
+    Don't create one of these directly: use the factory MessageFactory class.
 
-        Wraps an Event in a Message indicating the intention to execute an Action.
+    Wraps an Event in a Message indicating the intention to execute an Action.
     '''
     def __init__(self, eid, event, value):
         self._eid         = eid # internal immutable ID

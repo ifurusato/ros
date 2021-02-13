@@ -102,7 +102,7 @@ class Gamepad():
 
     # ..........................................................................
     def _connect(self):
-        self._log.header('gamepad','Connecting Gamepad...',None)
+        self._log.heading('gamepad','Connecting Gamepad...',None)
         try:
             self._gamepad = InputDevice(self._device_path)
             # display device info
@@ -318,7 +318,7 @@ class Gamepad():
         if _control != None:
             _message = self._message_factory.get_message(_control.event, event.value)
             self._log.debug(Fore.CYAN + Style.BRIGHT + "triggered control with message {}".format(_message))
-            self._message_bus.handle(_message)
+            self._message_bus.add(_message)
 
 
 # ..............................................................................

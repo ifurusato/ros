@@ -10,21 +10,19 @@
 # modified: 2020-09-19
 #
 
-import math, sys, traceback, time, colorsys
+import sys, colorsys
 import ioexpander as io
 from colorama import init, Fore, Style
 init()
 
-from lib.config_loader import ConfigLoader
-from lib.logger import Level, Logger
-from lib.rate import Rate
+from lib.logger import Logger
 
 # ..............................................................................
 class Potentiometer(object):
     '''
-       Configures an IO Expander based potentiometer, returning an analog
-       value scaled to a specified range. For a center-zero pot simply
-       specify the minimum value as (-1.0 * out_max).
+    Configures an IO Expander Potentiometer breakout, returning an analog
+    value scaled to a specified range. For a center-zero pot simply
+    specify the minimum value as (-1.0 * out_max).
     '''
     def __init__(self, config, level):
         super().__init__()
@@ -99,27 +97,38 @@ class Potentiometer(object):
         self._log.debug('value: {:<5.2f}; rgb: {},{},{}'.format(value, r, g, b))
 
     # ..........................................................................
-    def get_scaled_value(self):
+    def get_scaled_value(self, update_led=True):
+        '''
+        Return a scaled value while also updating the RGB LED if the
+        argument is True (the default).
+        '''
+        _value = self.get_value()
+        if update_led:
+            self.set_rgb(_value)
+        return self.scale_value(_value) # as float
+
+#   # ..........................................................................
+#   def x_get_scaled_value(self):
+#       '''
+#                  (out_max - out_min)(value - in_min)
+#           f(x) = -----------------------------------  + out_min
+#                           in_max - in_min
+
+#           where: a = 0.0, b = 1.0, min = 0, max = 330.
+#       '''
+#       return (( self._out_max - self._out_min ) * ( self.get_value() - self._in_min ) / ( self._in_max - self._in_min )) + self._out_min
+
+    # ..........................................................................
+    def scale_value(self, value):
         '''
                    (out_max - out_min)(value - in_min)
             f(x) = -----------------------------------  + out_min
                             in_max - in_min
 
-            where: a = 0.0, b = 1.0, min = 0, max = 330.
+            where e.g.:  a = 0.0, b = 1.0, min = 0, max = 330.
         '''
-        return (( self._out_max - self._out_min ) * ( self.get_value() - self._in_min ) / ( self._in_max - self._in_min )) + self._out_min
-
-    # ..........................................................................
-    def test(self):
-        _hz = 10
-        _rate = Rate(_hz, Level.ERROR)
-        while True:
-            _value = self.get_value()
-            self.set_rgb(_value)
-            _scaled_value = math.floor(self.get_scaled_value()) # as integer
-            self._log.info(Fore.YELLOW + 'scaled value: {:d}'.format(_scaled_value) + Style.RESET_ALL)
-            _rate.wait()
-#           time.sleep(1.0 / 30)
+        return (( self._out_max - self._out_min ) * ( value - self._in_min ) / ( self._in_max - self._in_min )) + self._out_min
+#       return (( self._out_max - self._out_min ) * ( self.get_value() - self._in_min ) / ( self._in_max - self._in_min )) + self._out_min
 
 #EOF
 
