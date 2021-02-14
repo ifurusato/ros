@@ -114,6 +114,10 @@ class Clock(object):
         self._log.info('ready.')
 
     # ..........................................................................
+    def name(self):
+        return 'clock'
+
+    # ..........................................................................
     @property
     def message_bus(self):
         return self._message_bus

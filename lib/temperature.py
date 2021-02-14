@@ -16,11 +16,12 @@ from colorama import init, Fore, Style
 init()
 
 from lib.logger import Level, Logger
+from lib.feature import Feature
 from lib.event import Event
 from lib.message import Message
 from lib.message_bus import MessageBus
 
-class Temperature(object):
+class Temperature(Feature):
     '''
     Obtains the current temperature of the Raspberry Pi CPU. If the value
     exceeds the configured threshold, is_max_temperature() returns True.
@@ -37,7 +38,7 @@ class Temperature(object):
         self._warning_threshold = _config.get('warning_threshold')
         self._max_threshold = _config.get('max_threshold')
         self._log.info('warning threshold: {:5.2f}°C; maximum threshold: {:5.2f}°C'.format(self._warning_threshold, self._max_threshold))
-        self._tock_modulo  = _config.get('tock_modulo') # how often to divide the TOCK messages
+        self._tock_modulo = _config.get('tock_modulo') # how often to divide the TOCK messages
         self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
         self._cpu = CPUTemperature(min_temp=0.0, max_temp=100.0, threshold=self._max_threshold) # min/max are defaults
         self._clock = clock # optional
@@ -69,11 +70,11 @@ class Temperature(object):
         '''
         _cpu_temp = self._cpu.temperature
         if self.is_warning_temperature():
-            self._log.warning('CPU temperature:\t{:5.2f}°C;'.format(_cpu_temp) + Fore.RED + Style.BRIGHT + '\tHOT!')
+            self._log.warning('CPU temperature: {:5.2f}°C; HOT!'.format(_cpu_temp))
         elif self.is_max_temperature():
-            self._log.error('CPU temperature:\t{:5.2f}°C;'.format(_cpu_temp) + Style.BRIGHT + '\tTOO HOT!')
+            self._log.error('CPU temperature: {:5.2f}°C; TOO HOT!'.format(_cpu_temp))
         else:
-            self._log.info('CPU temperature:\t{:5.2f}°C;'.format(_cpu_temp) + Fore.GREEN + '\tnormal')
+            self._log.info('CPU temperature: {:5.2f}°C; normal.'.format(_cpu_temp))
 
     # ..........................................................................
     def handle(self, message):

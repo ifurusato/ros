@@ -8,7 +8,7 @@ flask:
     enabled: False                               # start flask web server?
 
 pi:
-    disable_leds: False                          # disable and re-enable Pi LEDs during operation?
+    disable_leds: True                           # disable and re-enable Pi LEDs during operation?
     led_0_path:   '/sys/class/leds/led0/brightness'
     led_1_path:   '/sys/class/leds/led1/brightness'
     sudo_name:    'sudo'
@@ -24,7 +24,7 @@ ros:
     wait_for_button_press: False                 # robot waits in standby mode until red button is pressed
     enable_self_shutdown: True                   # enables the robot to shut itself down (not good during demos)
     enable_player: False                         # enables sound player (disable if no hardware support)
-    main_loop_delay_ms:    5000                  # main os loop (doesn't have effect on performance)
+    main_loop_freq_hz:  0.2                      # main ros loop frequency Hz (no effect on performance)
     geometry:
         wheel_diameter: 68.0                     # wheel diameter (mm)
         wheelbase: 160.0                         # wheelbase (mm)
@@ -51,7 +51,7 @@ ros:
     temperature:
         warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
         max_threshold:     84.0                  # maximum allowable temperature threshold, exceeding this sends an event (nominal 85°C)
-        loop_delay_sec:    15.0                  # loop delay (sec)
+        tock_modulo:         15                  # modulo value against tock frequency (default 15s)
     blob:
         image_width:       320                   # camera resolution: width
         image_height:      240                   # camera resolution: height
@@ -158,7 +158,7 @@ ros:
 #       stbd_side_pin:     12                    # pin connected to starboard side infrared
 #       use_long_range:    True                  # use analog long range IR for center instead of short range digital IR
     gamepad:
-        enabled: True
+        enabled: False
         device_path: '/dev/input/event0'         # the path to the bluetooth gamepad on the pi (see find_gamepad.py)
         loop_delay: 0.01                         # main loop delay
         loop_freq_hz: 20                         # main loop frequency
@@ -282,8 +282,7 @@ ros:
         placeholder: ''
 
 rosd:
-    switch_pin: 14                               # the GPIO pin connected to the 'enable' toggle switch
-    led_pin: 27                                  # the GPIO pin connected to the status LED
-    application: 'gamepad'                       # the application to start via daemon ('ros' or 'gamepad')
+    toggle_pin:     6                            # the GPIO pin connected to the 'enable' toggle switch
+    application: 'ros'                           # the application to start via daemon ('ros' or 'gamepad')
 
 #EOF

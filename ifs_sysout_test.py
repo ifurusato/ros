@@ -22,89 +22,9 @@ from lib.event import Event
 from lib.message import Message
 from lib.message_factory import MessageFactory
 from lib.message_bus import MessageBus
+from lib.clock import Clock
 from lib.queue import MessageQueue
 from lib.ifs import IntegratedFrontSensor
-#rom lib.indicator import Indicator
-from lib.rate import Rate
-from lib.slew import SlewRate
-from lib.motors import Motors
-from lib.pid_motor_ctrl import PIDMotorController
-
-# ..............................................................................
-class MotorController():
-
-    def __init__(self, motor_controller, level):
-        super().__init__()
-        self._log = Logger("mc", level)
-        self._motors = motor_controller.get_motors()
-        _controllers = motor_controller.get_pid_controllers()
-        self._port_pid = _controllers[0]
-        self._stbd_pid = _controllers[1]
-        self._cruising_velocity = 0.0
-        self._enabled = False
-        self._log.info('ready.')
-
-    # ..........................................................................
-    def set_cruising_velocity(self, value):
-        self._cruising_velocity = value
-
-    # ..........................................................................
-    def disable(self):
-        self._enabled = False
-
-    # ..........................................................................
-    def cruise(self):
-        self._log.info('start cruising...')
-        self._enabled = True
-        _tp = threading.Thread(target=MotorController._cruise, args=[self, self._port_pid, self._cruising_velocity, lambda: self._enabled ])
-        _ts = threading.Thread(target=MotorController._cruise, args=[self, self._stbd_pid, self._cruising_velocity, lambda: self._enabled ])
-        self._log.info('cruise threads started.')
-        _tp.start()
-        _ts.start()
-        self._log.info('cruise threads joining...')
-        _tp.join()
-        _ts.join()
-        self._log.info('cruise complete.')
-
-    # ..........................................................................
-    def _cruise(self, pid, cruising_velocity, f_is_enabled):
-        '''
-           Threaded method for roaming.
-        '''
-        _rate = Rate(20)
-        if not pid.enabled:       
-            pid.enable()
-        pid.set_slew_rate(SlewRate.NORMAL)
-        pid.enable_slew(True)
-
-        self._cruising_velocity = cruising_velocity
-
-        self._log.info(Fore.YELLOW + '{} motor accelerating to velocity: {:5.2f}...'.format(pid.orientation.label, self._cruising_velocity))
-        pid.velocity = self._cruising_velocity
-        while pid.velocity < self._cruising_velocity:
-            pid.velocity += 5.0
-            self._log.info(Fore.GREEN + 'accelerating from {} to {}...'.format(pid.velocity, self._cruising_velocity ))
-            time.sleep(0.5)
-#           _rate.wait()
-
-        self._log.info(Fore.YELLOW + '{} motor cruising...'.format(pid.orientation.label))
-        while f_is_enabled:
-            self._log.info(Fore.BLACK + '{} motor cruising at velocity: {:5.2f}...'.format(pid.orientation.label, pid.velocity))
-            time.sleep(0.5)
-
-        self._log.info(Fore.YELLOW + '{} motor decelerating...'.format(pid.orientation.label))
-        pid.velocity = 0.0
-        while pid.velocity > 0.0:
-            pid.velocity -= 5.0
-            self._log.info(Fore.GREEN + 'decelerating from {} to {}...'.format(pid.velocity, self._cruising_velocity ))
-            time.sleep(0.01)
-#           _rate.wait()
-
-        self._log.info(Fore.YELLOW + '{} motor at rest.'.format(pid.orientation.label))
-        time.sleep(1.0)
-        pid.set_slew_rate(SlewRate.NORMAL)
-
-        self._log.info(Fore.YELLOW + 'cruise complete.')
 
 # ..............................................................................
 class MockMessageQueue():
@@ -170,14 +90,14 @@ class MockMessageQueue():
         elif _event is Event.INFRARED_STBD_SIDE_FAR:
             self._log.debug(Fore.GREEN + Style.NORMAL + '> INFRARED_STBD_SIDE_FAR: {}; value: {}'.format(_event.description, _value))
 
-        elif _event is Event.BUMPER_PORT:
-            self._log.debug(Fore.RED + Style.BRIGHT + 'BUMPER_PORT: {}'.format(_event.description))
-        elif _event is Event.BUMPER_CNTR:
-            self._log.debug(Fore.BLUE + Style.BRIGHT + 'BUMPER_CNTR: {}'.format(_event.description))
-        elif _event is Event.BUMPER_STBD:
-            self._log.debug(Fore.GREEN + Style.BRIGHT + 'BUMPER_STBD: {}'.format(_event.description))
-        else:
-            self._log.debug(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
+#       elif _event is Event.BUMPER_PORT:
+#           self._log.debug(Fore.RED + Style.BRIGHT + 'BUMPER_PORT: {}'.format(_event.description))
+#       elif _event is Event.BUMPER_CNTR:
+#           self._log.debug(Fore.BLUE + Style.BRIGHT + 'BUMPER_CNTR: {}'.format(_event.description))
+#       elif _event is Event.BUMPER_STBD:
+#           self._log.debug(Fore.GREEN + Style.BRIGHT + 'BUMPER_STBD: {}'.format(_event.description))
+#       else:
+#           self._log.debug(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
 
         # we're finished, now add to any listeners
         for listener in self._listeners:
@@ -195,46 +115,26 @@ def main():
         _config = _loader.configure(filename)
         _queue = MockMessageQueue(Level.INFO)
 
-        _motors = Motors(_config, None, Level.INFO)
-        _pid_motor_ctrl = PIDMotorController(_config, _motors, Level.WARN)
-        _motor_ctrl = MotorController(_pid_motor_ctrl, Level.INFO)
-        _motor_ctrl.set_cruising_velocity(25.0)
-
         _message_factory = MessageFactory(Level.INFO)
-
         _message_bus = MessageBus(Level.INFO)
+        _clock = Clock(_config, _message_bus, _message_factory, Level.WARN)
+        _clock.enable()
 
-        _ifs = IntegratedFrontSensor(_config, _message_bus, _message_factory, Level.INFO)
+        _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
+        _ifs.enable()
 
         try:
 
-            _log.info(Fore.BLUE + 'starting to cruise...')
-            _motor_ctrl.cruise()
-            time.sleep(2)
+            _log.info(Fore.BLUE + 'starting...')
 
-            _log.info(Fore.BLUE + 'cruising...')
-            for i in range(5):
-#           while True:
-                _motor_ctrl.set_cruising_velocity(40.0)
-                _log.info(Fore.BLUE + '{} cruising...'.format(i))
-                time.sleep(1)
-
-            _motor_ctrl.disable()
+            for i in range(360):
+                _log.info(Fore.BLUE + '{:d}; looping...'.format(i))
+                time.sleep(1.0)
 
             _log.info(Fore.BLUE + 'exited loop.')
-#           sys.exit(0)
-#           _ifs.enable() 
-#           while True:
-#               time.sleep(1.0)
 
         except KeyboardInterrupt:
             print(Fore.RED + 'Ctrl-C caught; exiting...' + Style.RESET_ALL)
-
-        _motor_ctrl.disable()
-        _log.info(Fore.BLUE + 'post-try...')
-        time.sleep(3)
-        _pid_motor_ctrl.disable()
-        _log.info(Fore.BLUE + 'exiting...')
 
     except Exception as e:
         print(Fore.RED + Style.BRIGHT + 'error: {}'.format(e))

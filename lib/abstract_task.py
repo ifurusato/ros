@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from colorama import init, Fore, Style
 init()
 
-import lib.import_gpio 
+#mport lib.import_gpio 
 from lib.fsm import FiniteStateMachine
 from lib.devnull import DevNull
 from lib.logger import Logger, Level
@@ -24,33 +24,26 @@ level = Level.INFO
 
 class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
     '''
-        An abstract task class implemented as a Finite State Machine (FSM),
-        where transitions between states begin with an initial Start state,
-        proceeding through a series of controlled state transitions until 
-        a Terminal state is reached.
+    An abstract task class implemented as a Finite State Machine (FSM),
+    where transitions between states begin with an initial Start state,
+    proceeding through a series of controlled state transitions until 
+    a Terminal state is reached.
 
-        The thread is started by a call to start() and terminated by close().
-        The _enabled variable is controlled by enable() and disable().
+    The thread is started by a call to start() and terminated by close().
+    The _enabled variable is controlled by enable() and disable().
     '''
 
     sleep_delay = 1  # seconds
 
-    def __init__(self, task_name, queue, GPIO, priority, mutex):
+    def __init__(self, task_name, priority, mutex):
         super().__init__(task_name)
         super(FiniteStateMachine, self).__init__()
         threading.Thread.__init__(self)
-
-        # set message queue
-        self._queue = queue
-
         # initialise logger
         self.task_name = task_name
         self._log = Logger(task_name, level)
         self._log.debug(task_name + '__init__() initialising...')
         # initialise GPIO
-        self._gpio = GPIO
-        if (GPIO is not None):
-            self._gpio.setmode(GPIO.BCM)
         self._priority = priority
         self._mutex = mutex
         self._active = True  # set False only when closing task
@@ -58,9 +51,6 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
         self._closing = False
         self._number = -1
         self._log.debug(task_name + '__init__() ready.')
-
-    def get_queue(self):
-        return self._queue
 
     def set_number(self, number):
         self._number = number
@@ -128,7 +118,6 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
                 self._log.info('waiting ({:d}) for {} to terminate...'.format(_n, self.task_name))
                 time.sleep(0.25)
     
-#           self._gpio.cleanup()
             self._log.critical('closed ' + self.task_name + '.')
 #           pass
         else:

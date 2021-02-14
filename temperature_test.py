@@ -25,7 +25,7 @@ from lib.logger import Level, Logger
 # main .........................................................................
 def main(argv):
 
-    _temp = None
+    _temperature = None
     _log = Logger('temp-test', Level.INFO)
 
     try:
@@ -38,26 +38,26 @@ def main(argv):
         _message_bus = MessageBus(Level.DEBUG)
         _clock = Clock(_config, _message_bus, _message_factory, Level.WARN)
 
-        _temp = Temperature(_config, _clock, Level.INFO)
-        _temp.enable()
+        _temperature = Temperature(_config, _clock, Level.INFO)
+        _temperature.enable()
 
         _clock.enable()
 
         while True:
-#           _value = _temp.get_cpu_temperature()
-#           _is_hot = _temp.is_hot()
+#           _value = _temperature.get_cpu_temperature()
+#           _is_hot = _temperature.is_hot()
             time.sleep(1.0)
 
     except KeyboardInterrupt:
         _log.info(Fore.YELLOW + 'exited via Ctrl-C' + Style.RESET_ALL)
-        if _temp:
-            _temp.close()
+        if _temperature:
+            _temperature.close()
         sys.exit(0)
 
     except Exception:
         _log.error(Fore.RED + Style.BRIGHT + 'error getting RPI temperature: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
-        if _temp:
-            _temp.close()
+        if _temperature:
+            _temperature.close()
         sys.exit(1)
 
 

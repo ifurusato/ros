@@ -25,7 +25,7 @@ from lib.event import Event
 from lib.message import Message
 from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
-from lib.queue import MessageQueue
+from lib.clock import Clock
 from lib.ifs import IntegratedFrontSensor
 #from lib.indicator import Indicator
 
@@ -160,8 +160,13 @@ def test_ifs():
     _queue = MockMessageQueue(Level.INFO)
     _message_bus = MessageBus(Level.INFO)
     _message_bus.add_handler(Message, _queue.add)
-    _ifs = IntegratedFrontSensor(_config, _message_bus, _message_factory, Level.INFO)
+    _log.info('creating clock...')
+    _clock = Clock(_config, _message_bus, _message_factory, Level.WARN)
+
+    _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
     _ifs.enable()
+    _clock.enable()
+
     while not _queue.all_triggered:
         _queue.waiting_for_message()
         time.sleep(0.5)

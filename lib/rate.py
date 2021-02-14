@@ -35,8 +35,10 @@ class Rate():
         self._use_ns = use_ns
         if self._use_ns:
             self._log.info('nanosecond rate set for {:d}Hz (period: {:>6.4f}sec/{:d}ms)'.format(hertz, self.get_period_sec(), self.get_period_ms()))
-        else:
+        elif isinstance(hertz, int):
             self._log.info('millisecond rate set for {:d}Hz (period: {:>6.4f}sec/{:d}ms)'.format(hertz, self.get_period_sec(), self.get_period_ms()))
+        else:
+            self._log.info('millisecond rate set for {:5.2f}Hz (period: {:>6.4f}sec/{:d}ms)'.format(hertz, self.get_period_sec(), self.get_period_ms()))
         self._trim = 0.0
 
     # ..........................................................................
@@ -131,7 +133,7 @@ class Rate():
             if self._dt_s > _diff:
                 time.sleep(_delay_sec)
             else:
-                self._log.warning('no additional delay in rate loop (diff: {:7.4f}ms)'.format(_diff * 1000.0))
+                self._log.debug('no additional delay in rate loop (diff: {:7.4f}ms)'.format(_diff * 1000.0))
 #           if _delay_sec < self._dt_s:
 #               self._log.debug(Fore.CYAN + Style.DIM    + '< dt: {:7.4f}ms;'.format(self._dt_s * 1000.0) + Fore.CYAN  \
 #                       + ' delay: {:7.4f}ms; diff: {:7.4f}ms; trim: {:5.2f}'.format(_delay_sec * 1000.0, _diff * 1000.0, self._trim))

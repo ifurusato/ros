@@ -70,6 +70,10 @@ class Motors():
         self._log.info('motors ready.')
 
     # ..........................................................................
+    def name(self):
+        return 'Motors'
+
+    # ..........................................................................
     def _configure_thunderborg_motors(self, level):
         '''
             Import the ThunderBorg library, then configure the Motors.

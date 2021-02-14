@@ -16,10 +16,8 @@ from colorama import init, Fore, Style
 init()
 
 import lib.ThunderBorg3 as ThunderBorg
-#from ads1015 import ADS1015
 try:
     from ads1015 import ADS1015
-    print('import            :' + Fore.BLACK + ' INFO  : successfully imported ads1015.' + Style.RESET_ALL)
 except ImportError:
     sys.exit("This script requires the ads1015 module\nInstall with: sudo pip3 install ads1015")
 #   from lib.mock_ads1015 import ADS1015
@@ -31,29 +29,29 @@ from lib.feature import Feature
 
 class BatteryCheck(Feature): 
     '''
-        This uses both the ThunderBorg battery level method and the three channels of
-        an ADS1015 to measure both the raw voltage of the battery and that of two 5
-        volt regulators, labeled A and B. If any fall below a specified threshold a 
-        low battery message is sent to the message queue.
+    This uses both the ThunderBorg battery level method and the three channels of
+    an ADS1015 to measure both the raw voltage of the battery and that of two 5
+    volt regulators, labeled A and B. If any fall below a specified threshold a 
+    low battery message is sent to the message queue.
 
-        If unable to establish communication with the ADS1015 this will raise a
-        RuntimeError.
+    If unable to establish communication with the ADS1015 this will raise a
+    RuntimeError.
 
-        This uses the ThunderBorg RGB LED to indicate the battery level of a Makita 18V
-        Lithium-Ion power tool battery, whose actual top voltage is around 20 volts.
-        When disabled this reverts the RGB LED back to is original indicator as the 
-        input battery voltage of the ThunderBorg. This is generally the same value but 
-        this class enumerates the value so that its state is more obvious.
+    This uses the ThunderBorg RGB LED to indicate the battery level of a Makita 18V
+    Lithium-Ion power tool battery, whose actual top voltage is around 20 volts.
+    When disabled this reverts the RGB LED back to is original indicator as the 
+    input battery voltage of the ThunderBorg. This is generally the same value but 
+    this class enumerates the value so that its state is more obvious.
 
-        Parameters:
+    Parameters:
 
-          battery_channel:     the ADS1015 channel: 0, 1 or 2 used to measure the raw battery voltage
-          five_volt_a_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
-          five_volt_b_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
-          queue:     the message queue
-          level:     the logging level
+      battery_channel:     the ADS1015 channel: 0, 1 or 2 used to measure the raw battery voltage
+      five_volt_a_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
+      five_volt_b_channel: the ADS1015 channel: 0, 1 or 2 used to measure the 5v regulator battery voltage
+      queue:     the message queue
+      level:     the logging level
 
-        How many times should we sample before accepting a first value?
+    How many times should we sample before accepting a first value?
     '''
 
     # ..........................................................................
@@ -154,10 +152,10 @@ class BatteryCheck(Feature):
     # ..........................................................................
     def _read_tb_voltage(self):
         '''
-            Reads the ThunderBorg motor voltage, then displays a log message as
-            well as setting the ThunderBorg RGB LED to indicate the value.
+        Reads the ThunderBorg motor voltage, then displays a log message as
+        well as setting the ThunderBorg RGB LED to indicate the value.
 
-            Returns the read value.
+        Returns the read value.
         '''
         _tb_voltage = self._tb.GetBatteryReading()
         if _tb_voltage is None:
@@ -204,11 +202,11 @@ class BatteryCheck(Feature):
     # ..........................................................................
     def add(self, message):
         '''
-            This receives a TOCK message, and reacts only to the 1000th of these.
-            The function that checks the raw battery and 5v regulator voltages in a loop.
-            Note that this doesn't immediately send BATTERY_LOW messages until after the
-            loop has run a few times, as it seems the first check after starting tends to
-            measure a bit low.
+        This receives a TOCK message, and reacts only to the 1000th of these.
+        The function that checks the raw battery and 5v regulator voltages in a loop.
+        Note that this doesn't immediately send BATTERY_LOW messages until after the
+        loop has run a few times, as it seems the first check after starting tends to
+        measure a bit low.
         '''
         if self._enabled and message.event is Event.CLOCK_TOCK:
             event = message.event
