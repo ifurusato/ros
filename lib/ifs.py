@@ -38,28 +38,23 @@ class IntegratedFrontSensor():
     infrared sensors, receiving messages from the IO Expander board or I²C
     Arduino slave, sending the messages with its events onto the message bus.
 
-    When enabled this polls at a frequency set in configuration, the _loop
-    method repeatedly calling the _poll() method.
+    When enabled this adds the IFS as a handler to the Clock's BessageBus, to
+    receive TICK messages triggering polling of the sensors.
 
     :param config:           the YAML based application configuration
     :param clock:            the system Clock
-    :param message_bus:      the message bus to send event messages
-    :param message_factory:  optional MessageFactory
     :param level:            the logging Level
     '''
-    def __init__(self, config, clock, message_bus, message_factory, level):
+    def __init__(self, config, clock, level):
         if config is None:
             raise ValueError('no configuration provided.')
-        self._log = Logger("ifs", level)
         if clock is None:
             raise ValueError('no clock provided.')
         self._clock = clock
+        self._message_bus = clock.message_bus
+        self._message_factory = clock.message_factory
+        self._log = Logger("ifs", level)
         self._log.info('configuring integrated front sensor...')
-        self._message_bus = message_bus
-        if message_factory:
-            self._message_factory = message_factory
-        else:
-            self._message_factory = MessageFactory(level)
         self._config = config['ros'].get('integrated_front_sensor')
         self._ignore_duplicates        = self._config.get('ignore_duplicates')
         _use_pot                       = self._config.get('use_potentiometer')
@@ -119,6 +114,7 @@ class IntegratedFrontSensor():
         '''
         _count = next(self._counter)
         _group = self._get_sensor_group()
+        self._log.debug(Fore.YELLOW + '[{:04d}] sensor group: {}'.format(_count, _group))
 #       _current_thread = threading.current_thread()
 #       _current_thread.name = 'poll-{:d}'.format(_group)
         _start_time = dt.datetime.now()
@@ -126,7 +122,6 @@ class IntegratedFrontSensor():
         # force group?
 #       _group = 1
 
-        self._log.debug(Fore.YELLOW + '[{:04d}] sensor group: {}'.format(_count, _group))
         if _group == 0: # bumper group .........................................
             self._log.debug(Fore.WHITE + '[{:04d}] BUMP ifs poll start; group: {}'.format(_count, _group))
 

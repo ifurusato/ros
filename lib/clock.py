@@ -42,12 +42,19 @@ class Clock(object):
     TICK, i.e., every nth loop there is no TICK, only a TOCK.
 
     This passes its messages on to any added consumers, then on to the message bus.
+
+    As a convenience, we provide the message bus and message factory as properties
+    since most users of this Clock will likely also be using them.
     '''
     def __init__(self, config, message_bus, message_factory, level):
         super().__init__()
-        self._message_bus = message_bus
-        self._message_factory = message_factory
         self._log = Logger("clock", level)
+        if message_bus is None:
+            raise ValueError('null message bus argument.')
+        self._message_bus = message_bus
+        if message_factory is None:
+            raise ValueError('null message factory argument.')
+        self._message_factory = message_factory
         if config is None:
             raise ValueError('null configuration argument.')
         _config            = config['ros'].get('clock')
@@ -121,6 +128,11 @@ class Clock(object):
     @property
     def message_bus(self):
         return self._message_bus
+
+    # ..........................................................................
+    @property
+    def message_factory(self):
+        return self._message_factory
 
     # ..........................................................................
     @property
