@@ -152,7 +152,7 @@ class ROS(AbstractTask):
         ifs_available = ( 0x0E in self._addresses )
         if ifs_available:
             self._log.info('configuring integrated front sensor...')
-            self._ifs = IntegratedFrontSensor(self._config, self._message_bus, self._message_factory, _level)
+            self._ifs = IntegratedFrontSensor(self._config, self._clock, _level)
             self.add_feature(self._ifs)
 
 #       ultraborg_available = ( 0x36 in self._addresses )
