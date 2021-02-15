@@ -75,7 +75,7 @@ class I2CScanner():
             for address in range(3, 128):
                 try:
                     self._bus.write_byte(address, 0)
-                    self._log.debug('found {0}'.format(hex(address)))
+                    self._log.debug('found I²C device at 0x{:02X}'.format(address))
                     self._int_list.append(address)
                     self.hex_list.append(hex(address))
                     device_count = device_count + 1
@@ -87,9 +87,9 @@ class I2CScanner():
         
             self._bus.close()
             self._bus = None
-            self._log.info("found {0} device(s)".format(device_count))
+            self._log.info("found {:d} device(s).".format(device_count))
         else:
-            self._log.info("found no devices (no smbus available)")
+            self._log.info("found no devices (no smbus available).")
         return self._int_list
 
     # end class ................................................................

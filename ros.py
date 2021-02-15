@@ -9,6 +9,8 @@
 # created:  2019-12-23
 # modified: 2020-03-12
 #
+# The NZPRG Robot Operating System (ROS), including its command line interface (CLI).
+#
 #        1         2         3         4         5         6         7         8         9         C
 #234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 
@@ -56,8 +58,6 @@ from lib.ifs import IntegratedFrontSensor
 led_0_path = '/sys/class/leds/led0/brightness'
 led_1_path = '/sys/class/leds/led1/brightness'
 
-_level = Level.INFO
-
 # ==============================================================================
 
 # ROS ..........................................................................
@@ -104,35 +104,38 @@ class ROS(AbstractTask):
         self._log.info('initialised.')
 
     # ..........................................................................
-    def configure(self, disable_motors, enable_gamepad):
+    def configure(self, arguments):
         '''
-        Configures ROS based on both KR01 standard hardware as well as
-        optional features, the latter based on devices showing up (by 
-        address) on the I²C bus. Optional devices are only enabled at
-        startup time via registration of their feature availability.
+        Provided with a set of configuration arguments, configures ROS based on
+        both KD01/KR01 standard hardware as well as optional features, the 
+        latter based on devices showing up (by address) on the I²C bus. Optional
+        devices are only enabled at startup time via registration of their feature
+        availability.
         '''
-        self._log.info('configuring...')
-
-        # command line configuration
-        self._disable_motors  = disable_motors
-        self._enable_gamepad = enable_gamepad
+        self._log.heading('configuration', 'configuring ros...', 
+            '[1/2]' if arguments.start else '[1/1]')
+        self._log.info('application log level: {}'.format(self._log.level.name))
+        # configuration from command line arguments 
+        self._enable_camera   = arguments.camera # TODO
         # read YAML configuration
-        _level = Level.INFO
-        _loader = ConfigLoader(_level)
-        filename = 'config.yaml'
-        self._config = _loader.configure(filename)
+        _loader = ConfigLoader(self._log.level)
+        _config_file = arguments.config_file if arguments.config_file is not None else 'config.yaml'
+        self._config = _loader.configure(_config_file)
         # scan I2C bus
         self._log.info('scanning I²C address bus...')
-        scanner = I2CScanner(Level.WARN)
+        scanner = I2CScanner(self._log.level)
         self._addresses = scanner.get_addresses()
         hexAddresses = scanner.getHexAddresses()
         self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, hexAddresses)))
-        for i in range(len(self._addresses)):
-            self._log.info(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
+#       for i in range(len(self._addresses)):
+        for _address in self._addresses:
+            _device_name = self.get_device_for_address(_address)
+            self._log.info('found device at I²C address 0x{:02X}: {}'.format(_address, _device_name) + Style.RESET_ALL)
+            # TODO look up address and make assumption about what the device is
         # establish basic subsumption components
         self._log.info('configure subsumption foundation...')
-        self._message_factory = MessageFactory(_level)
-        self._message_bus = MessageBus(_level)
+        self._message_factory = MessageFactory(self._log.level)
+        self._message_bus = MessageBus(self._log.level)
         self._log.info('configuring system clock...')
         self._clock = Clock(self._config, self._message_bus, self._message_factory, Level.WARN)
         self.add_feature(self._clock)
@@ -141,13 +144,13 @@ class ROS(AbstractTask):
         self._log.info('configure default features...')
 
         self._log.info('configure CPU temperature check...')
-        _temperature_check = Temperature(self._config, self._clock, _level)
+        _temperature_check = Temperature(self._config, self._clock, self._log.level)
         self.add_feature(_temperature_check)
 
-        motors_enabled = not self._disable_motors and ( 0x15 in self._addresses )
+        motors_enabled = not arguments.no_motors and ( 0x15 in self._addresses )
         if motors_enabled: # then configure motors
             self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ThunderBorg available at 0x15' + Style.RESET_ALL)
-            _motor_configurer = MotorConfigurer(self._config, self._clock, _level)
+            _motor_configurer = MotorConfigurer(self._config, self._clock, self._log.level)
             self._motors = _motor_configurer.get_motors()
             self.add_feature(self._motors)
         else:
@@ -157,12 +160,12 @@ class ROS(AbstractTask):
         ifs_available = ( 0x0E in self._addresses )
         if ifs_available:
             self._log.info('configuring integrated front sensor...')
-            self._ifs = IntegratedFrontSensor(self._config, self._clock, _level)
+            self._ifs = IntegratedFrontSensor(self._config, self._clock, self._log.level)
             self.add_feature(self._ifs)
         else:
             self._log.info('integrated front sensor not available; loading mock sensor.')
             from mock.mock_ifs import MockIntegratedFrontSensor
-            self._ifs = MockIntegratedFrontSensor(self._config, self._clock, _level)
+            self._ifs = MockIntegratedFrontSensor(self._config, self._clock, self._log.level)
             self.add_feature(self._ifs)
 
 #       ultraborg_available = ( 0x36 in self._addresses )
@@ -174,7 +177,7 @@ class ROS(AbstractTask):
 
 #       # optional devices ...........................................
         self._log.info('configure optional features...')
-        self._gamepad_enabled = self._enable_gamepad and self._config['ros'].get('gamepad').get('enabled')
+        self._gamepad_enabled = arguments.gamepad and self._config['ros'].get('gamepad').get('enabled')
         
 #       # the 5x5 RGB Matrix is at 0x74 for port, 0x77 for starboard
 #       rgbmatrix5x5_stbd_available = ( 0x74 in self._addresses )
@@ -259,6 +262,29 @@ class ROS(AbstractTask):
         '''
         self._log.debug(Fore.BLUE + Style.BRIGHT + '-- set feature available. name: \'{}\' value: \'{}\'.'.format(name, value))
         self.set_property('features', name, value)
+
+    # ..........................................................................
+    def get_device_for_address(self, address):
+        if address == 0x0E:
+            return 'RGB Potentiometer'
+        elif address == 0x0F:
+            return 'RGB Encoder' # default, moved to 0x16
+        elif address == 0x15:
+            return 'ThunderBorg'
+        elif address == 0x16:
+            return 'RGB Encoder'
+        elif address == 0x18:
+            return 'IO Expander'
+        elif address == 0x48:
+            return 'ADS1015'
+        elif address == 0x4A:
+            return 'Unknown'
+        elif address == 0x74:
+            return '5x5 RGB Matrix'
+        elif address == 0x77:
+            return '5x5 RGB Matrix (or 11x7 LED Matrix)'
+        else:
+            return 'Unknown'
 
     # ..........................................................................
     @property
@@ -563,7 +589,7 @@ class ROS(AbstractTask):
 # ..............................................................................
 def parse_args():
     '''
-    Parses the command line arguments and return a tuple containing the result.
+    Parses the command line arguments and return the resulting args object.
     Help is available via '--help', '-h', or calling the script with no arguments.
     '''
     _log = Logger('parse-args', Level.INFO)
@@ -572,20 +598,22 @@ def parse_args():
     parser = argparse.ArgumentParser(formatter_class=formatter,
             description='Provides command line control of the ROS application.', \
             epilog='This script may be executed by rosd (ros daemon) or run directly from the command line.')
-    parser.add_argument('--disable-motors', '-d', action='store_true', help='disable motors')
-    parser.add_argument('--gamepad',        '-g', action='store_true', help='enable gamepad control')
-    parser.add_argument('--start',          '-s', action='store_true', help='start ros following configuration')
+    parser.add_argument('--configure',      '-c', action='store_true', help='run configuration (included by -s)')
+    parser.add_argument('--start',          '-s', action='store_true', help='start ros')
+    parser.add_argument('--no-motors',      '-m', action='store_true', help='disable motors')
+    parser.add_argument('--gamepad',        '-g', action='store_true', help='enable bluetooth gamepad control')
+    parser.add_argument('--camera',         '-C', action='store_true', help='enable camera if installed')
+    parser.add_argument('--config-file',    '-f', help='use alternative configuration file')
     parser.add_argument('--level',          '-l', help='specify logging level \'DEBUG\'|\'INFO\'|\'WARN\'|\'ERROR\' (default: \'INFO\')')
     try:
         args = parser.parse_args()
-        _log.info('parsed.')
-        _level = Level.from_str(args.level) if args.level != None else Level.INFO
-        _log.level = _level
-        _log.info('arguments: {}\n'.format(args))
+        _log.debug('parsed arguments: {}\n'.format(args))
 #       print_banner()
-        parser.print_help()
-        # return [0] disable-motors, [1] gamepad, [2] start, [3] level
-        return [args.disable_motors, args.gamepad, args.start, _level]
+        if not args.configure and not args.start:
+            parser.print_help()
+            return None
+        else:
+            return args
 
     except NotImplementedError as nie:
         _log.error('unrecognised log level \'{}\': {}'.format(args.level, nie))
@@ -622,23 +650,18 @@ def main(argv):
     try:
         _args = parse_args()
         if _args == None:
-            _log.info(Fore.CYAN + 'args: no action; exiting...')
+            _log.info(Fore.CYAN + 'arguments: no action.')
         else:
-            _log.info('returned arguments: {}'.format(_args))
-            # return [0] disable-motors, [1] gamepad, [2] start, [3] level
-            _disable_motors = _args[0]
-            _gamepad        = _args[1]
-            _start          = _args[2]
-            _level          = _args[3]
-            _log.level      = _level
-            _log.info('arguments: disable-motors={}, gamepad={}, start={}, level={}'.format(_disable_motors, _gamepad, _start, _level))
+            _level = Level.from_str(_args.level) if _args.level != None else Level.INFO
+            _log.level = _level
+            _log.info('arguments: {}'.format(_args))
             _ros = ROS(level=_level)
-            _ros.configure(_disable_motors, _gamepad)
-            if _start:
+            if _args.configure:
+                _ros.configure(_args)
+                if not _args.start:
+                    _log.info('configure only: ' + Fore.YELLOW + 'specify the -s argument to start ros.')
+            if _args.start:
                 _ros.start()
-            else:
-                _log.info('configure only: ' + Fore.YELLOW + 'specify the -s argument to start ros.')
-                _log.info('exit.')
 
     except KeyboardInterrupt:
         print(Fore.CYAN + Style.BRIGHT + 'caught Ctrl-C; exiting...')
@@ -646,6 +669,8 @@ def main(argv):
         print(Fore.RED + Style.BRIGHT + 'error starting ros: {}'.format(traceback.format_exc()) + Style.RESET_ALL)
         if _ros:
             _ros.close()
+    finally:
+        _log.info('exit.')
 
 # call main ....................................................................
 if __name__== "__main__":
