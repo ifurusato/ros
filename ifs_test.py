@@ -157,13 +157,17 @@ def test_ifs():
     _config = _loader.configure(filename)
 
     _message_factory = MessageFactory(Level.INFO)
-    _queue = MockMessageQueue(Level.INFO)
     _message_bus = MessageBus(Level.INFO)
-    _message_bus.add_handler(Message, _queue.add)
+
     _log.info('creating clock...')
     _clock = Clock(_config, _message_bus, _message_factory, Level.WARN)
 
-    _ifs = IntegratedFrontSensor(_config, _clock, _message_bus, _message_factory, Level.INFO)
+    _ifs = IntegratedFrontSensor(_config, _clock, Level.INFO)
+
+    # establish queue to receive messages
+    _queue = MockMessageQueue(Level.INFO)
+    _message_bus.add_handler(Message, _queue.add)
+
     _ifs.enable()
     _clock.enable()
 

@@ -19,9 +19,7 @@ from lib.fsm import FiniteStateMachine
 from lib.devnull import DevNull
 from lib.logger import Logger, Level
 
-level = Level.INFO
-
-
+# ..............................................................................
 class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
     '''
     An abstract task class implemented as a Finite State Machine (FSM),
@@ -35,7 +33,7 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
 
     sleep_delay = 1  # seconds
 
-    def __init__(self, task_name, priority, mutex):
+    def __init__(self, task_name, priority, mutex, level=Level.INFO):
         super().__init__(task_name)
         super(FiniteStateMachine, self).__init__()
         threading.Thread.__init__(self)

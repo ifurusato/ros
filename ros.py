@@ -13,7 +13,8 @@
 #234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 
 # ..............................................................................
-import os, sys, psutil, signal, time, itertools, logging, yaml, threading, traceback
+import os, sys, signal, time, threading, traceback
+import argparse, psutil, itertools, yaml
 from pathlib import Path
 from colorama import init, Fore, Style
 init()
@@ -82,7 +83,7 @@ class ROS(AbstractTask):
     '''
 
     # ..........................................................................
-    def __init__(self, mutex=None):
+    def __init__(self, mutex=None, level=Level.INFO):
         '''
         This initialises the ROS and calls the YAML configurer.
         '''
@@ -101,10 +102,9 @@ class ROS(AbstractTask):
         self._gamepad      = None
         self._features     = []
         self._log.info('initialised.')
-        self._configure()
 
     # ..........................................................................
-    def _configure(self):
+    def configure(self, disable_motors, enable_gamepad):
         '''
         Configures ROS based on both KR01 standard hardware as well as
         optional features, the latter based on devices showing up (by 
@@ -112,6 +112,10 @@ class ROS(AbstractTask):
         startup time via registration of their feature availability.
         '''
         self._log.info('configuring...')
+
+        # command line configuration
+        self._disable_motors  = disable_motors
+        self._enable_gamepad = enable_gamepad
         # read YAML configuration
         _level = Level.INFO
         _loader = ConfigLoader(_level)
@@ -140,15 +144,15 @@ class ROS(AbstractTask):
         _temperature_check = Temperature(self._config, self._clock, _level)
         self.add_feature(_temperature_check)
 
-        thunderborg_available = ( 0x15 in self._addresses )
-        if thunderborg_available: # then configure motors
+        motors_enabled = not self._disable_motors and ( 0x15 in self._addresses )
+        if motors_enabled: # then configure motors
             self._log.debug(Fore.CYAN + Style.BRIGHT + '-- ThunderBorg available at 0x15' + Style.RESET_ALL)
             _motor_configurer = MotorConfigurer(self._config, self._clock, _level)
             self._motors = _motor_configurer.get_motors()
             self.add_feature(self._motors)
         else:
             self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available at 0x15.' + Style.RESET_ALL)
-        self._set_feature_available('thunderborg', thunderborg_available)
+        self._set_feature_available('motors', motors_enabled)
 
         ifs_available = ( 0x0E in self._addresses )
         if ifs_available:
@@ -170,8 +174,8 @@ class ROS(AbstractTask):
 
 #       # optional devices ...........................................
         self._log.info('configure optional features...')
-        self._gamepad_enabled = self._config['ros'].get('gamepad').get('enabled')
-
+        self._gamepad_enabled = self._enable_gamepad and self._config['ros'].get('gamepad').get('enabled')
+        
 #       # the 5x5 RGB Matrix is at 0x74 for port, 0x77 for starboard
 #       rgbmatrix5x5_stbd_available = ( 0x74 in self._addresses )
 #       if rgbmatrix5x5_stbd_available:
@@ -556,7 +560,42 @@ class ROS(AbstractTask):
 
 # ==============================================================================
 
-_ros = None
+# ..............................................................................
+def parse_args():
+    '''
+    Parses the command line arguments and return a tuple containing the result.
+    Help is available via '--help', '-h', or calling the script with no arguments.
+    '''
+    _log = Logger('parse-args', Level.INFO)
+    _log.debug('parsing...')
+    formatter = lambda prog: argparse.HelpFormatter(prog,max_help_position=60)
+    parser = argparse.ArgumentParser(formatter_class=formatter,
+            description='Provides command line control of the ROS application.', \
+            epilog='This script may be executed by rosd (ros daemon) or run directly from the command line.')
+    parser.add_argument('--disable-motors', '-d', action='store_true', help='disable motors')
+    parser.add_argument('--gamepad',        '-g', action='store_true', help='enable gamepad control')
+    parser.add_argument('--start',          '-s', action='store_true', help='start ros following configuration')
+    parser.add_argument('--level',          '-l', help='specify logging level \'DEBUG\'|\'INFO\'|\'WARN\'|\'ERROR\' (default: \'INFO\')')
+    try:
+        args = parser.parse_args()
+        _log.info('parsed.')
+        _level = Level.from_str(args.level) if args.level != None else Level.INFO
+        _log.level = _level
+        _log.info('arguments: {}\n'.format(args))
+#       print_banner()
+        parser.print_help()
+        # return [0] disable-motors, [1] gamepad, [2] start, [3] level
+        return [args.disable_motors, args.gamepad, args.start, _level]
+
+    except NotImplementedError as nie:
+        _log.error('unrecognised log level \'{}\': {}'.format(args.level, nie))
+        _log.error('exit on error.')
+        sys.exit(1)
+    except Exception as e:
+        _log.error('error parsing command line arguments: {}\n{}'.format(e, traceback.format_exc()))
+        _log.error('exit on error.')
+        sys.exit(1)
+
 
 # exception handler ............................................................
 
@@ -571,14 +610,36 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 # main .........................................................................
+
+_ros = None
+
 def main(argv):
     global _ros
 
+    _log = Logger("main", Level.INFO)
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        _ros = ROS()
-        _ros.start()
+        _args = parse_args()
+        if _args == None:
+            _log.info(Fore.CYAN + 'args: no action; exiting...')
+        else:
+            _log.info('returned arguments: {}'.format(_args))
+            # return [0] disable-motors, [1] gamepad, [2] start, [3] level
+            _disable_motors = _args[0]
+            _gamepad        = _args[1]
+            _start          = _args[2]
+            _level          = _args[3]
+            _log.level      = _level
+            _log.info('arguments: disable-motors={}, gamepad={}, start={}, level={}'.format(_disable_motors, _gamepad, _start, _level))
+            _ros = ROS(level=_level)
+            _ros.configure(_disable_motors, _gamepad)
+            if _start:
+                _ros.start()
+            else:
+                _log.info('configure only: ' + Fore.YELLOW + 'specify the -s argument to start ros.')
+                _log.info('exit.')
+
     except KeyboardInterrupt:
         print(Fore.CYAN + Style.BRIGHT + 'caught Ctrl-C; exiting...')
     except Exception:

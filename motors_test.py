@@ -34,7 +34,7 @@ from lib.moth import Moth
 from lib.rgbmatrix import RgbMatrix, Color, DisplayType
 
 # settings ................
-ENABLE_MOTH = True        # enable moth behaviour
+ENABLE_MOTH = False       # enable moth behaviour
 USE_ROTARY_CONTROL = True # otherwise just set at 30.0
 PORT_REVERSE = False      # False runs the port wheel counter-clockwise
 STBD_REVERSE = False      # True runs the starboard wheel clockwise
