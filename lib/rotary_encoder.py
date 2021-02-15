@@ -11,9 +11,13 @@
 #
 
 import sys, colorsys, traceback
-import ioexpander as io
 from colorama import init, Fore, Style
 init()
+
+try:
+    import ioexpander as io
+except ImportError:
+    print(Fore.RED + "This script requires the pimoroni-ioexpander module\nInstall with: sudo pip3 install pimoroni-ioexpander" + Style.RESET_ALL)
 
 from lib.logger import Logger, Level
 

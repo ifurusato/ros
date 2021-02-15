@@ -12,6 +12,7 @@ _log = Logger("color-test", Level.INFO)
 _log.info('info.')
 _log.warning('warning.')
 _log.error('error.')
+_log.header('title', 'message.', 'info [0/0]')
 
 _log.info(Fore.RED + 'RED')
 _log.info(Fore.GREEN + 'GREEN')

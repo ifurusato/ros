@@ -14,6 +14,7 @@
 
 # ..............................................................................
 import os, sys, psutil, signal, time, itertools, logging, yaml, threading, traceback
+from pathlib import Path
 from colorama import init, Fore, Style
 init()
 
@@ -154,6 +155,11 @@ class ROS(AbstractTask):
             self._log.info('configuring integrated front sensor...')
             self._ifs = IntegratedFrontSensor(self._config, self._clock, _level)
             self.add_feature(self._ifs)
+        else:
+            self._log.info('integrated front sensor not available; loading mock sensor.')
+            from mock.mock_ifs import MockIntegratedFrontSensor
+            self._ifs = MockIntegratedFrontSensor(self._config, self._clock, _level)
+            self.add_feature(self._ifs)
 
 #       ultraborg_available = ( 0x36 in self._addresses )
 #       if ultraborg_available:
@@ -288,16 +294,23 @@ class ROS(AbstractTask):
         Enables or disables the Raspberry Pi's board LEDs.
         '''
         sudo_name = self.get_property('pi', 'sudo_name')
-        led_0_path = self._config['pi'].get('led_0_path')
-        led_1_path = self._config['pi'].get('led_1_path')
-        if enable:
-            self._log.info('re-enabling LEDs...')
-            os.system('echo 1 | {} tee {}'.format(sudo_name,led_0_path))
-            os.system('echo 1 | {} tee {}'.format(sudo_name,led_1_path))
+        # led_0_path:   '/sys/class/leds/led0/brightness'
+        _led_0_path = self._config['pi'].get('led_0_path')
+        _led_0 = Path(_led_0_path)
+        # led_1_path:   '/sys/class/leds/led1/brightness'
+        _led_1_path = self._config['pi'].get('led_1_path')
+        _led_1 = Path(_led_1_path)
+        if _led_0.is_file() and _led_0.is_file():
+            if enable:
+                self._log.info('re-enabling LEDs...')
+                os.system('echo 1 | {} tee {}'.format(sudo_name,_led_0_path))
+                os.system('echo 1 | {} tee {}'.format(sudo_name,_led_1_path))
+            else:
+                self._log.debug('disabling LEDs...')
+                os.system('echo 0 | {} tee {}'.format(sudo_name,_led_0_path))
+                os.system('echo 0 | {} tee {}'.format(sudo_name,_led_1_path))
         else:
-            self._log.debug('disabling LEDs...')
-            os.system('echo 0 | {} tee {}'.format(sudo_name,led_0_path))
-            os.system('echo 0 | {} tee {}'.format(sudo_name,led_1_path))
+            self._log.warning('could not change state of LEDs: does not appear to be a Raspberry Pi.')
 
     # ..........................................................................
     def _connect_gamepad(self):

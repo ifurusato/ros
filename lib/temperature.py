@@ -12,6 +12,7 @@
 
 import itertools
 from gpiozero import CPUTemperature
+from gpiozero.exc import BadPinFactory
 from colorama import init, Fore, Style
 init()
 
@@ -29,6 +30,10 @@ class Temperature(Feature):
     This can be used simply to return values, or tied to a Clock. The
     Clock is optional: if provided a message will be sent to its internal
     MessageBus if the temperature exceeds the set threshold.
+
+    :param config:  the application configuration
+    :param clock:   the optional system Clock
+    :param level:   the log level
     '''
     def __init__(self, config, clock, level):
         self._log = Logger('cpu-temp', level)
@@ -40,11 +45,18 @@ class Temperature(Feature):
         self._log.info('warning threshold: {:5.2f}°C; maximum threshold: {:5.2f}°C'.format(self._warning_threshold, self._max_threshold))
         self._tock_modulo = _config.get('tock_modulo') # how often to divide the TOCK messages
         self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
-        self._cpu = CPUTemperature(min_temp=0.0, max_temp=100.0, threshold=self._max_threshold) # min/max are defaults
         self._clock = clock # optional
-        self._counter = itertools.count()
+        self._log.info('starting CPU temperature module.')
+        self._borkd = False
         self._enabled = False
         self._closed  = False
+        try:
+            self._cpu = CPUTemperature(min_temp=0.0, max_temp=100.0, threshold=self._max_threshold) # min/max are defaults
+        except BadPinFactory as e:
+            self._borkd = True
+            self._log.error('unable to load CPU temperature module: {}'.format(e))
+            self._cpu = None
+        self._counter = itertools.count()
         self._log.info('ready.')
 
     # ..........................................................................
@@ -53,28 +65,38 @@ class Temperature(Feature):
 
     # ..........................................................................
     def get_cpu_temperature(self):
-        return self._cpu.temperature
+        if self._cpu:
+            return self._cpu.temperature
+        else:
+            return -1.0
 
     # ..........................................................................
     def is_warning_temperature(self):
-        return self._cpu.temperature >= self._warning_threshold
+        if self._cpu:
+            return self._cpu.temperature >= self._warning_threshold
+        else:
+            return False
 
     # ..........................................................................
     def is_max_temperature(self):
-        return self._cpu.is_active
+        if self._cpu:
+            return self._cpu.is_active
+        else:
+            return False
 
     # ..........................................................................
     def display_temperature(self):
         '''
         Writes a pretty print message to the log.
         '''
-        _cpu_temp = self._cpu.temperature
-        if self.is_warning_temperature():
-            self._log.warning('CPU temperature: {:5.2f}°C; HOT!'.format(_cpu_temp))
-        elif self.is_max_temperature():
-            self._log.error('CPU temperature: {:5.2f}°C; TOO HOT!'.format(_cpu_temp))
-        else:
-            self._log.info('CPU temperature: {:5.2f}°C; normal.'.format(_cpu_temp))
+        if self._cpu:
+            _cpu_temp = self._cpu.temperature
+            if self.is_warning_temperature():
+                self._log.warning('CPU temperature: {:5.2f}°C; HOT!'.format(_cpu_temp))
+            elif self.is_max_temperature():
+                self._log.error('CPU temperature: {:5.2f}°C; TOO HOT!'.format(_cpu_temp))
+            else:
+                self._log.info('CPU temperature: {:5.2f}°C; normal.'.format(_cpu_temp))
 
     # ..........................................................................
     def handle(self, message):
@@ -97,7 +119,9 @@ class Temperature(Feature):
 
     # ..........................................................................
     def enable(self):
-        if not self._closed:
+        if self._borkd:
+            self._log.warning('cannot enable: CPU temperature not supported by this system.')
+        elif not self._closed:
             self._enabled = True
             if self._clock:
                 self._clock.message_bus.add_handler(Message, self.handle)

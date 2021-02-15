@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: latin-1
 """
 This module is designed to communicate with the ThunderBorg
@@ -94,7 +94,7 @@ The busNumber if supplied is which I²C bus to scan, 0 for Rev 1 boards, 1 for Re
             i2cRecv = bus.RawRead(COMMAND_GET_ID, I2C_MAX_LEN)
             if len(i2cRecv) == I2C_MAX_LEN:
                 if i2cRecv[1] == I2C_ID_THUNDERBORG:
-                    print('Found ThunderBorg at %02X' % (address))
+                    print('Found ThunderBorg at 0x{:02X}'.format(address))
                     found.append(address)
                 else:
                     pass
@@ -135,7 +135,7 @@ Warning, this new I²C address will still be used after resetting the power on th
             return
         else:
             oldAddress = found[0]
-    print('Changing I²C address from %02X to %02X (bus #%d)' % (oldAddress, newAddress, busNumber))
+    print('Changing I²C address from 0x{:02X} to 0x{:02X} (bus #{:d})'.format(oldAddress, newAddress, busNumber))
     bus = ThunderBorg()
     bus.InitBusOnly(busNumber, oldAddress)
     try:
@@ -143,42 +143,42 @@ Warning, this new I²C address will still be used after resetting the power on th
         if len(i2cRecv) == I2C_MAX_LEN:
             if i2cRecv[1] == I2C_ID_THUNDERBORG:
                 foundChip = True
-                print('Found ThunderBorg at %02X' % (oldAddress))
+                print('Found ThunderBorg at 0x{:02X}'.format(oldAddress))
             else:
                 foundChip = False
-                print('Found a device at %02X, but it is not a ThunderBorg (ID %02X instead of %02X)' % (oldAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
+                print('Found a device at 0x{:02X}, but it is not a ThunderBorg (ID 0x{:02X} instead of 0x{:02X})'.format(oldAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
         else:
             foundChip = False
-            print('Missing ThunderBorg at %02X' % (oldAddress))
+            print('Missing ThunderBorg at 0x{:02X}'.format(oldAddress))
     except KeyboardInterrupt:
         raise
     except:
         foundChip = False
-        print('Missing ThunderBorg at %02X' % (oldAddress))
+        print('Missing ThunderBorg at 0x{:02X}'.format(oldAddress))
     if foundChip:
         bus.RawWrite(COMMAND_SET_I2C_ADD, [newAddress])
         time.sleep(0.1)
-        print('Address changed to %02X, attempting to talk with the new address' % (newAddress))
+        print('Address changed to 0x{:02X}, attempting to talk with the new address'.format(newAddress))
         try:
             bus.InitBusOnly(busNumber, newAddress)
             i2cRecv = bus.RawRead(COMMAND_GET_ID, I2C_MAX_LEN)
             if len(i2cRecv) == I2C_MAX_LEN:
                 if i2cRecv[1] == I2C_ID_THUNDERBORG:
                     foundChip = True
-                    print('Found ThunderBorg at %02X' % (newAddress))
+                    print('Found ThunderBorg at 0x{:02X}'.format(newAddress))
                 else:
                     foundChip = False
-                    print('Found a device at %02X, but it is not a ThunderBorg (ID %02X instead of %02X)' % (newAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
+                    print('Found a device at 0x{:02X}, but it is not a ThunderBorg (ID 0x{:02X} instead of 0x{:02X})'.format(newAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
             else:
                 foundChip = False
-                print('Missing ThunderBorg at %02X' % (newAddress))
+                print('Missing ThunderBorg at 0x{:02X}'.format(newAddress))
         except KeyboardInterrupt:
             raise
         except:
             foundChip = False
-            print('Missing ThunderBorg at %02X' % (newAddress))
+            print('Missing ThunderBorg at 0x{:02X}'.format(newAddress))
     if foundChip:
-        print('New I²C address of %02X set successfully' % (newAddress))
+        print('New I²C address of 0x{:02X} set successfully'.format(newAddress))
     else:
         print('Failed to set new I²C address...')
 
@@ -248,7 +248,7 @@ Under most circumstances you should use the appropriate function instead of RawR
         if retryCount > 0:
             return reply
         else:
-            raise IOError('I2C read for command %d failed' % (command))
+            raise IOError('I2C read for command %d failed'.format(command))
 
 
     def InitBusOnly(self, busNumber, address):
@@ -299,7 +299,7 @@ Prepare the I2C driver for talking to the ThunderBorg
 If tryOtherBus is True, this function will attempt to use the other bus if the ThunderBorg devices can not be found on the current busNumber
     This is only really useful for early Raspberry Pi models!
         """
-        self.Print('Loading ThunderBorg on bus %d, address %02X' % (self.busNumber, self.i2cAddress))
+        self.Print('Loading ThunderBorg on bus %d, address 0x{:02X}'.format(self.busNumber, self.i2cAddress))
 
         # Open the bus
         self.i2cRead = io.open("/dev/i2c-" + str(self.busNumber), "rb", buffering = 0)
@@ -313,18 +313,18 @@ If tryOtherBus is True, this function will attempt to use the other bus if the T
             if len(i2cRecv) == I2C_MAX_LEN:
                 if i2cRecv[1] == I2C_ID_THUNDERBORG:
                     self.foundChip = True
-                    self.Print('Found ThunderBorg at %02X' % (self.i2cAddress))
+                    self.Print('Found ThunderBorg at 0x{:02X}'.format(self.i2cAddress))
                 else:
                     self.foundChip = False
-                    self.Print('Found a device at %02X, but it is not a ThunderBorg (ID %02X instead of %02X)' % (self.i2cAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
+                    self.Print('Found a device at 0x{:02X}, but it is not a ThunderBorg (ID 0x{:02X} instead of 0x{:02X})'.format(self.i2cAddress, i2cRecv[1], I2C_ID_THUNDERBORG))
             else:
                 self.foundChip = False
-                self.Print('Missing ThunderBorg at %02X' % (self.i2cAddress))
+                self.Print('Missing ThunderBorg at 0x{:02X}'.format(self.i2cAddress))
         except KeyboardInterrupt:
             raise
         except:
             self.foundChip = False
-            self.Print('Missing ThunderBorg at %02X' % (self.i2cAddress))
+            self.Print('Missing ThunderBorg at 0x{:02X}'.format(self.i2cAddress))
 
         # See if we are missing chips
         if not self.foundChip:
@@ -334,13 +334,13 @@ If tryOtherBus is True, this function will attempt to use the other bus if the T
                     self.busNumber = 0
                 else:
                     self.busNumber = 1
-                self.Print('Trying bus %d instead' % (self.busNumber))
+                self.Print('Trying bus %d instead'.format(self.busNumber))
                 self.Init(False)
             else:
                 self.Print('Are you sure your ThunderBorg is properly attached, the correct address is used, and the I2C drivers are running?')
                 self.bus = None
         else:
-            self.Print('ThunderBorg loaded on bus %d' % (self.busNumber))
+            self.Print('ThunderBorg loaded on bus %d'.format(self.busNumber))
 
 
     def SetMotor2(self, power):
@@ -910,5 +910,5 @@ Displays the names and descriptions of the various functions and settings provid
         print(self.__doc__)
         print
         for func in funcListSorted:
-            print('=== %s === %s' % (func.func_name, func.func_doc))
+            print('=== {} === {}'.format(func.func_name, func.func_doc))
 

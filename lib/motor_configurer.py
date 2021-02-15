@@ -13,19 +13,23 @@
 import sys, traceback
 from fractions import Fraction
 
+from lib.i2c_scanner import I2CScanner
 from lib.enums import Orientation
 from lib.logger import Logger, Level
+
+THUNDERBORG_ADDRESS = 0x15
 
 # ..............................................................................
 class MotorConfigurer():
     '''
-    Configures the Thunderborg motor controller for a pair of motors. 
+    Configures the ThunderBorg motor controller for a pair of motors. 
 
-    :param config:    the application configuration
-    :param clock:     the 'system' clock providing timing for velocity calculation
-    :param level:     the logging level
+    :param config:       the application configuration
+    :param clock:        the 'system' clock providing timing for velocity calculation
+    :param enable_mock:  if set True a failure to instantiate the ThunderBorg will instead use a mock
+    :param level:        the logging level
     '''
-    def __init__(self, config, clock, level):
+    def __init__(self, config, clock, enable_mock=False, level=Level.INFO):
         self._log = Logger("motor-conf", level)
         if config is None:
             raise ValueError('null configuration argument.')
@@ -35,9 +39,18 @@ class MotorConfigurer():
         # Import the ThunderBorg library, then configure and return the Motors.
         self._log.info('configure thunderborg & motors...')
         try:
-            self._log.info('importing ThunderBorg...')
-            import lib.ThunderBorg3 as ThunderBorg
-            self._log.info('successfully imported ThunderBorg.')
+
+            _i2c_scanner = I2CScanner(Level.WARN)
+            _has_thunderborg = _i2c_scanner.has_address([THUNDERBORG_ADDRESS])
+            if _has_thunderborg:
+                self._log.info('importing ThunderBorg...')
+                import lib.ThunderBorg3 as ThunderBorg
+                self._log.info('successfully imported ThunderBorg.')
+            else:
+                self._log.info('importing MockThunderBorg...')
+                import lib.MockThunderBorg3 as ThunderBorg
+                self._log.info('successfully imported MockThunderBorg.')
+
             TB = ThunderBorg.ThunderBorg(Level.INFO)  # create a new ThunderBorg object
             TB.Init()                       # set the board up (checks the board is connected)
             self._log.info('successfully instantiated ThunderBorg.')
@@ -51,7 +64,8 @@ class MotorConfigurer():
                     for board in boards:
                         self._log.info('    %02X (%d)' % (board, board))
                     self._log.error('If you need to change the I²C address change the setup line so it is correct, e.g. TB.i2cAddress = 0x{}'.format(boards[0]))
-                sys.exit(1)
+                raise Exception('unable to instantiate ThunderBorg [1].')
+#               sys.exit(1)
             TB.SetLedShowBattery(True)
     
             # initialise ThunderBorg ...........................
@@ -77,10 +91,23 @@ class MotorConfigurer():
             self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V; maximum power ratio: {}'.format(voltage_in, voltage_out, \
                     str(Fraction(_max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
 
+        except OSError as e:
+            if enable_mock:
+                self._log.info('using mock ThunderBorg.')
+                import lib.MockThunderBorg3 as ThunderBorg
+            else:
+                self._log.error('unable to import ThunderBorg: {}'.format(e))
+                traceback.print_exc(file=sys.stdout)
+                raise Exception('unable to instantiate ThunderBorg [2].')
         except Exception as e:
-            self._log.error('unable to import ThunderBorg: {}'.format(e))
-            traceback.print_exc(file=sys.stdout)
-            sys.exit(1)
+            if enable_mock:
+                self._log.info('using mock ThunderBorg.')
+                import lib.MockThunderBorg3 as ThunderBorg
+            else:
+                self._log.error('unable to import ThunderBorg: {}'.format(e))
+                traceback.print_exc(file=sys.stdout)
+                raise Exception('unable to instantiate ThunderBorg [2].')
+#               sys.exit(1)
 
         # now import motors
         from lib.motors import Motors
@@ -94,7 +121,8 @@ class MotorConfigurer():
             self._log.error('failed to configure motors: {}'.format(oe))
             self._motors = None
 #           sys.stderr = DevNull()
-            sys.exit(1)
+            raise Exception('unable to instantiate ThunderBorg [3].')
+#           sys.exit(1)
         self._log.info('ready.')
 
     # ..........................................................................

@@ -39,14 +39,14 @@ and the NZPRG wiki at:
 
 This project should currently be considered a "**Technology Preview**".
 
-The files that have been copied into the repository are from the initial local project. These function largely as advertised but the overall state of the ROS is not yet complete — there are still some pieces missing that are not quite "ready for prime time." Demonstrations and included tests either pass entirely or are close to passing.
+The files in the repository function largely as advertised but the overall state of the ROS is not yet complete — it's still very much a work-in-progress and there are still some pieces missing that are not quite "ready for prime time." Demonstrations and included tests (including the pytest suite) either pass entirely or are close to passing. 
 
 The project is being exposed publicly so that those interested can follow its progress. At such a time when the ROS is generally useable this status section will be updated accordingly.
 
 
 ## Installation
 
-The ROS requires installation of a number of support libraries. In order to begin you'll need Python3 and pip3, as well as the pigpio library.
+The ROS requires installation of a number of support libraries. In order to begin you'll need Python3 and pip3, as well as the pigpio library. The import_report.py script will report on which Python libraries used by ROS you have currently installed and which you don't; it doesn't itself import anything or alter your environment, unless calling one of the files within the ROS directory tree installs software (none do).
 
 
 ## Support & Liability
