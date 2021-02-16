@@ -14,7 +14,8 @@
 # for analog pins, and a 0 or 1 for digital pins.
 #
 
-import itertools, time, threading
+import itertools, time
+from threading import Thread
 import datetime as dt
 from collections import deque as Deque
 from colorama import init, Fore, Style
@@ -44,7 +45,7 @@ class MockIntegratedFrontSensor():
         self._clock = clock
         self._message_bus = clock.message_bus
         self._message_factory = clock.message_factory
-        self._log = Logger("ifs", level)
+        self._log = Logger("mifs", level)
         self._log.info('configuring integrated front sensor...')
         self._config = config['ros'].get('integrated_front_sensor')
         self._ignore_duplicates        = self._config.get('ignore_duplicates')
@@ -268,11 +269,26 @@ class MockIntegratedFrontSensor():
         return self._enabled
 
     # ..........................................................................
+    def _loop(self):
+        self._log.info(Style.BRIGHT + 'start loop...')
+        rate = Rate(1)
+        while not self._closed and self._enabled:
+            self._log.info(Style.DIM + 'loop...')
+            rate.wait()
+        self._log.info(Style.BRIGHT + 'exit loop...')
+
+    # ..........................................................................
     def enable(self):
         if not self._closed:
-            self._enabled = True
-            self._clock.message_bus.add_handler(Message, self.handle)
-            self._log.info('enabled.')
+            if self._thread is None:
+                self._enabled = True
+                # will create infinite loop
+#               self._clock.message_bus.add_handler(Message, self.handle)
+                self._thread = Thread(name='mock-ifs', target=self._loop(), args=[self])
+                self._thread.start()
+                self._log.info('enabled.')
+            else:
+                self._log.warning('cannot enable: process already running.')
         else:
             self._log.warning('cannot enable: already closed.')
 
@@ -281,6 +297,10 @@ class MockIntegratedFrontSensor():
         if self._enabled:
             self._enabled = False
             self._log.info('disabled.')
+            if self._thread != None:
+                self._thread.join(timeout=1.0)
+                self._log.debug('mock ifs thread joined.')
+                self._thread = None
         else:
             self._log.warning('already disabled.')
 

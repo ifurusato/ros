@@ -11,8 +11,11 @@
 #
 
 import itertools
-from gpiozero import CPUTemperature
-from gpiozero.exc import BadPinFactory
+try:
+    from gpiozero import CPUTemperature
+    from gpiozero.exc import BadPinFactory
+except ModuleNotFoundError:
+    print("This script requires the gpiozero module\nInstall with: sudo pip3 install gpiozero")
 from colorama import init, Fore, Style
 init()
 
@@ -47,17 +50,18 @@ class Temperature(Feature):
         self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
         self._clock = clock # optional
         self._log.info('starting CPU temperature module.')
-        self._borkd = False
+        self._cpu     = None
+        self._borkd   = False
         self._enabled = False
         self._closed  = False
+        self._counter = itertools.count()
         try:
             self._cpu = CPUTemperature(min_temp=0.0, max_temp=100.0, threshold=self._max_threshold) # min/max are defaults
+            self._log.info('ready.')
         except BadPinFactory as e:
+#       except Exception as e:
             self._borkd = True
-            self._log.error('unable to load CPU temperature module: {}'.format(e))
-            self._cpu = None
-        self._counter = itertools.count()
-        self._log.info('ready.')
+            self._log.error('error loading CPU temperature module: {}'.format(e))
 
     # ..........................................................................
     def name(self):

@@ -50,6 +50,7 @@ from lib.temperature import Temperature
 from lib.motor_configurer import MotorConfigurer
 from lib.motors import Motors
 from lib.ifs import IntegratedFrontSensor
+
 #from lib.lidar import Lidar
 #from lib.matrix import Matrix
 #from lib.rgbmatrix import RgbMatrix, DisplayType
@@ -93,6 +94,7 @@ class ROS(AbstractTask):
         # set ROS as high priority
         proc = psutil.Process(os.getpid())
         proc.nice(10)
+        self._config       = None
         self._active       = False
         self._closing      = False
         self._disable_leds = False
@@ -100,6 +102,8 @@ class ROS(AbstractTask):
         self._arbitrator   = None
         self._controller   = None
         self._gamepad      = None
+        self._motors       = None
+        self._ifs          = None
         self._features     = []
         self._log.info('initialised.')
 
@@ -145,7 +149,10 @@ class ROS(AbstractTask):
 
         self._log.info('configure CPU temperature check...')
         _temperature_check = Temperature(self._config, self._clock, self._log.level)
-        self.add_feature(_temperature_check)
+        if _temperature_check.get_cpu_temperature() > 0:
+            self.add_feature(_temperature_check)
+        else:
+            self._log.warning('no support for CPU temperature.')
 
         motors_enabled = not arguments.no_motors and ( 0x15 in self._addresses )
         if motors_enabled: # then configure motors
@@ -154,7 +161,11 @@ class ROS(AbstractTask):
             self._motors = _motor_configurer.get_motors()
             self.add_feature(self._motors)
         else:
-            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available at 0x15.' + Style.RESET_ALL)
+            self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available, using mocks.' + Style.RESET_ALL)
+            from mock.motor_configurer import MockMotorConfigurer
+            _motor_configurer = MockMotorConfigurer(self._config, self._clock, self._log.level)
+            self._motors = _motor_configurer.get_motors()
+            self.add_feature(self._motors)
         self._set_feature_available('motors', motors_enabled)
 
         ifs_available = ( 0x0E in self._addresses )
@@ -164,7 +175,7 @@ class ROS(AbstractTask):
             self.add_feature(self._ifs)
         else:
             self._log.info('integrated front sensor not available; loading mock sensor.')
-            from mock.mock_ifs import MockIntegratedFrontSensor
+            from mock.ifs import MockIntegratedFrontSensor
             self._ifs = MockIntegratedFrontSensor(self._config, self._clock, self._log.level)
             self.add_feature(self._ifs)
 
@@ -583,7 +594,6 @@ class ROS(AbstractTask):
             sys.stderr = DevNull()
             sys.exit(0)
 
-
 # ==============================================================================
 
 # ..............................................................................
@@ -624,7 +634,6 @@ def parse_args():
         _log.error('exit on error.')
         sys.exit(1)
 
-
 # exception handler ............................................................
 
 def signal_handler(signal, frame):
@@ -656,7 +665,7 @@ def main(argv):
             _log.level = _level
             _log.info('arguments: {}'.format(_args))
             _ros = ROS(level=_level)
-            if _args.configure:
+            if _args.configure or _args.start:
                 _ros.configure(_args)
                 if not _args.start:
                     _log.info('configure only: ' + Fore.YELLOW + 'specify the -s argument to start ros.')

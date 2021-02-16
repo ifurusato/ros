@@ -16,7 +16,7 @@ class MockPi(object):
     def __init__(self):
         pass
 
-class pigpio(object):
+class MockPigpio(object):
 
     def __init__(self):
         self._pi = MockPi()

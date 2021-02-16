@@ -6,8 +6,8 @@
 # Please see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
-# created:  2020-01-18
-# modified: 2020-08-30
+# created:  2021-02-16
+# modified: 2021-02-16
 #
 
 import sys, time, traceback
@@ -16,25 +16,20 @@ from fractions import Fraction
 from colorama import init, Fore, Style
 init()
 
-try:
-    import pigpio
-except ImportError:
-    print(Fore.RED + "This script requires the pigpio module.\nInstall with: sudo apt install python3-pigpio" + Style.RESET_ALL)
-    sys.exit(1)
-
 from lib.logger import Logger, Level
 from lib.event import Event
-from lib.enums import Direction, Orientation
-from lib.slew import SlewRate
+from lib.enums import Orientation
+from mock.motor import MockMotor
+from mock.pigpio import MockPigpio
 
 # ..............................................................................
-class Motors():
+class MockMotors():
     '''
-    A dual motor controller with encoders.
+    A mocked dual motor controller with encoders.
     '''
     def __init__(self, config, clock, tb, level):
         super().__init__()
-        self._log = Logger('motors', level)
+        self._log = Logger('mock-motors', level)
         self._log.info('initialising motors...')
         if config is None:
             raise Exception('no config argument provided.')
@@ -48,19 +43,13 @@ class Motors():
         self._tb = tb
         self._set_max_power_ratio()
         # config pigpio's pi and name its callback thread (ex-API)
-        self._pi = pigpio.pi()
+        _pigpio = MockPigpio()
+        self._pi = _pigpio.pi()
         self._pi._notify.name = 'pi.callback'
         self._log.info('pigpio version {}'.format(self._pi.get_pigpio_version()))
-        try:
-            from lib.motor import Motor
-            self._log.info('imported Motor.')
-        except Exception:
-            traceback.print_exc(file=sys.stdout)
-            self._log.error('failed to import Motor, exiting...')
-            sys.exit(1)
-        self._port_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
+        self._port_motor = MockMotor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
-        self._stbd_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.STBD, level)
+        self._stbd_motor = MockMotor(config, self._clock, self._tb, self._pi, Orientation.STBD, level)
         self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
         self._closed  = False
         self._enabled = False # used to be enabled by default
@@ -329,6 +318,6 @@ class Motors():
     @staticmethod
     def cancel():
         print('cancelling motors...')
-        Motor.cancel()
+#       Motor.cancel()
 
 #EOF

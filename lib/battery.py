@@ -19,7 +19,7 @@ import lib.ThunderBorg3 as ThunderBorg
 try:
     from ads1015 import ADS1015
 except ImportError:
-    sys.exit("This script requires the ads1015 module\nInstall with: sudo pip3 install ads1015")
+    print("This script requires the ads1015 module\nInstall with: sudo pip3 install ads1015")
 #   from lib.mock_ads1015 import ADS1015
 
 from lib.logger import Level, Logger
