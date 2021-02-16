@@ -16,7 +16,6 @@
 # source: /usr/local/lib/python3.7/dist-packages/ioexpander/__init__.py
 #
 
-import ioexpander as io
 from colorama import init, Fore, Style
 init()
 
@@ -62,28 +61,33 @@ class IoExpander():
                 + Fore.BLUE + ' center={:d};'.format(self._cntr_bmp_pin) \
                 + Fore.GREEN + ' stbd={:d}'.format(self._stbd_bmp_pin))
 
-        # configure board
-        self._ioe = io.IOE(i2c_addr=0x18)
-#       self._ioe.set_i2c_addr(0x18)
-        self._ioe.set_adc_vref(3.3)  # input voltage of IO Expander, this is 3.3 on Breakout Garden
         # debouncing "charge pumps"
         self._port_bmp_pump = 0
         self._cntr_bmp_pump = 0
         self._stbd_bmp_pump = 0
         self._pump_limit    = 10
-        # analog infrared sensors
-        self._ioe.set_mode(self._port_side_ir_pin, io.ADC)
-        self._ioe.set_mode(self._port_ir_pin,      io.ADC)
-        self._ioe.set_mode(self._center_ir_pin,    io.ADC)
-        self._ioe.set_mode(self._stbd_ir_pin,      io.ADC)
-        self._ioe.set_mode(self._stbd_side_ir_pin, io.ADC)
-        # moth sensors
-        self._ioe.set_mode(self._port_moth_pin,    io.ADC)
-        self._ioe.set_mode(self._stbd_moth_pin,    io.ADC)
-        # digital bumper
-        self._ioe.set_mode(self._port_bmp_pin,     io.IN_PU)
-        self._ioe.set_mode(self._cntr_bmp_pin,     io.IN_PU)
-        self._ioe.set_mode(self._stbd_bmp_pin,     io.IN_PU)
+        # configure board
+        try:
+            import ioexpander as io
+            self._ioe = io.IOE(i2c_addr=0x18)
+#           self._ioe.set_i2c_addr(0x18)
+            self._ioe.set_adc_vref(3.3)  # input voltage of IO Expander, this is 3.3 on Breakout Garden
+            # analog infrared sensors
+            self._ioe.set_mode(self._port_side_ir_pin, io.ADC)
+            self._ioe.set_mode(self._port_ir_pin,      io.ADC)
+            self._ioe.set_mode(self._center_ir_pin,    io.ADC)
+            self._ioe.set_mode(self._stbd_ir_pin,      io.ADC)
+            self._ioe.set_mode(self._stbd_side_ir_pin, io.ADC)
+            # moth sensors
+            self._ioe.set_mode(self._port_moth_pin,    io.ADC)
+            self._ioe.set_mode(self._stbd_moth_pin,    io.ADC)
+            # digital bumper
+            self._ioe.set_mode(self._port_bmp_pin,     io.IN_PU)
+            self._ioe.set_mode(self._cntr_bmp_pin,     io.IN_PU)
+            self._ioe.set_mode(self._stbd_bmp_pin,     io.IN_PU)
+        except ImportError:
+            self._ioe = None
+            self._log.error("This script requires the pimoroni-ioexpander module\nInstall with: sudo pip3 install pimoroni-ioexpander")
         self._log.info('ready.')
 
     # ..........................................................................
