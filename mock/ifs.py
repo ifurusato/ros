@@ -9,7 +9,7 @@
 # created:  2020-05-19
 # modified: 2020-11-06
 #
-# A mock IFS that responds to key presses.
+# A mock Integrated Front Sensor (IFS) that responds to key presses.
 #
 
 import sys, itertools
@@ -25,129 +25,139 @@ from lib.event import Event
 from lib.message_factory import MessageFactory
 from lib.logger import Logger, Level
 from lib.rate import Rate
-
-# ..............................................................................
-class MockMessageBus():
-    '''
-    This message bus just displays IFS events as they arrive.
-    '''
-    def __init__(self, level):
-        super().__init__()
-        self._count = 0
-        self._counter = itertools.count()
-        self._log = Logger("message-bus", level)
-        self._triggered_ir_port_side = self._triggered_ir_port  = self._triggered_ir_cntr  = self._triggered_ir_stbd  = \
-        self._triggered_ir_stbd_side = self._triggered_bmp_port = self._triggered_bmp_cntr = self._triggered_bmp_stbd = 0
-        self._limit = 3
-        self._fmt = '{0:>9}'
-        self._log.info('ready.')
-
-    # ......................................................
-    def handle(self, message):
-        self._count = next(self._counter)
-        message.number = self._count
-        _event = message.event
-        self._log.debug('added message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
-        if _event is Event.BUMPER_PORT:
-            self._log.info(Fore.RED + Style.BRIGHT + 'BUMPER_PORT: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_bmp_port < self._limit:
-                self._triggered_bmp_port += 1
-        elif _event is Event.BUMPER_CNTR:
-            self._log.info(Fore.BLUE + Style.BRIGHT + 'BUMPER_CNTR: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_bmp_cntr < self._limit:
-                self._triggered_bmp_cntr += 1
-        elif _event is Event.BUMPER_STBD:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'BUMPER_STBD: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_bmp_stbd < self._limit:
-                self._triggered_bmp_stbd += 1
-        elif _event is Event.INFRARED_PORT_SIDE:
-            self._log.info(Fore.RED  + Style.BRIGHT + 'INFRARED_PORT_SIDE: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_ir_port_side < self._limit:
-                self._triggered_ir_port_side += 1
-        elif _event is Event.INFRARED_PORT:
-            self._log.info(Fore.RED  + Style.BRIGHT + 'INFRARED_PORT: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_ir_port < self._limit:
-                self._triggered_ir_port += 1
-        elif _event is Event.INFRARED_CNTR:
-            self._log.info(Fore.BLUE + Style.BRIGHT + 'INFRARED_CNTR:     distance: {:>5.2f}cm'.format(message.value))
-            if self._triggered_ir_cntr < self._limit:
-                self._triggered_ir_cntr += 1
-        elif _event is Event.INFRARED_STBD:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'INFRARED_STBD: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_ir_stbd < self._limit:
-                self._triggered_ir_stbd += 1
-        elif _event is Event.INFRARED_STBD_SIDE:
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'INFRARED_STBD_SIDE: {}; value: {}'.format(_event.description, message.value))
-            if self._triggered_ir_stbd_side < self._limit:
-                self._triggered_ir_stbd_side += 1
-        else:
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
-
-    # ......................................................
-    @property
-    def all_triggered(self):
-        return self._triggered_ir_port_side  >= self._limit \
-            and self._triggered_ir_port      >= self._limit \
-            and self._triggered_ir_cntr      >= self._limit \
-            and self._triggered_ir_stbd      >= self._limit \
-            and self._triggered_ir_stbd_side >= self._limit \
-            and self._triggered_bmp_port     >= self._limit \
-            and self._triggered_bmp_cntr     >= self._limit \
-            and self._triggered_bmp_stbd     >= self._limit
-
-    # ......................................................
-    @property
-    def count(self):
-        return self._count
-
-    def _get_output(self, color, label, value):
-        if ( value == 0 ):
-            _style = color + Style.BRIGHT
-        elif ( value == 1 ):
-            _style = color + Style.NORMAL
-        elif ( value == 2 ):
-            _style = color + Style.DIM
-        else:
-            _style = Fore.BLACK + Style.DIM
-        return _style + self._fmt.format( label if ( value < self._limit ) else '' )
-
-    # ..........................................................................
-    def waiting_for_message(self):
-        _div = Fore.CYAN + Style.NORMAL + ' | '
-        self._log.info('waiting for: | ' \
-                + self._get_output(Fore.RED, 'PSID', self._triggered_ir_port_side) \
-                + _div \
-                + self._get_output(Fore.RED, 'PORT', self._triggered_ir_port) \
-                + _div \
-                + self._get_output(Fore.BLUE, 'CNTR', self._triggered_ir_cntr) \
-                + _div \
-                + self._get_output(Fore.GREEN, 'STBD', self._triggered_ir_stbd) \
-                + _div \
-                + self._get_output(Fore.GREEN, 'SSID', self._triggered_ir_stbd_side) \
-                + _div \
-                + self._get_output(Fore.RED, 'BPRT', self._triggered_bmp_port) \
-                + _div \
-                + self._get_output(Fore.BLUE, 'BCNT', self._triggered_bmp_cntr) \
-                + _div \
-                + self._get_output(Fore.GREEN, 'BSTB', self._triggered_bmp_stbd) \
-                + _div )
+from mock.message_bus import MockMessageBus
 
 # ...............................................................
-class MockIfs(object):
+class MockIntegratedFrontSensor(object):
     '''
     A mock IFS.
     '''
-    def __init__(self, level):
+    def __init__(self, exit_on_complete=True, level=Level.INFO):
         super().__init__()
         self._log = Logger("mock-ifs", level)
         self._message_factory = MessageFactory(Level.INFO)
         self._message_bus = MockMessageBus(Level.INFO)
-        self._rate    = Rate(10)
-        self._thread  = None
-        self._enabled = False
-        self._closed  = False
-        self._counter = itertools.count()
+        self.exit_on_complete = exit_on_complete
+        self._rate     = Rate(10)
+        self._thread   = None
+        self._enabled  = False
+        self._suppress = False
+        self._closed   = False
+        self._counter  = itertools.count()
         self._log.info('ready.')
+
+    # ..........................................................................
+    def name(self):
+        return 'MockIntegratedFrontSensor'
+
+    # ..........................................................................
+    def suppress(self, mode):
+        '''
+        Enable or disable capturing characters. Upon starting the loop the
+        suppress flag is set False, but can be enabled or disabled as
+        necessary without halting the thread.
+        '''
+        self._suppress = mode
+
+    # ..........................................................................
+    def _loop(self, f_is_enabled):
+        self._log.info('start loop:\t' + Fore.YELLOW + 'type the \"' + Fore.RED + 'Delete' + Fore.YELLOW \
+                + '\" or \"' + Fore.RED + 'q' + Fore.YELLOW + '\" key to exit sensor loop, the \"' \
+                + Fore.RED + 'h' + Fore.YELLOW + '\" key for help.')
+        print('\n')
+        while f_is_enabled():
+            if self._suppress:
+                time.sleep(1.0)
+            else:
+                _count = next(self._counter)
+                self._log.debug('[{:03d}]'.format(_count))
+                ch  = readchar.readchar()
+                och = ord(ch)
+                if och == 91 or och == 113 or och == 127:
+                    break
+                elif och == 104:
+                    self.print_keymap()
+                    continue
+                _event = self.get_event_for_char(och)
+                if _event is not None:
+                    if self.fire_message(_event) and self.exit_on_complete:
+                        self._log.debug('[{:03d}] COMPLETE.'.format(_count))
+                        break
+                    else:
+                        self._log.debug('[{:03d}] "{}" ({}) pressed; event: {}'.format(_count, ch, och, _event))
+                else:
+                    self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
+                self._rate.wait()
+
+        self._log.info(Fore.YELLOW + 'exit loop.')
+
+    # ..........................................................................
+    def fire_message(self, event):
+        self._log.debug('firing message for event {}'.format(event))
+        _message = self._message_factory.get_message(event, True)
+        self._message_bus.handle(_message)
+        if self._message_bus.all_triggered:
+            return True
+        else:
+            self._message_bus.waiting_for_message()
+            return False
+
+    # ..........................................................................
+    @property
+    def enabled(self):
+        return self._enabled
+
+    # ..........................................................................
+    def enable(self):
+        if not self._closed:
+            if self._enabled:
+                self._log.warning('already enabled.')
+            else:
+                # if we haven't started the thread yet, do so now...
+                if self._thread is None:
+                    self._enabled = True
+                    self._thread = Thread(name='mock-ifs', target=MockIntegratedFrontSensor._loop, args=[self, lambda: self.enabled], daemon=True)
+                    self._thread.start()
+                    self._log.info('enabled.')
+                else:
+                    self._log.warning('cannot enable: thread already exists.')
+        else:
+            self._log.warning('cannot enable: already closed.')
+
+    # ..........................................................................
+    def disable(self):
+        if self._enabled:
+            self._enabled = False
+            self._thread = None
+            self._log.info('disabled.')
+        else:
+            self._log.warning('already disabled.')
+
+    # ..........................................................................
+    def close(self):
+        if not self._closed:
+            if self._enabled:
+                self.disable()
+            self._closed = True
+            self._log.info('closed.')
+        else:
+            self._log.warning('already closed.')
+
+    # ..........................................................................
+    def print_keymap(self):
+        self._log.info('''key map:
+           
+               o----------------------------------------
+               |   A   |   S   |   D   |   F   |   G   |
+         IR:   | PSID  | PORT  | CNTR  | STBD  | SSID  |
+               o----------------------------------------
+                           |   X   |   C   |   V   |
+         BMP:              | PORT  | CNTR  | STBD  |
+                           o-----------------------o
+
+        ''')
+        self._log.info('note:\t' + Fore.YELLOW + 'will exit after receiving 3 events on each sensor.')
+        print('')
 
     # ..........................................................................
     def get_event_for_char(self, och):
@@ -200,97 +210,5 @@ class MockIfs(object):
             return Event.BUMPER_PORT            
         else:
             return None
-
-    # ..........................................................................
-    @staticmethod
-    def print_keymap():
-        print(Fore.CYAN + '''
-           
-               o----------------------------------------
-               |   A   |   S   |   D   |   F   |   G   |
-         IR:   | PSID  | PORT  | CNTR  | STBD  | SSID  |
-               o----------------------------------------
-                           |   X   |   C   |   V   |
-         BMP:              | PORT  | CNTR  | STBD  |
-                           o-----------------------o
-
-        ''' + Style.RESET_ALL)
-
-    # ..........................................................................
-    def fire_message(self, event):
-        self._log.debug('firing message for event {}'.format(event))
-        _message = self._message_factory.get_message(event, True)
-        self._message_bus.handle(_message)
-        if self._message_bus.all_triggered:
-            return True
-        else:
-            self._message_bus.waiting_for_message()
-            return False
-
-    # ..........................................................................
-    def _loop(self, f_is_enabled):
-        self._log.info('start loop:\t' + Fore.YELLOW + 'type ' + Fore.RED + 'Delete ' + Fore.YELLOW + 'key to exit loop.')
-        print('')
-        while f_is_enabled():
-            _count = next(self._counter)
-            self._log.debug('[{:03d}]'.format(_count))
-            ch  = readchar.readchar()
-            och = ord(ch)
-            if och == 91:
-                break
-            _event = self.get_event_for_char(och)
-            if _event is not None:
-                if self.fire_message(_event):
-                    self._log.debug(Fore.YELLOW + '[{:03d}] COMPLETE.'.format(_count))
-                    break
-                else:
-                    self._log.debug(Fore.YELLOW + '[{:03d}] "{}" ({}) pressed; event: {}'.format(_count, ch, och, _event))
-            else:
-                self._log.info(Fore.BLACK + Style.BRIGHT + '[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
-            self._rate.wait()
-
-        self._log.info('exit loop.')
-        self.close()
-
-    # ..........................................................................
-    @property
-    def enabled(self):
-        return self._enabled
-
-    # ..........................................................................
-    def enable(self):
-        if not self._closed:
-            if self._enabled:
-                self._log.warning('already enabled.')
-            else:
-                # if we haven't started the thread yet, do so now...
-                if self._thread is None:
-                    self._enabled = True
-                    self._thread = Thread(name='mock-ifs', target=MockIfs._loop, args=[self, lambda: self.enabled], daemon=True)
-                    self._thread.start()
-                    self._log.info('enabled.')
-                else:
-                    self._log.warning('cannot enable: thread already exists.')
-        else:
-            self._log.warning('cannot enable: already closed.')
-
-    # ..........................................................................
-    def disable(self):
-        if self._enabled:
-            self._enabled = False
-            self._thread = None
-            self._log.info('disabled.')
-        else:
-            self._log.warning('already disabled.')
-
-    # ..........................................................................
-    def close(self):
-        if not self._closed:
-            if self._enabled:
-                self.disable()
-            self._closed = True
-            self._log.info('closed.')
-        else:
-            self._log.warning('already closed.')
 
 #EOF

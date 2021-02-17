@@ -27,20 +27,21 @@ from lib.logger import Logger, Level
 class MessageQueue():
     '''
     A priority message queue, where the highest priority is the lowest 
-    priority number.
+    priority number. Consumers are added to the MessageQueue to receive
+    the priorised Message.
 
-    The MessageFactory parameter is optional if not using the FlaskWrapper
-    (which calls the respond() method).
+    The MessageBus parameter provides the source of Messages.
     '''
 
     MAX_SIZE = 100
 
-    def __init__(self, message_factory, level):
+    def __init__(self, message_bus, level):
         super().__init__()
         self._log = Logger('queue', level)
         self._log.debug('initialised MessageQueue...')
         self._counter = itertools.count()
-        self._message_factory = message_factory
+        self._message_bus = message_bus
+        self._message_bus.add_handler(Message, self.handle)
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
         self._consumers = []
         self._log.info('MessageQueue ready.')
@@ -63,19 +64,23 @@ class MessageQueue():
             self._log.warn('message consumer was not in list.')
 
     # ..........................................................................
-    def add(self, message):
+    def handle(self, message):
         '''
-        Add a new Message to the queue, then additionally to any consumers.
+        Handle an incoming Message by adding it to the queue, then additionally
+        to any consumers.
         '''
+        if ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
+            return
+        self._log.info('received message eid#{}/msg#{}: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
         if self._queue.full():
             try:
                 _dumped = self._queue.get()
-                self._log.debug('dumping old message eid#{}/msg#{}: {}'.format(_dumped.eid, _dumped.number, _dumped.description))
+                self._log.info('dumping old message eid#{}/msg#{}: {}'.format(_dumped.eid, _dumped.number, _dumped.description))
             except Empty:
                 pass
         message.number = next(self._counter)
         self._queue.put(message);
-        self._log.debug('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
+        self._log.info('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
         # add to any consumers
         for consumer in self._consumers:
             consumer.add(message);
@@ -122,18 +127,6 @@ class MessageQueue():
             pass
         self._log.debug('returning {} messages.'.format(len(messages)))
         return messages
-
-#   # ......................................................
-#   def respond(self, event):
-#       '''
-#           Responds to the Event by wrapping it in Message and adding it to the backing queue.
-#
-#           This is only used by FlaskWrapper.
-#       '''
-#       self._log.info('RESPOND to event {}.'.format(event.name))
-#       _message = self._message_factory.get_message(event, None)
-#       self.add(_message)
-#       return jsonify( [ { 'eid': _message.eid }, { 'event': event.name }, { 'priority': event.priority } ] )
 
     # ......................................................
     def clear(self):

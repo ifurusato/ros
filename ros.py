@@ -26,23 +26,20 @@ init()
 
 from lib.logger import Level, Logger
 from lib.rate import Rate
+from lib.i2c_scanner import I2CScanner
 from lib.devnull import DevNull
+from lib.config_loader import ConfigLoader
 from lib.event import Event
 from lib.message import Message
 from lib.abstract_task import AbstractTask 
-from lib.fsm import FiniteStateMachine
 from lib.message import Message
 from lib.message_bus import MessageBus
 from lib.message_factory import MessageFactory
-from lib.queue import MessageQueue
-from lib.config_loader import ConfigLoader
-from lib.i2c_scanner import I2CScanner
 from lib.clock import Clock
+from lib.queue import MessageQueue
+from lib.arbitrator import Arbitrator
+from lib.controller import Controller
 
-from lib.temperature import Temperature
-
-#from lib.arbitrator import Arbitrator
-#from lib.controller import Controller
 #from lib.indicator import Indicator
 #from lib.gamepad import Gamepad, GamepadConnectException
 
@@ -50,6 +47,7 @@ from lib.temperature import Temperature
 from lib.motor_configurer import MotorConfigurer
 from lib.motors import Motors
 from lib.ifs import IntegratedFrontSensor
+from lib.temperature import Temperature
 
 #from lib.lidar import Lidar
 #from lib.matrix import Matrix
@@ -137,7 +135,7 @@ class ROS(AbstractTask):
             self._log.info('found device at I²C address 0x{:02X}: {}'.format(_address, _device_name) + Style.RESET_ALL)
             # TODO look up address and make assumption about what the device is
         # establish basic subsumption components
-        self._log.info('configure subsumption foundation...')
+        self._log.info('configure application messaging...')
         self._message_factory = MessageFactory(self._log.level)
         self._message_bus = MessageBus(self._log.level)
         self._log.info('configuring system clock...')
@@ -176,7 +174,7 @@ class ROS(AbstractTask):
         else:
             self._log.info('integrated front sensor not available; loading mock sensor.')
             from mock.ifs import MockIntegratedFrontSensor
-            self._ifs = MockIntegratedFrontSensor(self._config, self._clock, self._log.level)
+            self._ifs = MockIntegratedFrontSensor(exit_on_complete=False, level=self._log.level)
             self.add_feature(self._ifs)
 
 #       ultraborg_available = ( 0x36 in self._addresses )
@@ -264,6 +262,17 @@ class ROS(AbstractTask):
 #       else:
 #           self._log.debug(Fore.RED + Style.BRIGHT + 'no PiJuice hat available at 0x68.' + Style.RESET_ALL)
 #       self._set_feature_available('pijuice', pijuice_available)
+
+        self._log.info('configure subsumption support...')
+
+        # configure the MessageQueue, Controller and Arbitrator
+        self._log.info('configuring message queue...')
+        self._queue = MessageQueue(self._message_bus, self._log.level)
+        self._log.info('configuring controller...')
+        self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, self._log.level)
+        self._log.info('configuring arbitrator...')
+        self._arbitrator = Arbitrator(self._config, self._queue, self._controller, self._log.level)
+
         self._log.info('configured.')
 
     # ..........................................................................
@@ -361,7 +370,6 @@ class ROS(AbstractTask):
         if self._gamepad is None:
             self._log.info('creating gamepad...')
             try:
-                self._queue = MessageQueue(Level.INFO)
                 self._gamepad = Gamepad(self._config, self._queue, Level.INFO)
             except GamepadConnectException as e:
                 self._log.error('unable to connect to gamepad: {}'.format(e))
@@ -440,10 +448,8 @@ class ROS(AbstractTask):
             # disable Pi LEDs since they may be distracting
             self._set_pi_leds(False)
 
-        self._log.info('enabling features...')
-        for feature in self._features:
-            self._log.info('enabling feature {}...'.format(feature.name()))
-            feature.enable()
+        _main_loop_freq_hz = self._config['ros'].get('main_loop_freq_hz')
+        self._main_loop_rate = Rate(_main_loop_freq_hz)
 
 #       __enable_player = self._config['ros'].get('enable_player')
 #       if __enable_player:
@@ -465,13 +471,6 @@ class ROS(AbstractTask):
         
         # wait to stabilise features?
 
-        # configure the Controller and Arbitrator
-#       self._log.info('configuring controller...')
-#       self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, Level.INFO)
-
-#       self._log.info('configuring arbitrator...')
-#       self._arbitrator = Arbitrator(self._config, self._queue, self._controller, Level.WARN)
-
 #       _flask_enabled = self._config['flask'].get('enabled')
 #       if _flask_enabled:
 #           self._log.info('starting flask web server...')
@@ -483,7 +482,6 @@ class ROS(AbstractTask):
 #       if self._gamepad_enabled:
 #           self._connect_gamepad()
 
-        self._log.warning('Press Ctrl-C to exit.')
 
 #       _wait_for_button_press = self._config['ros'].get('wait_for_button_press')
 #       self._controller.set_standby(_wait_for_button_press)
@@ -507,13 +505,17 @@ class ROS(AbstractTask):
 #       self._log.info('starting blinky thread...')
 #       self._rgbmatrix.enable(DisplayType.RANDOM)
 
-        # enable arbitrator tasks (normal functioning of robot)
+        self._log.info('enabling features...')
+        for feature in self._features:
+            self._log.info('enabling feature {}...'.format(feature.name()))
+            feature.enable()
 
-        _main_loop_freq_hz = self._config['ros'].get('main_loop_freq_hz')
-        self._log.info('begin main os loop.')
-#       self._log.info('begin main os loop at {:5.2f}Hz.'.format(_main_loop_freq_hz))
-        self._main_loop_rate = Rate(_main_loop_freq_hz)
+        self._log.notice('Press Ctrl-C to exit.')
+        self._log.info('begin main os loop.\r')
+
+        # enable arbitrator tasks (normal functioning of robot)
 #       self._arbitrator.start()
+
         _main_loop_counter = itertools.count()
         self._active = True
         while self._active:

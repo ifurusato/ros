@@ -45,6 +45,7 @@ class Logger:
     _suppress = False
     __color_debug    = Fore.BLUE   + Style.DIM
     __color_info     = Fore.CYAN   + Style.NORMAL
+    __color_notice   = Fore.CYAN   + Style.BRIGHT
     __color_warning  = Fore.YELLOW + Style.NORMAL
     __color_error    = Fore.RED    + Style.NORMAL
     __color_critical = Fore.WHITE  + Style.NORMAL
@@ -62,6 +63,14 @@ class Logger:
         self._name = name
         self._fh = None # optional file handler
         self._sh = None # optional stream handler
+
+        # i18n?
+        self.__DEBUG_TOKEN = 'DEBUG'
+        self.__INFO_TOKEN  = 'INFO '
+        self.__WARN_TOKEN  = 'WARN '
+        self.__ERROR_TOKEN = 'ERROR'
+        self.__FATAL_TOKEN = 'FATAL'
+        self._mf = '{}{} : {}{}'
         self.mutex = threading.Lock()
         # some of this could be set via configuration
         self._include_timestamp = True
@@ -133,32 +142,66 @@ class Logger:
 
     # ..........................................................................
     def debug(self, message):
+        '''
+        Prints a debug message.
+
+        The optional 'end' argument is for special circumstances where a different end-of-line is desired.
+        '''
         if not self.suppressed:
             with self._mutex:
-                self.__log.debug(Logger.__color_debug + "DEBUG : " + message + Logger.__color_reset)
+                self.__log.debug(self._mf.format(Logger.__color_debug, self.__DEBUG_TOKEN, message, Logger.__color_reset))
 
     # ..........................................................................
     def info(self, message):
+        '''
+        Prints an informational message.
+
+        The optional 'end' argument is for special circumstances where a different end-of-line is desired.
+        '''
         if not self.suppressed:
             with self._mutex:
-                self.__log.info(Logger.__color_info + "INFO  : " + message + Logger.__color_reset)
+                self.__log.info(self._mf.format(Logger.__color_info, self.__INFO_TOKEN, message, Logger.__color_reset))
+
+    # ..........................................................................
+    def notice(self, message):
+        '''
+        Functionally identical to info() except it prints the message brighter.
+
+        The optional 'end' argument is for special circumstances where a different end-of-line is desired.
+        '''
+        if not self.suppressed:
+            with self._mutex:
+                self.__log.info(self._mf.format(Logger.__color_notice, self.__INFO_TOKEN, message, Logger.__color_reset))
 
     # ..........................................................................
     def warning(self, message):
+        '''
+        Prints a warning message.
+
+        The optional 'end' argument is for special circumstances where a different end-of-line is desired.
+        '''
         if not self.suppressed:
             with self._mutex:
-                self.__log.warning(Logger.__color_warning + "WARN  : " + message + Logger.__color_reset)
+                self.__log.warning(self._mf.format(Logger.__color_warning, self.__WARN_TOKEN, message, Logger.__color_reset))
 
     # ..........................................................................
     def error(self, message):
+        '''
+        Prints an error message.
+
+        The optional 'end' argument is for special circumstances where a different end-of-line is desired.
+        '''
         if not self.suppressed:
             with self._mutex:
-                self.__log.error(Logger.__color_error + "ERROR : " + Style.BRIGHT + message + Logger.__color_reset)
+                self.__log.error(self._mf.format(Logger.__color_error, self.__ERROR_TOKEN, Style.BRIGHT + message, Logger.__color_reset))
 
     # ..........................................................................
     def critical(self, message):
+        '''
+        Prints a critical or otherwise application-fatal message.
+        '''
         with self._mutex:
-            self.__log.critical(Logger.__color_critical + "FATAL : " + Style.BRIGHT + message + Logger.__color_reset)
+            self.__log.critical(self._mf.format(Logger.__color_critical, self.__FATAL_TOKEN, Style.BRIGHT + message, Logger.__color_reset))
 
     # ..........................................................................
     def file(self, message):

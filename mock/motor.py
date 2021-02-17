@@ -27,7 +27,7 @@ from lib.decoder import Decoder
 from lib.velocity import Velocity
 
 # ..............................................................................
-class MockMotor():
+class MockMotor(object):
     '''
     Mocks power control over a motor using a Hall Effect encoder
     to determine the robot's velocity and distance traveled.
@@ -44,7 +44,7 @@ class MockMotor():
     '''
     def __init__(self, config, clock, tb, pi, orientation, level=Level.INFO):
         global TB
-        super(Motor, self).__init__()
+#       super(Motor, self).__init__()
         if config is None:
             raise ValueError('null configuration argument.')
         if clock is None:

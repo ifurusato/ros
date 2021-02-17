@@ -21,19 +21,18 @@ import datetime as dt
 from lib.logger import Logger 
 from lib.event import Event
 
-
 # ..............................................................................
 class Arbitrator(Thread):
     '''
-        Arbitrates a stream of events from a MessageQueue according to 
-        priority, returning to a Controller the highest priority of them.
+    Arbitrates a stream of events from a MessageQueue according to 
+    priority, returning to a Controller the highest priority of them.
 
-        The Controller API is:
+    The Controller API is:
 
-          .get_current_message()   returns the last message received
-          .act(_current_message, _action_complete_callback)
-                                   act upon the current message, with
-                                   a callback called upon completion
+      .get_current_message()   returns the last message received
+      .act(_current_message, _action_complete_callback)
+                               act upon the current message, with
+                               a callback called upon completion
     '''
 
     def __init__(self, config, queue, controller, level):

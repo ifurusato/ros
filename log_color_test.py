@@ -7,12 +7,15 @@ init()
 
 from lib.logger import Logger, Level
 
-_log = Logger("color-test", Level.INFO)
+_log = Logger("color-test", Level.DEBUG)
 
+_log.debug('debug.')
 _log.info('info.')
+_log.notice('notice.')
 _log.warning('warning.')
 _log.error('error.')
-_log.header('title', 'message.', 'info [0/0]')
+_log.critical('critical.')
+_log.heading('title', 'message.', 'info [0/0]')
 
 _log.info(Fore.RED + 'RED')
 _log.info(Fore.GREEN + 'GREEN')

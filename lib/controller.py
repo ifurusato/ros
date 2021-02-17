@@ -11,13 +11,13 @@
 
 import time
 import datetime as dt
-from flask import jsonify
 from colorama import init, Fore, Style
 init()
 
+#from flask import jsonify
 #from lib.import_gpio import *
 from lib.event import Event
-from lib.status import Status
+#rom lib.status import Status
 from lib.enums import Orientation
 from lib.logger import Logger, Level
 #from lib.gamepad import Gamepad
@@ -25,7 +25,6 @@ from lib.logger import Logger, Level
 # behaviours ....................
 #from lib.behaviours import Behaviours
 #from lib.roam import RoamBehaviour
-
 
 # ..............................................................................
 class Controller():
@@ -49,11 +48,11 @@ class Controller():
         self._ifs = ifs
         self._motors = motors
         self._port_motor = motors.get_motor(Orientation.PORT)
-        self._port_pid = self._port_motor.get_pid_controller()
+#       self._port_pid   = self._port_motor.get_pid_controller()
         self._stbd_motor = motors.get_motor(Orientation.STBD)
-        self._stbd_pid = self._stbd_motor.get_pid_controller()
+#       self._stbd_pid   = self._stbd_motor.get_pid_controller()
         self._callback_shutdown = callback_shutdown
-        self._status = Status(config, GPIO, level)
+#       self._status = Status(config, GPIO, level)
         self._current_message = None
         self._standby = False
         self._enabled = True
@@ -66,30 +65,30 @@ class Controller():
     def set_standby(self, is_standby):
         if is_standby:
             self._log.info('standby.')
-            self._status.blink(True)
+#           self._status.blink(True)
             self._motors.disable()
 #           self._switch.off()
             self._ifs.disable()
             self._standby = True
         else:
             self._log.info('active (standby off).')
-            self._status.blink(False)
+#           self._status.blink(False)
             self._motors.enable()
 #           self._switch.on()
             self._ifs.enable()
-            self._status.enable()
+#           self._status.enable()
             self._standby = False
 
     # ................................................................
     def enable(self):
         self._enabled = True
-        self._status.enable()
+#       self._status.enable()
         self._log.info('enabled.')
 
     # ................................................................
     def disable(self):
         self._enabled = False
-        self._status.disable()
+#       self._status.disable()
         self._log.info('disabled.')
 
     # ..........................................................................

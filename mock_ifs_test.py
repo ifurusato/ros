@@ -20,21 +20,19 @@ try:
 except ImportError:
     sys.exit(Fore.RED + "This script requires the pytest module.\nInstall with: sudo pip3 install pytest" + Style.RESET_ALL)
 
-from mock.ifs import MockIfs
+from mock.ifs import MockIntegratedFrontSensor
 from lib.logger import Logger, Level
 
 # ..............................................................................
 @pytest.mark.unit
 def test_mock_ifs():
-
     _log = Logger('mock-ifs-test', Level.INFO)
-    MockIfs.print_keymap()
     time.sleep(1.0)
-    _ifs = MockIfs(Level.INFO)
-    _log.info('begin test:\t' + Fore.YELLOW + 'awaiting 3 events for each sensor.')
+    _ifs = MockIntegratedFrontSensor(Level.INFO)
     _ifs.enable()
     while _ifs.enabled:
         time.sleep(1.0)
+    _ifs.close()
     _log.info('test complete.')
 
 # ..............................................................................

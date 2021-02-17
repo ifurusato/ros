@@ -27,47 +27,33 @@ class MockMotorConfigurer():
     :param level:        the logging level
     '''
     def __init__(self, config, clock, enable_mock=False, level=Level.INFO):
-        self._log = Logger("motor-conf", level)
+        self._log = Logger("mock-motor-conf", level)
         if config is None:
             raise ValueError('null configuration argument.')
         if clock is None:
             raise ValueError('null clock argument.')
         self._config = config
+
+        self._log.debug('getting battery reading...')
+        # get battery voltage to determine max motor power (moved earlier in config)
+        voltage_in = 19.0
+        self._log.info('voltage in: {:>5.2f}V'.format(voltage_in))
+        voltage_out = 9.0
+        self._log.info('voltage out: {:>5.2f}V'.format(voltage_out))
+        self._max_power_ratio = voltage_out / float(voltage_in)
+        # convert float to ratio format
+        self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V; maximum power ratio: {}'.format(voltage_in, voltage_out, \
+                str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
+
         # Import the ThunderBorg library, then configure and return the Motors.
         self._log.info('configure thunderborg & motors...')
         try:
-
             import lib.MockThunderBorg3 as ThunderBorg
             self._log.info('successfully imported MockThunderBorg.')
-
             TB = ThunderBorg.ThunderBorg(Level.INFO)  # create a new ThunderBorg object
-            TB.Init()                       # set the board up (checks the board is connected)
-            self._log.info('successfully instantiated mock ThunderBorg.')
-            TB.SetLedShowBattery(True)
-    
-            # initialise ThunderBorg ...........................
-            self._log.debug('getting battery reading...')
-            # get battery voltage to determine max motor power
-            # could be: Makita 12V or 18V power tool battery, or 12V line supply
-            voltage_in = TB.GetBatteryReading()
-            if voltage_in is None:
-                raise OSError('cannot continue: cannot read battery voltage.')
-            self._log.info('voltage in: {:>5.2f}V'.format(voltage_in))
-    #       voltage_in = 20.5
-            # maximum motor voltage
-            voltage_out = 9.0
-            self._log.info('voltage out: {:>5.2f}V'.format(voltage_out))
-            if voltage_in < voltage_out:
-                raise OSError('cannot continue: battery voltage too low ({:>5.2f}V).'.format(voltage_in))
-            # Setup the power limits
-            if voltage_out > voltage_in:
-                _max_power_ratio = 1.0
-            else:
-                _max_power_ratio = voltage_out / float(voltage_in)
-            # convert float to ratio format
-            self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V; maximum power ratio: {}'.format(voltage_in, voltage_out, \
-                    str(Fraction(_max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
-
+#           TB.Init()                       # set the board up (checks the board is connected)
+            self._log.info(Fore.YELLOW + 'successfully instantiated mock ThunderBorg.')
+#           TB.SetLedShowBattery(True)
         except OSError as e:
             if enable_mock:
                 self._log.info('using mock ThunderBorg.')
@@ -92,8 +78,8 @@ class MockMotorConfigurer():
             self._log.info('getting raspberry pi...')
             self._log.info('configuring motors...')
             self._motors = MockMotors(self._config, clock, TB, Level.INFO)
-            self._motors.get_motor(Orientation.PORT).set_max_power_ratio(_max_power_ratio)
-            self._motors.get_motor(Orientation.STBD).set_max_power_ratio(_max_power_ratio)
+            self._motors.get_motor(Orientation.PORT).set_max_power_ratio(self._max_power_ratio)
+            self._motors.get_motor(Orientation.STBD).set_max_power_ratio(self._max_power_ratio)
         except OSError as oe:
             self._log.error('failed to configure motors: {}'.format(oe))
             self._motors = None

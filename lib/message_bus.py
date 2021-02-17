@@ -43,16 +43,14 @@ class MessageBus():
         Add a handler to the message bus for the given message type.
         '''
         self._message_bus.add_handler(message_type, handler)
-        self._log.info('added message handler \'{}()\' for type: {}'.format(type(handler), message_type.__name__))
+        self._log.info(Fore.YELLOW + 'added message handler \'{}()\' for type: {}'.format(type(handler), message_type.__name__))
 
     # ..........................................................................
     def handle(self, message: Message):
         '''
         Add a new Message to the message bus, and any associated handlers.
         '''
+        self._log.info('HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
         self._message_bus.handle(message)
-#       _result = self._message_bus.handle(message)
-#       self._log.debug(Fore.BLACK + 'handle message eid#{}; priority={}; description: {};\t'.format(message.eid, message.priority, message.description) \
-#               + Fore.WHITE + 'result: {}'.format(len(_result)))
 
 #EOF
