@@ -20,7 +20,7 @@ try:
     import pigpio
 except ImportError:
     print(Fore.RED + "This script requires the pigpio module.\nInstall with: sudo apt install python3-pigpio" + Style.RESET_ALL)
-    sys.exit(1)
+#   sys.exit(1)
 
 from lib.logger import Logger, Level
 from lib.event import Event

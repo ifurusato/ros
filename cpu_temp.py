@@ -12,6 +12,7 @@
 # Prints the Raspberry Pi temperature to the console.
 #
 
+import os.path
 from colorama import init, Fore, Style
 init()
 
@@ -22,14 +23,16 @@ from lib.logger import Logger, Level
 _log = Logger("cpu-temp", Level.INFO)
 
 try:
-
     _file = '/sys/class/thermal/thermal_zone0/temp'
-    f=open(_file, "r")
-    if f.mode == 'r':
-        contents = int(f.read())
-        _log.info('CPU temperature: {:5.2f}°C'.format(contents/1000.0))
+    if os.path.isfile(_file):
+        f=open(_file, "r")
+        if f.mode == 'r':
+            contents = int(f.read())
+            _log.info('CPU temperature: {:5.2f}°C'.format(contents/1000.0))
+        else:
+            _log.info(Fore.RED + 'unable to obtain CPU temperature.' + Style.RESET_ALL)
     else:
-        _log.info(Fore.RED + 'unable to obtain CPU temperature.' + Style.RESET_ALL)
+        _log.warning('cannot read CPU temperature: no operating system support.' + Style.RESET_ALL)
 
 except KeyboardInterrupt:
     _log.info('Ctrl-C caught: complete.' )
