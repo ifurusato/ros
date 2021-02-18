@@ -5,20 +5,22 @@
 # created:  2021-02-18
 # modified: 2021-02-18
 #
+# For some reason 'pimoroni-ioexpander' installs but continues
+# to show up here as uninstalled. A bug.
 
 import sys, importlib
 
-
-libraries = [ 'numpy', \
+libraries = [ \
+    'numpy', \
     'pytest', \
     'colorama', \
     'readchar', \
     'pymessagebus==1.*', \
-    'pimoroni-ioexpander', \
     'RPi.GPIO', \
     'pigpio', \
     'gpiozero', \
     ]
+#   'pimoroni-ioexpander', \
 
 for name in libraries:
     try:

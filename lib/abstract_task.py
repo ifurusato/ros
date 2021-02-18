@@ -109,7 +109,7 @@ class AbstractTask(ABC, FiniteStateMachine, threading.Thread):
                 _n = _n + 1
                 self._log.info('joining thread of ' + self.task_name + '.')
                 self.join(timeout=2.0)
-                if self.task_name is 'os' and _n >= 3:
+                if self.task_name == 'os' and _n >= 3:
                     self._log.error(Fore.RED + Style.BRIGHT + 'waited too long: forced termination...')
                     sys.stderr = DevNull()
                     sys.exit()

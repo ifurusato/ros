@@ -622,6 +622,7 @@ def parse_args():
         _log.debug('parsed arguments: {}\n'.format(args))
 #       print_banner()
         if not args.configure and not args.start:
+            print('')
             parser.print_help()
             return None
         else:
@@ -661,6 +662,7 @@ def main(argv):
     try:
         _args = parse_args()
         if _args == None:
+            print('')
             _log.info(Fore.CYAN + 'arguments: no action.')
         else:
             _level = Level.from_str(_args.level) if _args.level != None else Level.INFO
