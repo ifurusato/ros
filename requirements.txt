@@ -43,7 +43,7 @@ packaging==20.9
 paramiko==2.6.0
 pexpect==4.6.0
 pigpio==1.78
-Pillow==7.0.0
+Pillow==7.1.0
 pimoroni-ioexpander==0.0.1
 pluggy==0.13.1
 protobuf==3.6.1
