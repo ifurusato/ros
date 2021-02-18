@@ -48,6 +48,10 @@ The project is being exposed publicly so that those interested can follow its pr
 
 The ROS requires installation of a number of support libraries. In order to begin you'll need Python3 and pip3, as well as the pigpio library. The import_report.py script will report on which Python libraries used by ROS you have currently installed and which you don't; it doesn't itself import anything or alter your environment, unless calling one of the files within the ROS directory tree installs software (none do).
 
+You'll first need to install the Python 3.7 dev library:
+
+  % sudo apt install libpython3.7-dev
+
 
 ## Support & Liability
 

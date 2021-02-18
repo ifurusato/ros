@@ -10,6 +10,7 @@
 # modified: 2020-11-13
 #
 
+import os.path
 from colorama import init, Fore, Style
 init()
 
@@ -30,29 +31,34 @@ class RotaryControl(object):
             raise ValueError('no configuration provided.')
         _config = config['ros'].get('rotary_ctrl')
         # configuration ....................
-        _i2c_address      = _config.get('i2c_address')
-#       _i2c_address      = 0x0F
-        self._log.info('configured rotary control at I²C address: 0x{:02X}'.format(_i2c_address))
-        self._update_led  = _config.get('update_led')
-        self._log.info('update LED: {}'.format(self._update_led))
+        if os.path.isfile('/dev/i2c-1'): # are we on a Pi?
+            _i2c_address      = _config.get('i2c_address')
+    #       _i2c_address      = 0x0F
+            self._log.info('configured rotary control at I²C address: 0x{:02X}'.format(_i2c_address))
+            self._update_led  = _config.get('update_led')
+            self._log.info('update LED: {}'.format(self._update_led))
+            self._log.info('min: {:5.2f}; max: {:5.2f}; step: {:5.2f}'.format(self._min, self._max, self._step))
+            self._rot = RotaryEncoder(config, _i2c_address, level)
+        else:
+            self._rot = None 
+            self._log.warning('disabled: no I²C support.')
         self._min         = minimum
         self._max         = maximum
         self._step        = step
-        self._log.info('min: {:5.2f}; max: {:5.2f}; step: {:5.2f}'.format(self._min, self._max, self._step))
-        self._rot = RotaryEncoder(config, _i2c_address, level)
-        self._value       = 0
-        self._last_delta  = 0
+        self._value       = -1.0
+        self._last_delta  = 0.0
 
     # ..........................................................................
     def read(self):
-        _delta = self._rot.read(self._update_led)
-#       if _delta != self._last_delta:
-        if _delta > self._last_delta: # if increasing in value
-            self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
-        elif _delta < self._last_delta: # if decreasing in value
-            self._value = RotaryControl.clamp(self._value - self._step, self._min, self._max)
-#       self._log.info(Style.DIM + 'delta: {:5.2f} (last: {:5.2f});'.format(_delta, self._last_delta) + Fore.WHITE + Style.NORMAL + ' value: {:5.2f}'.format(self._value))
-        self._last_delta = _delta
+        if self._rot:
+            _delta = self._rot.read(self._update_led)
+#           if _delta != self._last_delta:
+            if _delta > self._last_delta: # if increasing in value
+                self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
+            elif _delta < self._last_delta: # if decreasing in value
+                self._value = RotaryControl.clamp(self._value - self._step, self._min, self._max)
+#           self._log.info(Style.DIM + 'delta: {:5.2f} (last: {:5.2f});'.format(_delta, self._last_delta) + Fore.WHITE + Style.NORMAL + ' value: {:5.2f}'.format(self._value))
+            self._last_delta = _delta
         return self._value
 
     # ..........................................................................
@@ -62,6 +68,7 @@ class RotaryControl(object):
 
     # ..........................................................................
     def reset(self):
-        self._rot.reset()
+        if self._rot:
+            self._rot.reset()
 
 #EOF
