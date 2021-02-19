@@ -50,18 +50,19 @@ def test_moth():
         # orientation and bias .............................
         _orientation = _moth.get_orientation()
         _bias = _moth.get_bias()
+        _log.debug('bias: {}; orientation: {}'.format(type(_bias), _orientation))
         if _orientation is Orientation.PORT:
             _rgbmatrix.show_color(Color.BLACK, Orientation.STBD)
             _rgbmatrix.show_color(Color.RED, Orientation.PORT)
-            _log.info(Fore.RED    + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias))
+            _log.info(Fore.RED    + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias[0]))
         elif _orientation is Orientation.STBD:
             _rgbmatrix.show_color(Color.BLACK, Orientation.PORT)
             _rgbmatrix.show_color(Color.GREEN, Orientation.STBD)
-            _log.info(Fore.GREEN  + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias))
+            _log.info(Fore.GREEN  + Style.BRIGHT + '{}\t {:<6.3f}'.format(_orientation.name, _bias[1]))
         else:
             _rgbmatrix.show_color(Color.YELLOW, Orientation.PORT)
             _rgbmatrix.show_color(Color.YELLOW, Orientation.STBD)
-            _log.info(Fore.YELLOW + '{}\t {:6.3f}'.format(_orientation.name, _bias))
+            _log.info(Fore.YELLOW + '{}\t {:6.3f}|{:6.3f}'.format(_orientation.name, _bias[0], _bias[1]))
         # int values .......................................
         _int_values = _moth.get_int_values()
         _log.info(Fore.RED   + '{:d}\t'.format(_int_values[0]) + Fore.GREEN + '{:d}\t'.format(_int_values[1]) )

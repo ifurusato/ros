@@ -28,9 +28,9 @@ def test_rot_encoder():
     _log = Logger("rot-test", Level.INFO)
 
     _i2c_scanner = I2CScanner(Level.WARN)
-#   if not _i2c_scanner.has_address([0x19]):
-#       _log.warning('test ignored: no rotary encoder found.')
-#       return
+    if not _i2c_scanner.has_address([0x16]):
+        _log.warning('test ignored: no rotary encoder found.')
+        return
 
     _rot = None
     try:

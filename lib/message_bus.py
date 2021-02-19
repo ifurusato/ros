@@ -50,7 +50,7 @@ class MessageBus():
         '''
         Add a new Message to the message bus, and any associated handlers.
         '''
-        self._log.info('HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
+        self._log.debug('HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
         self._message_bus.handle(message)
 
 #EOF

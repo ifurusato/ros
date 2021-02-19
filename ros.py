@@ -96,7 +96,6 @@ class ROS(AbstractTask):
         self._active       = False
         self._closing      = False
         self._disable_leds = False
-        self._motors       = None
         self._arbitrator   = None
         self._controller   = None
         self._gamepad      = None
@@ -118,7 +117,8 @@ class ROS(AbstractTask):
             '[1/2]' if arguments.start else '[1/1]')
         self._log.info('application log level: {}'.format(self._log.level.name))
         # configuration from command line arguments 
-        self._enable_camera   = arguments.camera # TODO
+        self._permit_mocks  = arguments.mocks
+        self._enable_camera = arguments.camera # TODO
         # read YAML configuration
         _loader = ConfigLoader(self._log.level)
         _config_file = arguments.config_file if arguments.config_file is not None else 'config.yaml'
@@ -158,20 +158,21 @@ class ROS(AbstractTask):
             _motor_configurer = MotorConfigurer(self._config, self._clock, self._log.level)
             self._motors = _motor_configurer.get_motors()
             self.add_feature(self._motors)
-        else:
+            self._set_feature_available('motors', motors_enabled)
+        elif self._permit_mocks:
             self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available, using mocks.' + Style.RESET_ALL)
             from mock.motor_configurer import MockMotorConfigurer
             _motor_configurer = MockMotorConfigurer(self._config, self._clock, self._log.level)
             self._motors = _motor_configurer.get_motors()
             self.add_feature(self._motors)
-        self._set_feature_available('motors', motors_enabled)
+            self._set_feature_available('motors', motors_enabled)
 
         ifs_available = ( 0x0E in self._addresses )
         if ifs_available:
             self._log.info('configuring integrated front sensor...')
             self._ifs = IntegratedFrontSensor(self._config, self._clock, self._log.level)
             self.add_feature(self._ifs)
-        else:
+        elif self._permit_mocks:
             self._log.info('integrated front sensor not available; loading mock sensor.')
             from mock.ifs import MockIntegratedFrontSensor
             self._ifs = MockIntegratedFrontSensor(exit_on_complete=False, level=self._log.level)
@@ -612,9 +613,10 @@ def parse_args():
             epilog='This script may be executed by rosd (ros daemon) or run directly from the command line.')
     parser.add_argument('--configure',      '-c', action='store_true', help='run configuration (included by -s)')
     parser.add_argument('--start',          '-s', action='store_true', help='start ros')
-    parser.add_argument('--no-motors',      '-m', action='store_true', help='disable motors')
+    parser.add_argument('--disable-motors', '-d', action='store_true', help='disable motors')
     parser.add_argument('--gamepad',        '-g', action='store_true', help='enable bluetooth gamepad control')
     parser.add_argument('--camera',         '-C', action='store_true', help='enable camera if installed')
+    parser.add_argument('--mock',           '-m', action='store_true', help='permit mocked libraries (when not on a Pi)')
     parser.add_argument('--config-file',    '-f', help='use alternative configuration file')
     parser.add_argument('--level',          '-l', help='specify logging level \'DEBUG\'|\'INFO\'|\'WARN\'|\'ERROR\' (default: \'INFO\')')
     try:

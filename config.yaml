@@ -14,9 +14,13 @@ pi:
     sudo_name:    'sudo'
 
 ros:
+    use_external_clock: True                 # if True use external clock
     current:
         port_address:  0x40                      # I2C address for port INA260
         stbd_address:  0x41                      # I2C address for starboard INA260
+    external_clock:
+        pin:           5                         # input pin from external source
+        loop_freq_hz: 20                         # main loop frequency
     clock:
         loop_freq_hz: 20                         # main loop frequency
         tock_modulo:  20                         # modulo value for tock frequency
