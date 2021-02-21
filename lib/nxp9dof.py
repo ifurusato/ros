@@ -33,7 +33,7 @@ try:
 except ImportError as ie:
     print(Fore.RED + 'unable to import nxp-imu: {}'.format(ie))
     sys.exit("This script requires the nxp-imu module.\n"\
-           + "Install with: sudo pip3 install nxp-imu")
+           + "Install with: pip3 install --user nxp-imu")
 
 try:
     import adafruit_fxos8700
@@ -41,13 +41,13 @@ try:
 except ImportError as ie:
     print(Fore.RED + 'unable to import adafruit_extended_bus: {}'.format(ie))
     sys.exit("This script requires the adafruit-circuitpython-fxos8700 and adafruit-circuitpython-fxas21002c modules.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-fxos8700 adafruit-circuitpython-fxas21002c")
+           + "Install with: pip3 install --user adafruit-circuitpython-fxos8700 adafruit-circuitpython-fxas21002c")
 
 #from squaternion import quat2euler
 try:
     from pyquaternion import Quaternion
 except ImportError:
-    sys.exit("This script requires the pyquaternion module.\nInstall with: sudo pip3 install pyquaternion")
+    sys.exit("This script requires the pyquaternion module.\nInstall with: pip3 install --user pyquaternion")
 
 from lib.logger import Level, Logger
 from lib.message import Message

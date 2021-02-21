@@ -17,7 +17,7 @@ init()
 try:
     import numpy
 except ImportError:
-    exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
+    exit("This script requires the numpy module\nInstall with: pip3 install --user numpy")
 
 from lib.tof import TimeOfFlight, Range
 from lib.servo import Servo

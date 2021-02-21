@@ -15,7 +15,7 @@ try:
     from gpiozero import CPUTemperature
     from gpiozero.exc import BadPinFactory
 except ModuleNotFoundError:
-    print("This script requires the gpiozero module\nInstall with: sudo pip3 install gpiozero")
+    print("This script requires the gpiozero module\nInstall with: pip3 install --user gpiozero")
 from colorama import init, Fore, Style
 init()
 

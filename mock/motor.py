@@ -17,7 +17,7 @@ init()
 try:
     import numpy
 except ImportError:
-    print(Fore.RED + "This script requires the numpy module\nInstall with: sudo pip install numpy" + Style.RESET_ALL)
+    print(Fore.RED + "This script requires the numpy module\nInstall with: pip3 install --user numpy" + Style.RESET_ALL)
     sys.exit(1)
 
 from lib.logger import Level, Logger

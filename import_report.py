@@ -21,7 +21,7 @@ try:
     init()
 except ImportError:
     sys.exit("This script requires the colorama module.\n"\
-           + "Install with: sudo pip3 install colorama")
+           + "Install with: pip3 install --user colorama")
 
 # settings ................
 INCLUDE_IMPORTS = True    # if True query on imports of the form "import xxx"

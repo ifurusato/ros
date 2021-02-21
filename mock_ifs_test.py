@@ -18,7 +18,7 @@ init()
 try:
     import pytest
 except ImportError:
-    sys.exit(Fore.RED + "This script requires the pytest module.\nInstall with: sudo pip3 install pytest" + Style.RESET_ALL)
+    sys.exit(Fore.RED + "This script requires the pytest module.\nInstall with: pip3 install --user pytest" + Style.RESET_ALL)
 
 from mock.ifs import MockIntegratedFrontSensor
 from lib.logger import Logger, Level

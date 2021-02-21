@@ -20,7 +20,7 @@ try:
     import daemon
     from daemon import pidfile
 except Exception:
-    sys.exit("This script requires the python-daemon module.\nInstall with: sudo pip3 install python-daemon")
+    sys.exit("This script requires the python-daemon module.\nInstall with: pip3 install --user python-daemon")
 
 import os, signal, sys, time, threading, traceback, itertools
 from datetime import datetime

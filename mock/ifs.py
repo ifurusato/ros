@@ -19,7 +19,7 @@ init()
 try:
     import readchar
 except ImportError:
-    sys.exit(Fore.RED + "This script requires the readchar module.\nInstall with: sudo pip3 install readchar" + Style.RESET_ALL)
+    sys.exit(Fore.RED + "This script requires the readchar module.\nInstall with: pip3 install --user readchar" + Style.RESET_ALL)
 
 from lib.event import Event
 from lib.message_factory import MessageFactory

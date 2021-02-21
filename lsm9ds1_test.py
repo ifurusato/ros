@@ -26,7 +26,7 @@ try:
     import adafruit_lsm9ds1
 except ImportError as ie:
     sys.exit("This script requires the adafruit-circuitpython-lsm9ds1 module.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-lsm9ds1")
+           + "Install with: pip3 install --user adafruit-circuitpython-lsm9ds1")
 
 #from lib.motors import Motors
 

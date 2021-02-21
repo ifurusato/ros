@@ -13,7 +13,7 @@
 try:
     import ioexpander as io
 except ImportError:
-    exit("This script requires the ioexpander module\nInstall with: sudo pip3 install pimoroni-ioexpander")
+    exit("This script requires the ioexpander module\nInstall with: pip3 install --user pimoroni-ioexpander")
 
 from lib.config_loader import ConfigLoader
 from lib.logger import Level, Logger

@@ -21,7 +21,7 @@ init()
 try:
     import numpy
 except ImportError:
-    exit("This script requires the numpy module\nInstall with: sudo pip install numpy")
+    exit("This script requires the numpy module\nInstall with: pip3 install --user numpy")
 
 from lib.logger import Level, Logger
 from lib.enums import Orientation

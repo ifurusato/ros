@@ -14,7 +14,7 @@ import sys, time
 try:
     from ltr559 import LTR559
 except ImportError:
-    sys.exit("This script requires the ltr559 module\nInstall with: sudo pip3 install ltr559")
+    sys.exit("This script requires the ltr559 module\nInstall with: pip3 install --user ltr559")
 
 from lib.logger import Level, Logger
 

@@ -87,7 +87,7 @@ class IoExpander():
             self._ioe.set_mode(self._stbd_bmp_pin,     io.IN_PU)
         except ImportError:
             self._ioe = None
-            self._log.error("This script requires the pimoroni-ioexpander module\nInstall with: sudo pip3 install pimoroni-ioexpander")
+            self._log.error("This script requires the pimoroni-ioexpander module\nInstall with: pip3 install --user pimoroni-ioexpander")
         self._log.info('ready.')
 
     # ..........................................................................

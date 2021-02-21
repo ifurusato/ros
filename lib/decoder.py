@@ -12,7 +12,7 @@ try:
     import pigpio
 except ImportError as ie:
     print(Fore.RED + "This script requires the pigpio module.\n"\
-        + Fore.YELLOW + "Install with: sudo pip3 install pigpio" + Style.RESET_ALL)
+        + Fore.YELLOW + "Install with: pip3 install --user pigpio" + Style.RESET_ALL)
 
 from lib.logger import Logger
 

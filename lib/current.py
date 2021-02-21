@@ -13,7 +13,7 @@ init()
 try:
     from adafruit_ina260 import INA260, AveragingCount
 except ImportError:
-    sys.exit("This script requires the adafruit_ina260 module\nInstall with: sudo pip3 install adafruit_ina260")
+    sys.exit("This script requires the adafruit_ina260 module\nInstall with: pip3 install --user adafruit_ina260")
 
 from lib.logger import Logger, Level
 

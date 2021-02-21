@@ -17,7 +17,7 @@ init()
 try:
     import ioexpander as io
 except ImportError:
-    print(Fore.RED + "This script requires the pimoroni-ioexpander module\nInstall with: sudo pip3 install pimoroni-ioexpander" + Style.RESET_ALL)
+    print(Fore.RED + "This script requires the pimoroni-ioexpander module\nInstall with: pip3 install --user pimoroni-ioexpander" + Style.RESET_ALL)
 
 from lib.logger import Logger, Level
 

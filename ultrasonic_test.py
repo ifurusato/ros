@@ -17,7 +17,7 @@ init()
 #try:
 #    import numpy
 #except ImportError:
-#    exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
+#    exit("This script requires the numpy module\nInstall with: pip3 install --user numpy")
 
 from lib.i2c_scanner import I2CScanner
 from lib.config_loader import ConfigLoader

@@ -9,11 +9,11 @@ init()
 try:
     import numpy
 except ImportError:
-    sys.exit("This script requires the numpy module\nInstall with: sudo pip3 install numpy")
+    sys.exit("This script requires the numpy module\nInstall with: pip3 install --user numpy")
 try:
     import psutil
 except ImportError:
-    sys.exit("This script requires the psutil module\nInstall with: sudo pip3 install psutil")
+    sys.exit("This script requires the psutil module\nInstall with: pip3 install --user psutil")
 
 from lib.logger import Level, Logger
 from lib.feature import Feature

@@ -31,7 +31,7 @@ init()
 #    from adafruit_extended_bus import ExtendedI2C as I2C
 #except ImportError as ie:
 #    sys.exit("This script requires the adafruit_extended_bus module.\n"\
-#           + "Install with: sudo pip3 install adafruit_extended_bus")
+#           + "Install with: pip3 install --user adafruit_extended_bus")
 try:
     import adafruit_bno08x
     from adafruit_bno08x.i2c import BNO08X_I2C
@@ -50,11 +50,11 @@ try:
     )
 except ImportError as ie:
     sys.exit("This script requires the adafruit_bno08x module.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-bno08x")
+           + "Install with: pip3 install --user adafruit-circuitpython-bno08x")
 try:
     from pyquaternion import Quaternion
 except ImportError:
-    sys.exit("This script requires the pyquaternion module.\nInstall with: sudo pip3 install pyquaternion")
+    sys.exit("This script requires the pyquaternion module.\nInstall with: pip3 install --user pyquaternion")
 
 from lib.logger import Level, Logger
 from lib.config_loader import ConfigLoader

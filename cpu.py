@@ -7,7 +7,7 @@ init()
 try:
     import psutil
 except ImportError:
-    sys.exit("This script requires the psutil module\nInstall with: sudo pip install psutil")
+    sys.exit("This script requires the psutil module\nInstall with: pip3 install --user psutil")
 
 from matrix11x7 import Matrix11x7
 

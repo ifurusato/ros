@@ -20,19 +20,19 @@ try:
 except ImportError as ie:
 #   print(Fore.RED + 'unable to import adafruit_extended_bus: {}'.format(ie))
     print(Fore.RED + "This script requires the adafruit-circuitpython-register, adafruit-circuitpython-busdevice and adafruit_extended_bus modules.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-register adafruit-circuitpython-busdevice adafruit_extended_bus" + Style.RESET_ALL)
+           + "Install with: pip3 install --user adafruit-circuitpython-register adafruit-circuitpython-busdevice adafruit_extended_bus" + Style.RESET_ALL)
 
 try:
     import adafruit_bno055
 except ImportError as ie:
     print(Fore.RED + 'unable to import adafruit-circuitpython-bno055: {}'.format(ie))
     sys.exit("This script requires the adafruit-circuitpython-bno055 module.\n"\
-           + "Install with: sudo pip3 install adafruit-circuitpython-bno055")
+           + "Install with: pip3 install --user adafruit-circuitpython-bno055")
 
 try:
     from pyquaternion import Quaternion
 except ImportError:
-    sys.exit("This script requires the pyquaternion module.\nInstall with: sudo pip3 install pyquaternion")
+    sys.exit("This script requires the pyquaternion module.\nInstall with: pip3 install --user pyquaternion")
 
 from lib.logger import Level, Logger
 from lib.message import Message

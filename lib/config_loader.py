@@ -15,7 +15,7 @@ init()
 try:
     import yaml
 except ImportError:
-    exit("This script requires the pyyaml module\nInstall with: sudo pip3 install pyyaml")
+    exit("This script requires the pyyaml module\nInstall with: pip3 install --user pyyaml")
 
 from lib.logger import Level, Logger
 

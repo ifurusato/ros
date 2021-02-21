@@ -19,7 +19,7 @@ init()
 try:
     from pymessagebus import MessageBus as PyMessageBus
 except ImportError:
-    sys.exit(Fore.RED + 'This script requires the pymessagebus module\nInstall with: sudo pip3 install "pymessagebus==1.*"' + Style.RESET_ALL)
+    sys.exit(Fore.RED + 'This script requires the pymessagebus module\nInstall with: pip3 install --user "pymessagebus==1.*"' + Style.RESET_ALL)
 
 from lib.message import Message
 from lib.logger import Logger, Level
