@@ -33,46 +33,40 @@ class RotaryEncoder(object):
      - 0x18 to use with IO Expander.
     
     :param config:       application-level configuration
-    :param i2c_address:  the I²C address for the device
     :param level:        log level
     '''
-    def __init__(self, config, i2c_address=0x19, level=Level.ERROR):
+    def __init__(self, config, level=Level.INFO):
         super().__init__()
         self._log = Logger("rot", level)
         if config is None:
             raise ValueError('null configuration argument.')
-        _config          = config['ros'].get('rotary_encoder')
-        self._brightness = _config.get('brightness') # effectively the maximum fraction of the period that the LED will be on
+        _config = config['ros'].get('rotary_encoder')
+        self._brightness  = _config.get('brightness') # effectively the maximum fraction of the period that the LED will be on
         self._log.info("brightness:\t{:5.2f}".format(self._brightness))
-        self.increment   = _config.get('increment')  # the count change per rotary tick
-        self._log.info("I²C address:\t0x{:02x}".format(i2c_address))
+        self.increment    = _config.get('increment')  # the count change per rotary tick
+        _i2c_address      = _config.get('i2c_address')
+#       self._log.info("I²C address:\t0x{:02x}".format(_i2c_address))
+        self._log.info('configured rotary encoder at I²C address: 0x{:02X}'.format(_i2c_address))
 
-#       i2c_address = 0x0f # found via i2cdetect
-        I2C_ADDR    = 0x16 
+#       _i2c_address = 0x0f # found via i2cdetect
 #       self._log.info("default I²C address:  0x{:02X}".format(I2C_ADDR))
-#       self._log.info("assigned I²C address: 0x{:02X}".format(i2c_address))
-#       sys.exit(0)
+#       self._log.info("assigned I²C address: 0x{:02X}".format(_i2c_address))
 
         try:
-#           i2c_address     = 0x0F  # 0x18 for IO Expander, 0x0F for the encoder breakout
-#           i2c_address     = 0x18  # 0x19 for IO Expander, 0x0F for the encoder breakout
-#           i2c_address     = 0x19  # TEMP
-#           i2c_address     = 0x20  # TEMP
-#           i2c_address     = 0x16
-            self._ioe = io.IOE(i2c_addr=i2c_address, interrupt_pin=4)
+#           _i2c_address  = 0x16
+            _i2c_address  = 0x0F  # 0x18 for IO Expander, 0x0F for the encoder breakout
+#           _i2c_address  = 0x18  # 0x19 for IO Expander, 0x0F for the encoder breakout
+            self._ioe     = io.IOE(i2c_addr=_i2c_address, interrupt_pin=4)
             # swap the interrupt pin for the Rotary Encoder breakout
-#           if I2C_ADDR == 0x0F:
             self._ioe.enable_interrupt_out(pin_swap=True)
-            # change address to 
-#           if I2C_ADDR != i2c_address:
-#               self._log.warning("force-setting I²C address of 0x{:02X}".format(i2c_address))
-#               self._ioe.set_i2c_addr(i2c_address)
-#           self._ioe.set_i2c_addr(0x0F)
-        
+#           if I2C_ADDR != _i2c_address:
+#               self._log.warning("force-setting I²C address of 0x{:02X}".format(_i2c_address))
+#               self._ioe.set_i2c_addr(_i2c_address)
+
             _POT_ENC_A = 12
             _POT_ENC_B = 3
             _POT_ENC_C = 11
-            self._ioe.setup_rotary_encoder(1, _POT_ENC_A, _POT_ENC_B, pin_c=_POT_ENC_C, count_microsteps=False)
+            self._ioe.setup_rotary_encoder(1, _POT_ENC_A, _POT_ENC_B, pin_c=_POT_ENC_C) #, count_microsteps=False)
 
             self._period = int(255 / self._brightness) # add a period large enough to get 0-255 steps at the desired brightness
             self._log.info("running LED with {} brightness steps.".format(int(self._period * self._brightness)))
@@ -140,7 +134,7 @@ class RotaryEncoder(object):
         if self._ioe.get_interrupt():
             _last   = self._ioe._encoder_last[self._channel - 1]
             _offset = self._ioe._encoder_offset[self._channel - 1]
-            self._log.debug('last:  {:>3d};\t'.format(_last) + Style.DIM + 'offset: {:d}'.format(_offset))
+            self._log.info(Fore.BLUE + 'last:  {:>3d};\t'.format(_last) + Style.DIM + 'offset: {:d}'.format(_offset))
             _value  = self._ioe.read_rotary_encoder(self._channel)
             _diff = _last - _value
             # initial value may be non-zero

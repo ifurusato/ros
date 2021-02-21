@@ -35,13 +35,10 @@ class RotaryControl(object):
         self._max         = maximum
         self._step        = step
 #       if True or os.path.isfile('/dev/i2c-1'): # are we on a Pi?
-        _i2c_address      = _config.get('i2c_address')
-#       _i2c_address      = 0x0F
-        self._log.info('configured rotary control at I²C address: 0x{:02X}'.format(_i2c_address))
         self._update_led  = _config.get('update_led')
         self._log.info('update LED: {}'.format(self._update_led))
         self._log.info('min: {:5.2f}; max: {:5.2f}; step: {:5.2f}'.format(self._min, self._max, self._step))
-        self._rot = RotaryEncoder(config, _i2c_address, level)
+        self._rot = RotaryEncoder(config, level)
 #       else:
 #           self._rot = None 
 #           self._log.warning('disabled: no I²C support.')
@@ -52,7 +49,7 @@ class RotaryControl(object):
     def read(self):
         if self._rot:
             _delta = self._rot.read(self._update_led)
-            print('_delta: {}'.format(_delta))
+#           print('_delta: {}'.format(_delta))
 #           if _delta != self._last_delta:
             if _delta > self._last_delta: # if increasing in value
                 self._value = RotaryControl.clamp(self._value + self._step, self._min, self._max) 
