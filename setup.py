@@ -11,6 +11,8 @@
 import importlib, sys 
 import subprocess as sp
 
+from lib.confirm import confirm
+
 libraries = [ \
     'numpy', \
     'pytest', \
@@ -41,7 +43,8 @@ for name in libraries:
         print('')
         _command = 'pip3 install --user {}'.format(name, name)
         print('This script requires the {} module.\nInstall with: \'{}\''.format(name, _command))
-        answer = input('Do you want to continue? [Y/n] ')
+        answer = confirm(False)
+#       print('confirmation: {}'.format(answer))
 #       sys.exit(0)
         if answer.lower() in ['yes', 'y']:
             _comleted_process = sp.run(_command, shell=True)
