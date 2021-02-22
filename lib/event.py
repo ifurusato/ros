@@ -29,9 +29,10 @@ class Event(Enum):
     '''
     # name                     n   description             priority  ballistic?
     # system events ....................
-    BATTERY_LOW            = ( 0, "battery low",              0,     True)
-    SHUTDOWN               = ( 1, "shutdown",                 1,     True)
-    HIGH_TEMPERATURE       = ( 2, "high temperature",         1,     False)
+    NOOP                   = ( 0, "no operation",             0,     False)
+    BATTERY_LOW            = ( 1, "battery low",              0,     True)
+    SHUTDOWN               = ( 2, "shutdown",                 1,     True)
+    HIGH_TEMPERATURE       = ( 3, "high temperature",         1,     False)
     # stopping and halting .............
     STOP                   = ( 4, "stop",                     2,     True)
     HALT                   = ( 5, "halt",                     3,     False)

@@ -41,6 +41,12 @@ class Controller():
     '''
     def __init__(self, config, ifs, motors, callback_shutdown, level):
         super().__init__()
+        if config is None:
+            raise ValueError("no configuration provided.")
+        if ifs is None:
+            raise ValueError("no ifs provided.")
+        if motors is None:
+            raise ValueError("no motors provided.")
         self._log = Logger('controller', level)
         self._config = config
         self._enable_self_shutdown = self._config['ros'].get('enable_self_shutdown')
@@ -134,7 +140,8 @@ class Controller():
 #           self._log.debug('last set power port: {}, starboard: {}'.format(_port_speed, _stbd_speed))
 
         _event = self._current_message.get_event()
-        self._log.debug(Fore.CYAN + 'act()' + Style.BRIGHT + ' event: {}.'.format(_event) + Fore.YELLOW)
+        self._log.info(Fore.CYAN + 'act()' + Style.BRIGHT + ' event: {}.'.format(_event) + Fore.YELLOW)
+
         self._current_message.start()
 
         # no action ............................................................

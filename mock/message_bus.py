@@ -46,7 +46,11 @@ class MockMessageBus(MessageBus):
         message.number = self._count
         _event = message.event
         self._log.info('handling message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
-        if _event is Event.BUMPER_PORT:
+        if _event is Event.DECREASE_SPEED:
+            self._log.info(Fore.YELLOW + 'decrease speed.')
+        elif _event is Event.INCREASE_SPEED:
+            self._log.info(Fore.YELLOW + 'increase speed.')
+        elif _event is Event.BUMPER_PORT:
             self._print_event(Fore.RED, _event, message.value)
             if self._triggered_bmp_port < self._limit:
                 self._triggered_bmp_port += 1

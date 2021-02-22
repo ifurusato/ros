@@ -117,7 +117,8 @@ class ROS(AbstractTask):
             '[1/2]' if arguments.start else '[1/1]')
         self._log.info('application log level: {}'.format(self._log.level.name))
         # configuration from command line arguments 
-        self._permit_mocks  = arguments.mocks
+        self._using_mocks   = False
+        self._permit_mocks  = arguments.mock
         self._enable_camera = arguments.camera # TODO
         # read YAML configuration
         _loader = ConfigLoader(self._log.level)
@@ -160,6 +161,7 @@ class ROS(AbstractTask):
             self.add_feature(self._motors)
             self._set_feature_available('motors', motors_enabled)
         elif self._permit_mocks:
+            self._using_mocks   = True
             self._log.debug(Fore.RED + Style.BRIGHT + '-- no ThunderBorg available, using mocks.' + Style.RESET_ALL)
             from mock.motor_configurer import MockMotorConfigurer
             _motor_configurer = MockMotorConfigurer(self._config, self._clock, self._log.level)
@@ -173,10 +175,14 @@ class ROS(AbstractTask):
             self._ifs = IntegratedFrontSensor(self._config, self._clock, self._log.level)
             self.add_feature(self._ifs)
         elif self._permit_mocks:
+            self._using_mocks   = True
             self._log.info('integrated front sensor not available; loading mock sensor.')
             from mock.ifs import MockIntegratedFrontSensor
             self._ifs = MockIntegratedFrontSensor(exit_on_complete=False, level=self._log.level)
             self.add_feature(self._ifs)
+        else:
+            self._ifs = None
+            self._log.warning('no integrated front sensor available.')
 
 #       ultraborg_available = ( 0x36 in self._addresses )
 #       if ultraborg_available:
@@ -264,7 +270,7 @@ class ROS(AbstractTask):
 #           self._log.debug(Fore.RED + Style.BRIGHT + 'no PiJuice hat available at 0x68.' + Style.RESET_ALL)
 #       self._set_feature_available('pijuice', pijuice_available)
 
-        self._log.info('configure subsumption support...')
+        self._log.info(Fore.YELLOW + 'configure subsumption support...')
 
         # configure the MessageQueue, Controller and Arbitrator
         self._log.info('configuring message queue...')
@@ -273,7 +279,6 @@ class ROS(AbstractTask):
         self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, self._log.level)
         self._log.info('configuring arbitrator...')
         self._arbitrator = Arbitrator(self._config, self._queue, self._controller, self._log.level)
-
         self._log.info('configured.')
 
     # ..........................................................................
@@ -613,7 +618,7 @@ def parse_args():
             epilog='This script may be executed by rosd (ros daemon) or run directly from the command line.')
     parser.add_argument('--configure',      '-c', action='store_true', help='run configuration (included by -s)')
     parser.add_argument('--start',          '-s', action='store_true', help='start ros')
-    parser.add_argument('--disable-motors', '-d', action='store_true', help='disable motors')
+    parser.add_argument('--no-motors',      '-n', action='store_true', help='disable motors')
     parser.add_argument('--gamepad',        '-g', action='store_true', help='enable bluetooth gamepad control')
     parser.add_argument('--camera',         '-C', action='store_true', help='enable camera if installed')
     parser.add_argument('--mock',           '-m', action='store_true', help='permit mocked libraries (when not on a Pi)')

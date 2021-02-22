@@ -9,10 +9,13 @@
 # created:  2020-05-19
 # modified: 2020-11-06
 #
-# A mock Integrated Front Sensor (IFS) that responds to key presses.
+# A mock Integrated Front Sensor (IFS) that responds to key presses. This expands
+# the notion a bit, as rather than provide a second key-input mechanism, this one
+# is also used for keyboard control of the mocked robot, i.e., it includes events
+# unrelated to the original IFS.
 #
 
-import sys, itertools
+import sys, time, itertools
 from threading import Thread
 from colorama import init, Fore, Style
 init()
@@ -41,6 +44,7 @@ class MockIntegratedFrontSensor(object):
         self._rate     = Rate(10)
         self._thread   = None
         self._enabled  = False
+        self._verbose  = True
         self._suppress = False
         self._closed   = False
         self._counter  = itertools.count()
@@ -66,18 +70,21 @@ class MockIntegratedFrontSensor(object):
                 + Fore.RED + 'h' + Fore.YELLOW + '\" key for help.')
         print('\n')
         while f_is_enabled():
-            if self._suppress:
-                time.sleep(1.0)
+            if self._suppress: # then just sleep during the loop
+                time.sleep(0.2)
             else:
                 _count = next(self._counter)
                 self._log.debug('[{:03d}]'.format(_count))
                 ch  = readchar.readchar()
                 och = ord(ch)
-                if och == 91 or och == 113 or och == 127:
+                if och == 91 or och == 113 or och == 127: # 'q' or delete
                     break
-                elif och == 104:
+                elif och == 104: # 'h' for help
                     self.print_keymap()
                     continue
+                elif och == 107: # 'k' for kill
+                    self._verbose = not self._verbose
+                    self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
                 _event = self.get_event_for_char(och)
                 if _event is not None:
                     if self.fire_message(_event) and self.exit_on_complete:
@@ -98,9 +105,9 @@ class MockIntegratedFrontSensor(object):
         self._message_bus.handle(_message)
         if self._message_bus.all_triggered:
             return True
-        else:
+        elif self._verbose:
             self._message_bus.waiting_for_message()
-            return False
+        return False
 
     # ..........................................................................
     @property
@@ -162,9 +169,13 @@ class MockIntegratedFrontSensor(object):
     # ..........................................................................
     def get_event_for_char(self, och):
         '''
-        So far we're only mapping characters for IFS-based events:
+        Below are the mapped characters for IFS-based events, including several others:
 
            oct   dec   hex   char   usage
+
+            54   44    2C    ,      increase motors speed (both)
+            56   46    2E    .      decrease motors speed (both)
+
            141   97    61    a *    port side IR
            142   98    62    b      
            143   99    63    c *    cntr BMP
@@ -175,7 +186,7 @@ class MockIntegratedFrontSensor(object):
            150   104   68    h      
            151   105   69    i
            152   106   6A    j
-           153   107   6B    k
+           153   107   6B    k      shutdown IFS messaging
            154   108   6C    l     
            155   109   6D    m
            156   110   6E    n  
@@ -184,15 +195,20 @@ class MockIntegratedFrontSensor(object):
            161   113   71    q
            162   114   72    r
            163   115   73    s *    port IR
-           164   116   74    t
+           164   116   74    t *    noop (test message)
            165   117   75    u
            166   118   76    v *    stbd BMP
            167   119   77    w
            170   120   78    x *    port BMP
            171   121   79    y
            172   122   7A    z
+
         '''
-        if och   == 97:  # a
+        if och   == 44:  # ,
+            return Event.DECREASE_SPEED 
+        elif och   == 46:  # .
+            return Event.INCREASE_SPEED 
+        elif och   == 97:  # a
             return Event.INFRARED_PORT_SIDE 
         elif och == 99:  # c
             return Event.BUMPER_CNTR           
@@ -204,6 +220,8 @@ class MockIntegratedFrontSensor(object):
             return Event.INFRARED_STBD_SIDE 
         elif och == 115: # s
             return Event.INFRARED_PORT     
+        elif och == 116: # s
+            return Event.NOOP     
         elif och == 118: # v
             return Event.BUMPER_STBD          
         elif och == 120: # x

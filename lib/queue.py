@@ -40,10 +40,10 @@ class MessageQueue():
         self._log = Logger('queue', level)
         self._log.debug('initialised MessageQueue...')
         self._counter = itertools.count()
-        self._message_bus = message_bus
-        self._message_bus.add_handler(Message, self.handle)
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
         self._consumers = []
+        self._message_bus = message_bus
+        self._message_bus.add_handler(Message, self.handle)
         self._log.info('MessageQueue ready.')
 
     # ..........................................................................
@@ -71,7 +71,7 @@ class MessageQueue():
         '''
         if ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
             return
-        self._log.info('received message eid#{}/msg#{}: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
+        self._log.info(Fore.WHITE + 'received message eid#{}/msg#{}: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
         if self._queue.full():
             try:
                 _dumped = self._queue.get()
