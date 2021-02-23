@@ -120,6 +120,7 @@ class Temperature(Feature):
                 if self._clock:
                     _message = Message(Event.HIGH_TEMPERATURE)
                     self._clock.message_bus.add(_message)
+        return message
 
     # ..........................................................................
     def enable(self):

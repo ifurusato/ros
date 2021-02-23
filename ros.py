@@ -275,6 +275,7 @@ class ROS(AbstractTask):
         # configure the MessageQueue, Controller and Arbitrator
         self._log.info('configuring message queue...')
         self._queue = MessageQueue(self._message_bus, self._log.level)
+        self._message_bus.add_handler(Message, self._queue.handle)
         self._log.info('configuring controller...')
         self._controller = Controller(self._config, self._ifs, self._motors, self._callback_shutdown, self._log.level)
         self._log.info('configuring arbitrator...')

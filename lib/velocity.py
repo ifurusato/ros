@@ -174,7 +174,8 @@ class Velocity(object):
                 self._velocity = 0.0
         else:
             self._velocity = 0.0 # or None?
-        return self._velocity
+#       return self._velocity
+        return message
 
     # ..............................................................................
     def __call__(self):

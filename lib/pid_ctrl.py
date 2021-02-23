@@ -219,7 +219,7 @@ class PIDController(object):
 #               self._motor.set_motor_power(0.0)
 #           else:
 #               self._motor.set_motor_power(self._power / 100.0)
-        pass
+        return message
 
     # ..........................................................................
     def _get_mean_setpoint(self, value):

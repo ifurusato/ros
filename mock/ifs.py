@@ -39,7 +39,7 @@ class MockIntegratedFrontSensor(object):
         super().__init__()
         self._log = Logger("mock-ifs", level)
         self._message_factory = MessageFactory(Level.INFO)
-        self._message_bus = MockMessageBus(Level.INFO)
+        self._message_bus = MockMessageBus(self, Level.INFO)
         self.exit_on_complete = exit_on_complete
         self._rate     = Rate(10)
         self._thread   = None
@@ -48,6 +48,11 @@ class MockIntegratedFrontSensor(object):
         self._suppress = False
         self._closed   = False
         self._counter  = itertools.count()
+        # .....
+        self._triggered_ir_port_side = self._triggered_ir_port  = self._triggered_ir_cntr  = self._triggered_ir_stbd  = \
+        self._triggered_ir_stbd_side = self._triggered_bmp_port = self._triggered_bmp_cntr = self._triggered_bmp_stbd = 0
+        self._limit = 3
+        self._fmt = '{0:>9}'
         self._log.info('ready.')
 
     # ..........................................................................
@@ -82,7 +87,7 @@ class MockIntegratedFrontSensor(object):
                 elif och == 104: # 'h' for help
                     self.print_keymap()
                     continue
-                elif och == 107: # 'k' for kill
+                elif och == 109: # 'j' to toggle messages sent to IFS
                     self._verbose = not self._verbose
                     self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
                 _event = self.get_event_for_char(och)
@@ -103,11 +108,103 @@ class MockIntegratedFrontSensor(object):
         self._log.debug('firing message for event {}'.format(event))
         _message = self._message_factory.get_message(event, True)
         self._message_bus.handle(_message)
-        if self._message_bus.all_triggered:
+        if self.all_triggered:
             return True
         elif self._verbose:
-            self._message_bus.waiting_for_message()
+            self.waiting_for_message()
         return False
+
+    # message handling .........................................................
+
+    # ......................................................
+    def process_message(self, message):
+        '''
+        Processes the message, keeping count and providing a display of status.
+        '''
+        _event = message.event
+        if _event is Event.BUMPER_PORT:
+            self._print_event(Fore.RED, _event, message.value)
+            if self._triggered_bmp_port < self._limit:
+                self._triggered_bmp_port += 1
+        elif _event is Event.BUMPER_CNTR:
+            self._print_event(Fore.BLUE, _event, message.value)
+            if self._triggered_bmp_cntr < self._limit:
+                self._triggered_bmp_cntr += 1
+        elif _event is Event.BUMPER_STBD:
+            self._print_event(Fore.GREEN, _event, message.value)
+            if self._triggered_bmp_stbd < self._limit:
+                self._triggered_bmp_stbd += 1
+        elif _event is Event.INFRARED_PORT_SIDE:
+            self._print_event(Fore.RED, _event, message.value)
+            if self._triggered_ir_port_side < self._limit:
+                self._triggered_ir_port_side += 1
+        elif _event is Event.INFRARED_PORT:
+            self._print_event(Fore.RED, _event, message.value)
+            if self._triggered_ir_port < self._limit:
+                self._triggered_ir_port += 1
+        elif _event is Event.INFRARED_CNTR:
+            self._print_event(Fore.BLUE, _event, message.value)
+            if self._triggered_ir_cntr < self._limit:
+                self._triggered_ir_cntr += 1
+        elif _event is Event.INFRARED_STBD:
+            self._print_event(Fore.GREEN, _event, message.value)
+            if self._triggered_ir_stbd < self._limit:
+                self._triggered_ir_stbd += 1
+        elif _event is Event.INFRARED_STBD_SIDE:
+            self._print_event(Fore.GREEN, _event, message.value)
+            if self._triggered_ir_stbd_side < self._limit:
+                self._triggered_ir_stbd_side += 1
+        else:
+            self._log.info(Fore.BLACK + Style.BRIGHT + 'other event: {}'.format(_event.description))
+
+    # ......................................................
+    def _print_event(self, color, event, value):
+        self._log.info('event:\t' + color + Style.BRIGHT + '{}; value: {}'.format(event.description, value))
+
+    # ..........................................................................
+    def waiting_for_message(self):
+        _div = Fore.CYAN + Style.NORMAL + ' | '
+        self._log.info('waiting for: | ' \
+                + self._get_output(Fore.RED, 'PSID', self._triggered_ir_port_side) \
+                + _div \
+                + self._get_output(Fore.RED, 'PORT', self._triggered_ir_port) \
+                + _div \
+                + self._get_output(Fore.BLUE, 'CNTR', self._triggered_ir_cntr) \
+                + _div \
+                + self._get_output(Fore.GREEN, 'STBD', self._triggered_ir_stbd) \
+                + _div \
+                + self._get_output(Fore.GREEN, 'SSID', self._triggered_ir_stbd_side) \
+                + _div \
+                + self._get_output(Fore.RED, 'BPRT', self._triggered_bmp_port) \
+                + _div \
+                + self._get_output(Fore.BLUE, 'BCNT', self._triggered_bmp_cntr) \
+                + _div \
+                + self._get_output(Fore.GREEN, 'BSTB', self._triggered_bmp_stbd) \
+                + _div )
+
+    # ......................................................
+    def _get_output(self, color, label, value):
+        if ( value == 0 ):
+            _style = color + Style.BRIGHT
+        elif ( value == 1 ):
+            _style = color + Style.NORMAL
+        elif ( value == 2 ):
+            _style = color + Style.DIM
+        else:
+            _style = Fore.BLACK + Style.DIM
+        return _style + self._fmt.format( label if ( value < self._limit ) else '' )
+
+    # ......................................................
+    @property
+    def all_triggered(self):
+        return self._triggered_ir_port_side  >= self._limit \
+            and self._triggered_ir_port      >= self._limit \
+            and self._triggered_ir_cntr      >= self._limit \
+            and self._triggered_ir_stbd      >= self._limit \
+            and self._triggered_ir_stbd_side >= self._limit \
+            and self._triggered_bmp_port     >= self._limit \
+            and self._triggered_bmp_cntr     >= self._limit \
+            and self._triggered_bmp_stbd     >= self._limit
 
     # ..........................................................................
     @property
@@ -152,15 +249,20 @@ class MockIntegratedFrontSensor(object):
 
     # ..........................................................................
     def print_keymap(self):
+#        1         2         3         4         5         6         7         8         9         C         1         2
+#23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
         self._log.info('''key map:
            
-               o----------------------------------------
-               |   A   |   S   |   D   |   F   |   G   |
-         IR:   | PSID  | PORT  | CNTR  | STBD  | SSID  |
-               o----------------------------------------
-                           |   X   |   C   |   V   |
-         BMP:              | PORT  | CNTR  | STBD  |
-                           o-----------------------o
+    o-------------------------------------------------o                                                    ---o--------o
+    |    Q    |                             |    T    |                                                       |   DEL  |
+    |  QUIT   |                             |  NOOP   |                                                       |  QUIT  |
+    o--------------------------------------------------------------------------o---------o                 ---o--------o
+         |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |
+         | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |  HELP   |         |         |
+         o-------------------------------------------------------------------------------o------------------------o
+              |    X    |    C    |    V    |                                       |    M    |    <    |    >    |
+              | BM_PORT | BM_CNTR | BM_STBD |                                       | TOG_MSG | DN_VELO | UP_VELO |
+              o-----------------------------o                                       o-----------------------------o
 
         ''')
         self._log.info('note:\t' + Fore.YELLOW + 'will exit after receiving 3 events on each sensor.')
@@ -186,9 +288,9 @@ class MockIntegratedFrontSensor(object):
            150   104   68    h      
            151   105   69    i
            152   106   6A    j
-           153   107   6B    k      shutdown IFS messaging
+           153   107   6B    k
            154   108   6C    l     
-           155   109   6D    m
+           155   109   6D    m      toggle IFS messaging
            156   110   6E    n  
            157   111   6F    o
            160   112   70    p

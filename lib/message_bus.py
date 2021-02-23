@@ -21,6 +21,7 @@ try:
 except ImportError:
     sys.exit(Fore.RED + 'This script requires the pymessagebus module\nInstall with: pip3 install --user "pymessagebus==1.*"' + Style.RESET_ALL)
 
+from lib.event import Event
 from lib.message import Message
 from lib.logger import Logger, Level
 
@@ -50,7 +51,9 @@ class MessageBus():
         '''
         Add a new Message to the message bus, and any associated handlers.
         '''
-        self._log.debug('HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
-        self._message_bus.handle(message)
+#       self._log.info(Fore.BLACK + 'HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
+        _result = self._message_bus.handle(message)
+        if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
+            self._log.info(Fore.BLACK + 'RESULT: {} ({})'.format(_result, len(_result)))
 
 #EOF

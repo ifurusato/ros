@@ -121,7 +121,6 @@ class IntegratedFrontSensor():
 
         # force group?
 #       _group = 1
-
         if _group == 0: # bumper group .........................................
             self._log.debug(Fore.WHITE + '[{:04d}] BUMP ifs poll start; group: {}'.format(_count, _group))
 
@@ -212,6 +211,7 @@ class IntegratedFrontSensor():
         _delta = dt.datetime.now() - _start_time
         _elapsed_ms = int(_delta.total_seconds() * 1000)
         self._log.debug(Fore.BLACK + '[{:04d}] poll end; elapsed processing time: {:d}ms'.format(_count, _elapsed_ms))
+        return message
 
     # ......................................................
     def _get_sensor_group(self):

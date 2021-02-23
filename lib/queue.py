@@ -39,29 +39,29 @@ class MessageQueue():
         super().__init__()
         self._log = Logger('queue', level)
         self._log.debug('initialised MessageQueue...')
+        self._message_bus = message_bus
         self._counter = itertools.count()
         self._queue = queue.PriorityQueue(MessageQueue.MAX_SIZE)
-        self._consumers = []
-        self._message_bus = message_bus
-        self._message_bus.add_handler(Message, self.handle)
+#       self._consumers = []
+        self._log.info(Fore.YELLOW + 'adding MessageQueue as MessageBus handler.')
         self._log.info('MessageQueue ready.')
 
-    # ..........................................................................
-    def add_consumer(self, consumer):
-        '''
-        Add a consumer to the optional list of message consumers.
-        '''
-        return self._consumers.append(consumer)
+#   # ..........................................................................
+#   def add_consumer(self, consumer):
+#       '''
+#       Add a consumer to the optional list of message consumers.
+#       '''
+#       return self._consumers.append(consumer)
 
-    # ..........................................................................
-    def remove_consumer(self, consumer):
-        '''
-        Remove the consumer from the list of message consumers.
-        '''
-        try:
-            self._consumers.remove(consumer)
-        except ValueError:
-            self._log.warn('message consumer was not in list.')
+#   # ..........................................................................
+#   def remove_consumer(self, consumer):
+#       '''
+#       Remove the consumer from the list of message consumers.
+#       '''
+#       try:
+#           self._consumers.remove(consumer)
+#       except ValueError:
+#           self._log.warn('message consumer was not in list.')
 
     # ..........................................................................
     def handle(self, message):
@@ -81,9 +81,10 @@ class MessageQueue():
         message.number = next(self._counter)
         self._queue.put(message);
         self._log.info('added message eid#{}/msg#{} to queue: priority {}: {}'.format(message.eid, message.number, message.priority, message.description))
-        # add to any consumers
-        for consumer in self._consumers:
-            consumer.add(message);
+#       # add to any consumers
+#       for consumer in self._consumers:
+#           consumer.add(message);
+        return message
 
     # ......................................................
     def empty(self):
