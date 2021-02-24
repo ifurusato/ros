@@ -15,7 +15,7 @@
 # unrelated to the original IFS.
 #
 
-import sys, time, itertools
+import sys, asyncio, time, itertools
 from threading import Thread
 from colorama import init, Fore, Style
 init()
@@ -35,13 +35,14 @@ class MockIntegratedFrontSensor(object):
     '''
     A mock IFS.
     '''
-    def __init__(self, exit_on_complete=True, level=Level.INFO):
+    def __init__(self, message_bus, exit_on_complete=True, level=Level.INFO):
         super().__init__()
         self._log = Logger("mock-ifs", level)
         self._message_factory = MessageFactory(Level.INFO)
-        self._message_bus = MockMessageBus(self, Level.INFO)
+        self._message_bus = message_bus
+#       self._message_bus = MockMessageBus(self, Level.INFO)
         self.exit_on_complete = exit_on_complete
-        self._rate     = Rate(10)
+#       self._rate     = Rate(10)
         self._thread   = None
         self._enabled  = False
         self._verbose  = True
@@ -92,11 +93,22 @@ class MockIntegratedFrontSensor(object):
                     self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
                 _event = self.get_event_for_char(och)
                 if _event is not None:
-                    if self.fire_message(_event) and self.exit_on_complete:
+
+#                   self._log.info('firing message for event {}'.format(event))
+#                   _message = self._message_factory.get_message(event, True)
+#                   self._message_bus.publish(_message)
+#                   await asyncio.sleep(0.1)
+
+                    self.fire_message(_event)
+                    if self.exit_on_complete:
                         self._log.debug('[{:03d}] COMPLETE.'.format(_count))
                         break
                     else:
                         self._log.debug('[{:03d}] "{}" ({}) pressed; event: {}'.format(_count, ch, och, _event))
+                    if self.all_triggered:
+                        break
+                    elif self._verbose:
+                        self.waiting_for_message()
                 else:
                     self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
                 self._rate.wait()
@@ -104,15 +116,11 @@ class MockIntegratedFrontSensor(object):
         self._log.info(Fore.YELLOW + 'exit loop.')
 
     # ..........................................................................
-    def fire_message(self, event):
+    async def fire_message(self, event):
         self._log.debug('firing message for event {}'.format(event))
         _message = self._message_factory.get_message(event, True)
-        self._message_bus.handle(_message)
-        if self.all_triggered:
-            return True
-        elif self._verbose:
-            self.waiting_for_message()
-        return False
+        self._message_bus.publish(_message)
+        await asyncio.sleep(0.1)
 
     # message handling .........................................................
 

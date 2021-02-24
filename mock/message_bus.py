@@ -25,21 +25,24 @@ class MockMessageBus(MessageBus):
     '''
     This message bus just displays IFS events as they arrive.
     '''
-    def __init__(self, ifs, level):
+    def __init__(self, level):
         super().__init__(level)
         self._mlog = Logger('mbus', level)
 #       self._count = 0
-        self._ifs = ifs
 #       self._counter = itertools.count()
 #       self._log = Logger("message-bus", level)
         self._log.info('ready.')
 
     # ......................................................
-    def handle(self, message: Message):
+    def set_ifs(self, ifs):
+        self._ifs = ifs
+
+    # ......................................................
+    def publish(self, message: Message):
 #       self._count = next(self._counter)
 #       message.number = self._count
         _event = message.event
-        self._mlog.info(Fore.BLUE + 'handling message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
+        self._mlog.info(Fore.BLUE + 'publishing message #{}; priority {}: {}; event: {}'.format(message.number, message.priority, message.description, _event))
         if _event is Event.DECREASE_SPEED:
             self._mlog.info(Fore.YELLOW + 'decrease speed.')
         elif _event is Event.INCREASE_SPEED:
@@ -48,7 +51,7 @@ class MockMessageBus(MessageBus):
             # otherwise pass to IFS
             self._ifs.process_message(message)
         self._mlog.info(Fore.WHITE + 'passing message #{}; to superclass...'.format(message.number))
-        super().handle(message)
+        super().publish(message)
 
 #   # ......................................................
 #   @property
