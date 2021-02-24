@@ -28,7 +28,9 @@ from lib.logger import Logger, Level
 def test_mock_ifs():
     _log = Logger('mock-ifs-test', Level.INFO)
     time.sleep(1.0)
-    _ifs = MockIntegratedFrontSensor(Level.INFO)
+    _message_bus = MockMessageBus(Level.INFO)
+    _ifs = MockIntegratedFrontSensor(_message_bus, Level.INFO)
+    _message_bus.set_ifs(_ifs)
     _ifs.enable()
     while _ifs.enabled:
         time.sleep(1.0)

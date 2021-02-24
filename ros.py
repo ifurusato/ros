@@ -178,7 +178,8 @@ class ROS(AbstractTask):
             self._using_mocks   = True
             self._log.info('integrated front sensor not available; loading mock sensor.')
             from mock.ifs import MockIntegratedFrontSensor
-            self._ifs = MockIntegratedFrontSensor(exit_on_complete=False, level=self._log.level)
+            self._ifs = MockIntegratedFrontSensor(self._message_bus, exit_on_complete=False, level=self._log.level)
+            self._message_bus.set_ifs(self._ifs)
             self.add_feature(self._ifs)
         else:
             self._ifs = None
