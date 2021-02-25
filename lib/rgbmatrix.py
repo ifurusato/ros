@@ -14,11 +14,14 @@ try:
     import psutil
 except ImportError:
     sys.exit("This script requires the psutil module\nInstall with: pip3 install --user psutil")
+try:
+    from rgbmatrix5x5 import RGBMatrix5x5
+except ImportError:
+    sys.exit("This script requires the rgbmatrix5x5 module\nInstall with: pip3 install --user rgbmatrix5x5")
 
 from lib.logger import Level, Logger
 from lib.feature import Feature
 from lib.enums import Color, Orientation
-from rgbmatrix5x5 import RGBMatrix5x5
 
 # ..............................................................................
 class DisplayType(Enum):

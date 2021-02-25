@@ -9,6 +9,18 @@
 # created:  2020-01-18
 # modified: 2020-08-30
 #
+# To start pigpiod:
+#
+#   % sudo systemctl start pigpiod 
+#
+# To enable/disable pigpiod on boot:
+#
+#   % sudo systemctl [enable|disable] pigpiod
+#
+# To control the daemon:
+# 
+# % sudo systemctl [start|stop|status] pigpiod
+#
 
 import sys, time, traceback
 from threading import Thread
@@ -48,15 +60,19 @@ class Motors():
         self._tb = tb
         self._set_max_power_ratio()
         # config pigpio's pi and name its callback thread (ex-API)
-        self._pi = pigpio.pi()
-        self._pi._notify.name = 'pi.callback'
-        self._log.info('pigpio version {}'.format(self._pi.get_pigpio_version()))
         try:
+            self._pi = pigpio.pi()
+            if self._pi is None:
+                raise Exception('unable to instantiate pigpio.pi().')
+            elif self._pi._notify is None:
+                raise Exception('can\'t connect to pigpio daemon; did you start it?')
+            self._pi._notify.name = 'pi.callback'
+            self._log.info('pigpio version {}'.format(self._pi.get_pigpio_version()))
             from lib.motor import Motor
             self._log.info('imported Motor.')
-        except Exception:
+        except Exception as e:
+            self._log.error('error importing and/or configuring Motor: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
-            self._log.error('failed to import Motor, exiting...')
             sys.exit(1)
         self._port_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)

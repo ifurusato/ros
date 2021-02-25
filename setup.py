@@ -24,6 +24,7 @@ libraries = [ \
     'RPi.GPIO', \
     'pigpio', \
     'pimoroni-ioexpander', \
+    'rgbmatrix5x5', \
     'gpiozero', \
     ]
 
@@ -43,11 +44,9 @@ for name in libraries:
     except ImportError:
         print('')
         _command = 'pip3 install --user {}'.format(name, name)
-        print('This script requires the {} module.\nInstall with: \'{}\''.format(name, _command))
-        answer = confirm(False)
-#       print('confirmation: {}'.format(answer))
-#       sys.exit(0)
-        if answer.lower() in ['yes', 'y']:
+        print('This script requires the {} module.\nInstall with: {}'.format(name, _command))
+        confirmed = confirm(True)
+        if confirmed:
             _comleted_process = sp.run(_command, shell=True)
             print('-- return code {}'.format(_comleted_process.returncode))
             if _comleted_process.returncode == 0:
