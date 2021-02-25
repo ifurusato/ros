@@ -36,9 +36,10 @@ class Temperature(Feature):
 
     :param config:  the application configuration
     :param clock:   the optional system Clock
+    :param fan:     the optional cooling Fan
     :param level:   the log level
     '''
-    def __init__(self, config, clock, level):
+    def __init__(self, config, clock, fan, level):
         self._log = Logger('cpu-temp', level)
         if config is None:
             raise ValueError('null configuration argument.')
@@ -48,7 +49,8 @@ class Temperature(Feature):
         self._log.info('warning threshold: {:5.2f}°C; maximum threshold: {:5.2f}°C'.format(self._warning_threshold, self._max_threshold))
         self._tock_modulo = _config.get('tock_modulo') # how often to divide the TOCK messages
         self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
-        self._clock = clock # optional
+        self._clock   = clock # optional
+        self._fan     = fan # optional
         self._log.info('starting CPU temperature module.')
         self._cpu     = None
         self._borkd   = False
@@ -115,6 +117,11 @@ class Temperature(Feature):
         if self._enabled and ( message.event is Event.CLOCK_TOCK ) \
                 and (( next(self._counter) % self._tock_modulo ) == 0 ):
             self.display_temperature()
+            if self._fan:
+                if self.is_warning_temperature() or self.is_max_temperature():
+                    self._fan.enable()   
+                else:
+                    self._fan.disable()   
             if self.is_max_temperature():
                 self._log.warning('CPU HIGH TEMPERATURE!')
                 if self._clock:

@@ -20,6 +20,7 @@ libraries = [ \
     'colorama', \
     'readchar', \
     'pymessagebus==1.*', \
+    'ht0740', \
     'RPi.GPIO', \
     'pigpio', \
     'pimoroni-ioexpander', \
