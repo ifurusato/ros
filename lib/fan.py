@@ -12,6 +12,8 @@
 
 from ht0740 import HT0740
 from lib.logger import Logger, Level
+from colorama import init, Fore, Style
+init()
 
 class Fan(object):
     '''
@@ -22,12 +24,29 @@ class Fan(object):
         if config is None:
             raise ValueError('no configuration provided.')
         _config = config['ros'].get('fan')
-        _i2c_address = _config.get('i2c_address')
+        _i2c_address     = _config.get('i2c_address')
+        self._setpoint   = _config.get('setpoint')
+        self._hysteresis = _config.get('hysteresis')
+        self._log.info('setpoint temperature: {:5.2f}°C; hysteresis: {:2.1f}°C.'.format(self._setpoint, self._hysteresis))
         self._switch = HT0740(i2c_addr=0x39)
-        self._log.info("enabling fan.")
+        self._log.info('enabling fan.')
         self._switch.enable()
         self._enabled = False 
         self._log.info('ready.')
+
+    # ..........................................................................
+    def react_to_temperature(self, temperature):
+        '''
+        Performs typical thermostat behaviour:
+        * If the CPU temperature is higher than the setpoint plus hysteresis, turn the fan on.
+        * If the CPU temperature is lower than the setpoint minus hysteresis, turn the fan off.
+        '''
+        if temperature > ( self._setpoint + self._hysteresis ):
+            if self.enable():
+                self._log.info(Fore.YELLOW + 'enable fan:  cpu temperature: {:5.2f}°C.'.format(temperature))
+        elif temperature < ( self._setpoint - self._hysteresis ):
+            if self.disable():
+                self._log.info(Fore.YELLOW + Style.DIM + 'disable fan: cpu temperature: {:5.2f}°C.'.format(temperature))
 
     # ..........................................................................
     @property
@@ -36,22 +55,34 @@ class Fan(object):
 
     # ..........................................................................
     def enable(self):
+        '''
+        Enables the fan, returning True if calling the function
+        resulted in a change in state.
+        '''
         if self._enabled:
             self._log.debug('already enabled.')
+            return False
         else:
             self._switch.switch.on()
             self._switch.led.on()
             self._enabled = True 
             self._log.info('enabled.')
+            return True
 
     # ..........................................................................
     def disable(self):
+        '''
+        Disables the fan, returning True if calling the function
+        resulted in a change in state.
+        '''
         if self._enabled:
             self._switch.switch.off()
             self._switch.led.off()
             self._enabled = False 
             self._log.info('disabled.')
+            return True
         else:
             self._log.debug('already disabled.')
+            return False
 
 #EOF

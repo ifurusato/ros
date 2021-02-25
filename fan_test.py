@@ -11,18 +11,20 @@
 #
 
 import pytest
-import time, traceback
+import sys, time, traceback
 from colorama import init, Fore, Style
 init()
 
 from lib.fan import Fan
 from lib.logger import Level
 from lib.config_loader import ConfigLoader
+from lib.logger import Logger, Level
 
 # ..............................................................................
 @pytest.mark.unit
 def test_fan():
     _fan = None
+    _log = Logger("fan test", Level.INFO)
     try:
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
@@ -30,25 +32,29 @@ def test_fan():
         _config = _loader.configure(filename)
         _fan = Fan(_config, Level.INFO)
 
-        while True:
-            print("Switching fan on!")
+        limit = 2
+        for i in range(limit):
+            _log.info('Switching fan on!  [{:d}/{:d}]'.format(i+1,limit))
             _fan.enable()
             time.sleep(5)
-            print("Switching fan off!")
+            _log.info('Switching fan off! [{:d}/{:d}]'.format(i+1,limit))
             _fan.disable()
             time.sleep(5)
 
     except KeyboardInterrupt:
-        print("Disabling switch")
+        _log.info("Disabling switch")
         if _fan:
             _fan.disable()
+    except Exception as e:
+        _log.error('error in fan: {}\n{}'.format(e, traceback.format_exc()))
+        sys.exit(1)
 
 # ..............................................................................
 def main():
     try:
         test_fan()
     except KeyboardInterrupt:
-        print(Fore.RED + 'Ctrl-C caught: complete.')
+        print(Fore.CYAN + 'Ctrl-C caught: complete.')
     except Exception as e:
         print(Fore.RED + 'error closing: {}\n{}'.format(e, traceback.format_exc()))
 

@@ -9,6 +9,11 @@
 # created:  2020-04-20
 # modified: 2020-04-21
 #
+# Install and run stress test:
+#
+# % sudo apt install stress
+# % stress --cpu 4
+#
 
 import pytest
 import sys, time, traceback, itertools
@@ -63,10 +68,10 @@ def test_temperature():
         _clock.enable()
         while True:
             _count = next(_counter)
-            _temperature.display_temperature()
+#           _temperature.display_temperature()
 #           _value = _temperature.get_cpu_temperature()
-            _is_warning_temp = _temperature.is_warning_temperature()
-            _is_max_temp = _temperature.is_max_temperature()
+#           _is_warning_temp = _temperature.is_warning_temperature()
+#           _is_max_temp = _temperature.is_max_temperature()
 #           if _is_warning_temp:
 #               _log.warning('[{:04d}] loop; is warning temp? {}; is max temp? {}'.format(_count, _is_warning_temp, _is_max_temp))
 #           else:
