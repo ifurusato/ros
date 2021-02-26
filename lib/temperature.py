@@ -36,9 +36,10 @@ class Temperature(Feature):
 
     :param config:  the application configuration
     :param clock:   the optional system Clock
+    :param fan:     the optional cooling Fan
     :param level:   the log level
     '''
-    def __init__(self, config, clock, level):
+    def __init__(self, config, clock, fan, level):
         self._log = Logger('cpu-temp', level)
         if config is None:
             raise ValueError('null configuration argument.')
@@ -46,9 +47,10 @@ class Temperature(Feature):
         self._warning_threshold = _config.get('warning_threshold')
         self._max_threshold = _config.get('max_threshold')
         self._log.info('warning threshold: {:5.2f}°C; maximum threshold: {:5.2f}°C'.format(self._warning_threshold, self._max_threshold))
-        self._tock_modulo = _config.get('tock_modulo') # how often to divide the TOCK messages
-        self._log.info('tock modulo: {:d}'.format(self._tock_modulo))
-        self._clock = clock # optional
+        self._sample_time_sec = _config.get('sample_time_sec') # how often to divide the 1s TOCK messages
+        self._log.info('sampling time: {:d}s'.format(self._sample_time_sec))
+        self._clock   = clock # optional
+        self._fan     = fan # optional
         self._log.info('starting CPU temperature module.')
         self._cpu     = None
         self._borkd   = False
@@ -96,11 +98,11 @@ class Temperature(Feature):
         if self._cpu:
             _cpu_temp = self._cpu.temperature
             if self.is_warning_temperature():
-                self._log.warning('CPU temperature: {:5.2f}°C; HOT!'.format(_cpu_temp))
+                self._log.info('CPU temperature: {:5.2f}°C; '.format(_cpu_temp) + Fore.YELLOW + 'HOT!')
             elif self.is_max_temperature():
-                self._log.error('CPU temperature: {:5.2f}°C; TOO HOT!'.format(_cpu_temp))
+                self._log.error('CPU temperature: {:5.2f}°C; '.format(_cpu_temp) + Fore.RED + 'TOO HOT!')
             else:
-                self._log.info('CPU temperature: {:5.2f}°C; normal.'.format(_cpu_temp))
+                self._log.info('CPU temperature: {:5.2f}°C; '.format(_cpu_temp) + Fore.GREEN + 'normal.')
 
     # ..........................................................................
     def handle(self, message):
@@ -113,7 +115,9 @@ class Temperature(Feature):
         TEMPERATURE message.
         '''
         if self._enabled and ( message.event is Event.CLOCK_TOCK ) \
-                and (( next(self._counter) % self._tock_modulo ) == 0 ):
+                and (( next(self._counter) % self._sample_time_sec ) == 0 ):
+            if self._fan:
+                self._fan.react_to_temperature(self._cpu.temperature)
             self.display_temperature()
             if self.is_max_temperature():
                 self._log.warning('CPU HIGH TEMPERATURE!')

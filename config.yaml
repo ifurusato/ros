@@ -53,9 +53,13 @@ ros:
         active_range_cm:    90.0                 # the maximum distance in which this behaviour is active
         cruising_velocity:  50.0                 # velocity used for long distance steady cruising
     temperature:
-        warning_threshold: 75.0                  # temperature threshold, exceeding this generates a warning (nominal 80°C)
-        max_threshold:     84.0                  # maximum allowable temperature threshold, exceeding this sends an event (nominal 85°C)
-        tock_modulo:         15                  # modulo value against tock frequency (default 15s)
+        warning_threshold: 63.0                  # temperature threshold, exceeding this generates a warning (nominal 63°C)
+        max_threshold:     80.0                  # max allowable temperature threshold, exceeding this sends an event (nominal 80°C, Pi max is 85°C))
+        sample_time_sec:     15                  # modulo value against tock frequency (default 15s)
+    fan:
+        i2c_address:       0x39                  # the I²C address for the HT0740 device controlling the fan
+        setpoint:          50.0                  # thermostat setpoint temperature (nominal 50°C) 
+        hysteresis:         1.0                  # thermostat hysteresis
     blob:
         image_width:       320                   # camera resolution: width
         image_height:      240                   # camera resolution: height
