@@ -12,77 +12,123 @@
 # see: https://www.aeracode.org/2018/02/19/python-async-simplified/
 
 import sys, time, asyncio, itertools, traceback
+from abc import ABC, abstractmethod
+from collections import deque as Deque
 import uuid
 import random
 from colorama import init, Fore, Style
 init()
 
 from lib.event import Event
+from lib.ticker import Ticker
 from lib.message import Message
 from lib.message_factory import MessageFactory
 from lib.logger import Logger, Level
 
 #from mock.ifs import MockIntegratedFrontSensor
 
+# ..............................................................................
 class MessageBus():
-
-    def __init__(self, level=Level.DEBUG):
+    '''
+    Message Bus description.
+    '''
+    def __init__(self, level=Level.INFO):
         self._log = Logger('bus', level)
-        self._log.info('initialised MessageBus...')
-        self._log.debug('MessageBus.__init__')
+        self._log.debug('initialised...')
         self._message_factory = MessageFactory(Level.INFO)
         self._subscriptions = set()
+        self._log.debug('ready.')
 
+    # ..........................................................................
     @property
     def subscriptions(self):
+        '''
+        Return the current set of Subscriptions.
+        '''
         return self._subscriptions
 
+    # ..........................................................................
     def get_message_of_type(self, event, value):
+        '''
+        Provided an Event type and a message value, returns a Message.
+        '''
         return self._message_factory.get_message(event, value)
 
+    # ..........................................................................
     def publish(self, message: Message):
+        '''
+        Publishes the Message to all Subscribers.
+        '''
         self._log.info(Style.BRIGHT + 'publish message: {}'.format(message))
         for queue in self._subscriptions:
             queue.put_nowait(message)
 
-
 # ..............................................................................
 class Subscription():
-
-    def __init__(self, message_bus, level=Level.DEBUG):
+    '''
+    A subscription on the MessageBus.
+    '''
+    def __init__(self, message_bus, level=Level.WARN):
         self._log = Logger('subscription', level)
-        self._log.info('__init__')
+        self._log.debug('__init__')
         self._message_bus = message_bus
         self.queue = asyncio.Queue()
 
     def __enter__(self):
-        self._log.info('__enter__')
+        self._log.debug('__enter__')
         self._message_bus._subscriptions.add(self.queue)
         return self.queue
 
     def __exit__(self, type, value, traceback):
-        self._log.info('__exit__')
+        self._log.debug('__exit__')
         self._message_bus._subscriptions.remove(self.queue)
 
-
 # ..............................................................................
-class Subscriber(object):
-
-    def __init__(self, name, message_bus, level=Level.DEBUG):
+class Subscriber(ABC):
+    '''
+    Abstract subscriber functionality, to be subclassed by any classes
+    that subscribe to a MessageBus.
+    '''
+    def __init__(self, name, message_bus, level=Level.WARN):
         self._log = Logger('subscriber-{}'.format(name), level)
         self._name = name
-        self._log.info(Fore.WHITE + 'Subscriber created.')
+        self._log.debug('Subscriber created.')
         self._message_bus = message_bus
-        self._log.info('ready.')
+        self._log.debug('ready.')
 
     # ..............................................................................
-    def receive_message(self, message):
-        self._log.debug('Subscriber.receive_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+    def filter(self, message):
+        '''
+        Abstract filter: if not overridden, the default is simply to pass the message.
+        '''
+        self._log.info('Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
                 self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
+        return message
 
     # ..............................................................................
+    @abstractmethod
+    async def handle_message(self, message):
+        '''
+        Abstract function that receives a message obtained from a Subscription
+        to the MessageBus, performing an actions based on receipt.
+
+        This is to be subclassed to provide message handling/processing functionality.
+        '''
+        _message = self.filter(message)
+        if _message:
+            self._log.info(Fore.GREEN + 'FILTER-PASS:  Subscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                    self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{} .'.format(_message.value))
+        else:
+            self._log.info(Fore.DIM   + 'FILTERED-OUT: Subscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                    self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
+
+    # ..............................................................................
+    @abstractmethod
     async def subscribe(self):
-        self._log.info(Style.DIM + 'subscribe called.')
+        '''
+        DESCRIPTION.
+        '''
+        self._log.debug('subscribe called.')
         await asyncio.sleep(random.random() * 8)
         self._log.info(Fore.GREEN + 'Subscriber {} has subscribed.'.format(self._name))
     
@@ -92,32 +138,43 @@ class Subscriber(object):
         with Subscription(self._message_bus) as queue:
             while _message.event != Event.SHUTDOWN:
                 _message = await queue.get()
-                self.receive_message(_message)
+
+                self._log.info(Fore.GREEN + '1. calling handle_message()...')
+                self.handle_message(_message)
+                self._log.info(Fore.GREEN + '2. called handle_message(), awaiting..')
+#               await asyncio.sleep(0.1)
+#               self._log.info(Fore.GREEN + '3. return from awaiting handle_message().')
+
                 _message_count += 1
-                self._log.info(Style.DIM + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._log.info(Fore.GREEN + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
                         self._name, _message.number, _message.priority, _message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(_message.value))
                 if random.random() < 0.1:
-                    self._log.info(Fore.RED + 'Subscriber {} has received enough'.format(self._name))
+                    self._log.info(Fore.GREEN + 'Subscriber {} has received enough'.format(self._name))
                     break
     
-        self._log.info(Fore.RED + 'Subscriber {} is shutting down after receiving {:d} messages.'.format(self._name, _message_count))
-
+        self._log.info(Fore.GREEN + 'Subscriber {} is shutting down after receiving {:d} messages.'.format(self._name, _message_count))
 
 # ..............................................................................
-class Publisher(object):
-
-    def __init__(self, message_bus, level=Level.DEBUG):
+class Publisher(ABC):
+    '''
+    Abstract publisher, subclassed by any classes that publish to a MessageBus.
+    '''
+    def __init__(self, message_bus, level=Level.INFO):
         self._log = Logger('pub', level)
-        self._log.info(Fore.WHITE + 'Publisher: create. .......... ')
+        self._log.info(Fore.MAGENTA + 'Publisher: create.')
         self._counter = itertools.count()
         self._message_bus = message_bus
-        self._log.info('ready.')
+        self._log.debug('ready.')
 
     # ..........................................................................
+    @abstractmethod
     async def publish(self, iterations):
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'Publish called. ================================ ')
+        '''
+        DESCRIPTION.
+        '''
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'Publish called.')
         for x in range(iterations):
-            self._log.info(Fore.YELLOW + 'Publisher: I have {} subscribers now'.format(len(self._message_bus.subscriptions)))
+            self._log.info(Fore.MAGENTA + 'Publisher: I have {} subscribers now'.format(len(self._message_bus.subscriptions)))
             _uuid = str(uuid.uuid4())
             _message = self._message_bus.get_message_of_type(Event.EVENT_R1, 'msg_{:d}-{}'.format(x, _uuid))
             _message.number = next(self._counter)
@@ -129,33 +186,62 @@ class Publisher(object):
 
 # ..............................................................................
 class MySubscriber(Subscriber):
-    def __init__(self, name, message_bus, level=Level.DEBUG):
+    '''
+    Extends Subscriber as a typical subscriber use case class.
+    '''
+    def __init__(self, name, ticker, message_bus, level=Level.INFO):
         super().__init__(name, message_bus, level)
-        self._log.info(Fore.BLUE + 'MySubscriber: create. ========  =============== ========= =========== ')
-        self._log.info('ready.')
+        self._log.info(Fore.BLUE + 'MySubscriber: create.')
+        self._ticker = ticker
+        self._ticker.add_callback(self.tick)
+        _queue_limit = 3
+        self._deque = Deque([], maxlen=_queue_limit)
+        self._log.debug('ready.')
 
     # ..............................................................................
-    def receive_message(self, message):
-        time.sleep(3.0)
-        self._log.info('MySubscriber.receive_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+    def tick(self):
+        '''
+        Callback from the Ticker, used to pop the queue of any messages.
+        '''
+        self._log.info(Fore.YELLOW + 'TICK! {:d} in queue.'.format(len(self._deque)))
+        # queue
+
+    # ..............................................................................
+    def handle_message(self, message):
+        '''
+        Extends the superclass' method, with a substantial delay to test
+        whether the call is synchronous or asynchronous.
+        '''
+        self._log.info(Fore.BLUE + 'WAIT 8s: MySubscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
                 self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
-        time.sleep(3.0)
+        self._deque.appendleft(message)
+        self._log.info(Fore.GREEN + 'FILTER-2: Subscriber.handle_message(): {} in queue.'.format(len(self._deque)))
+        time.sleep(8.0)
 
     # ..............................................................................
     def subscribe(self):
-        self._log.info(Fore.BLUE + 'MySubscriber.subscribe() called.  ================================== ')
+        '''
+        Subscribes to the MessageBus by passing the call to the superclass.
+        '''
+        self._log.debug(Fore.BLUE + 'MySubscriber.subscribe() called.')
         return super().subscribe()
 
 # ..............................................................................
 class MyPublisher(Publisher):
-    def __init__(self, message_bus, level=Level.DEBUG):
+    '''
+    DESCRIPTION.
+    '''
+    def __init__(self, message_bus, level=Level.INFO):
         super().__init__(message_bus, level)
 #       self._log = Logger('my-pub', level)
-        self._log.info(Fore.YELLOW + 'MyPublisher: create. .......... ')
+        self._message_bus = message_bus # probably not needed
         self._log.info('ready.')
 
     # ..........................................................................
     def publish(self, iterations):
+        '''
+        DESCRIPTION.
+        '''
         self._log.info(Fore.MAGENTA + 'MyPublish called, passing... ========= ======= ======== ======= ======== ')
         return super().publish(iterations)
 
@@ -170,7 +256,13 @@ def main(argv):
         _log.heading('configuration', 'configuring objects...', '[1/4]')
         _message_bus = MessageBus()
 #       _publisher = Publisher(_message_bus)
+
+        _message_factory = MessageFactory(Level.INFO)
+        _loop_freq_hz = 10
+
+        _ticker = Ticker(_loop_freq_hz, Level.INFO)
         _publisher = MyPublisher(_message_bus)
+
         _publish = _publisher.publish(10)
 #       _publisher = MockIntegratedFrontSensor(_message_bus)
 #       _publisher.enable()
@@ -178,9 +270,10 @@ def main(argv):
 
         _subscriptions = []
         for x in range(10):
-            _subscriber = MySubscriber('s{}'.format(x), _message_bus)
+            _subscriber = MySubscriber('s{}'.format(x), _ticker, _message_bus)
             _subscriptions.append(_subscriber.subscribe())
 
+        _ticker.enable()
         loop = asyncio.get_event_loop()
         _log.heading('looping', 'starting loop...', '[3/4]')
 
