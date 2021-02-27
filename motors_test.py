@@ -30,11 +30,12 @@ from lib.motor import Motor
 from lib.motor_configurer import MotorConfigurer
 from lib.rotary_ctrl import RotaryControl
 from lib.button import Button
+from lib.i2c_scanner import I2CScanner
 from lib.moth import Moth
 from lib.rgbmatrix import RgbMatrix, Color, DisplayType
 
 # settings ................
-ENABLE_MOTH = False       # enable moth behaviour
+ENABLE_MOTH  = False      # enable moth behaviour
 USE_ROTARY_CONTROL = True # otherwise just set at 30.0
 PORT_REVERSE = False      # False runs the port wheel counter-clockwise
 STBD_REVERSE = False      # True runs the starboard wheel clockwise
@@ -96,10 +97,15 @@ def test_motors():
     _motors = _motor_configurer.get_motors()
     _motors.enable()
 
+    _i2c_scanner = I2CScanner(Level.WARN)
     if ENABLE_MOTH:
-        _rgbmatrix = RgbMatrix(Level.WARN)
-#       _rgbmatrix.set_display_type(DisplayType.SOLID)
-        _moth = Moth(_config, None, Level.WARN)
+        if _i2c_scanner.has_address([0x18]):
+            _rgbmatrix = RgbMatrix(Level.WARN)
+#           _rgbmatrix.set_display_type(DisplayType.SOLID)
+            _moth = Moth(_config, None, Level.WARN)
+        else:
+            _log.warning('cannot enable moth: no IO Expander found.')
+            _moth = None
 
     _pin_A = 12
     _button_12 = Button(_pin_A, callback_method_A, Level.INFO)
@@ -144,7 +150,7 @@ def test_motors():
                         _target_velocity = 30.0
         #           _power = _target_velocity / 100.0
                     _power = Motor.velocity_to_power(_target_velocity)
-                    if ENABLE_MOTH:
+                    if ENABLE_MOTH and _moth:
                         _moth_bias = _moth.get_bias()
 #                       _log.info(Fore.WHITE + Style.BRIGHT + 'port: {:5.2f}; stbd: {:5.2f}'.format(_moth_port, _moth_stbd))
 #                       _rgbmatrix.show_hue(_moth_hue, Orientation.BOTH)

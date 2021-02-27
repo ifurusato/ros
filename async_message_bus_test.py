@@ -35,7 +35,6 @@ class MessageBus():
     def __init__(self, level=Level.INFO):
         self._log = Logger('bus', level)
         self._log.debug('initialised...')
-        self._message_factory = MessageFactory(Level.INFO)
         self._subscriptions = set()
         self._log.debug('ready.')
 
@@ -46,13 +45,6 @@ class MessageBus():
         Return the current set of Subscriptions.
         '''
         return self._subscriptions
-
-    # ..........................................................................
-    def get_message_of_type(self, event, value):
-        '''
-        Provided an Event type and a message value, returns a Message.
-        '''
-        return self._message_factory.get_message(event, value)
 
     # ..........................................................................
     def publish(self, message: Message):
@@ -97,12 +89,17 @@ class Subscriber(ABC):
         self._log.debug('ready.')
 
     # ..............................................................................
+    @property
+    def name(self):
+        return self._name
+
+    # ..............................................................................
     def filter(self, message):
         '''
         Abstract filter: if not overridden, the default is simply to pass the message.
         '''
-        self._log.info('Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
-                self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
+        self._log.info(Fore.GREEN + 'Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(message.value))
         return message
 
     # ..............................................................................
@@ -117,10 +114,10 @@ class Subscriber(ABC):
         _message = self.filter(message)
         if _message:
             self._log.info(Fore.GREEN + 'FILTER-PASS:  Subscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
-                    self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{} .'.format(_message.value))
+                    self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{} .'.format(_message.value))
         else:
-            self._log.info(Fore.DIM   + 'FILTERED-OUT: Subscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
-                    self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
+            self._log.info(Fore.GREEN + Style.DIM + 'FILTERED-OUT: Subscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                    self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(message.value))
 
     # ..............................................................................
     @abstractmethod
@@ -133,8 +130,7 @@ class Subscriber(ABC):
         self._log.info(Fore.GREEN + 'Subscriber {} has subscribed.'.format(self._name))
     
         _message_count = 0
-        # initial non-null message
-        _message = self._message_bus.get_message_of_type(Event.NO_ACTION, 'noop')
+        _message = Message(-1, Event.NO_ACTION, None) # initial non-null message
         with Subscription(self._message_bus) as queue:
             while _message.event != Event.SHUTDOWN:
                 _message = await queue.get()
@@ -147,7 +143,7 @@ class Subscriber(ABC):
 
                 _message_count += 1
                 self._log.info(Fore.GREEN + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
-                        self._name, _message.number, _message.priority, _message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(_message.value))
+                        self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
                 if random.random() < 0.1:
                     self._log.info(Fore.GREEN + 'Subscriber {} has received enough'.format(self._name))
                     break
@@ -159,12 +155,21 @@ class Publisher(ABC):
     '''
     Abstract publisher, subclassed by any classes that publish to a MessageBus.
     '''
-    def __init__(self, message_bus, level=Level.INFO):
+    def __init__(self, message_factory, message_bus, level=Level.INFO):
         self._log = Logger('pub', level)
         self._log.info(Fore.MAGENTA + 'Publisher: create.')
-        self._counter = itertools.count()
+        self._message_factory = message_factory
         self._message_bus = message_bus
+        self._counter = itertools.count()
         self._log.debug('ready.')
+
+    # ..........................................................................
+    def get_message_of_type(self, event, value):
+        '''
+        Provided an Event type and a message value, returns a Message
+        generated from the MessageFactory.
+        '''
+        return self._message_factory.get_message(event, value)
 
     # ..........................................................................
     @abstractmethod
@@ -176,12 +181,12 @@ class Publisher(ABC):
         for x in range(iterations):
             self._log.info(Fore.MAGENTA + 'Publisher: I have {} subscribers now'.format(len(self._message_bus.subscriptions)))
             _uuid = str(uuid.uuid4())
-            _message = self._message_bus.get_message_of_type(Event.EVENT_R1, 'msg_{:d}-{}'.format(x, _uuid))
+            _message = self.get_message_of_type(Event.EVENT_R1, 'msg_{:d}-{}'.format(x, _uuid))
             _message.number = next(self._counter)
             self._message_bus.publish(_message)
             await asyncio.sleep(1)
     
-        _shutdown_message = self._message_bus.get_message_of_type(Event.SHUTDOWN, 'shutdown')
+        _shutdown_message = self.get_message_of_type(Event.SHUTDOWN, 'shutdown')
         self._message_bus.publish(_shutdown_message)
 
 # ..............................................................................
@@ -191,7 +196,7 @@ class MySubscriber(Subscriber):
     '''
     def __init__(self, name, ticker, message_bus, level=Level.INFO):
         super().__init__(name, message_bus, level)
-        self._log.info(Fore.BLUE + 'MySubscriber: create.')
+        self._log.info(Fore.YELLOW + 'MySubscriber: create.')
         self._ticker = ticker
         self._ticker.add_callback(self.tick)
         _queue_limit = 3
@@ -199,11 +204,31 @@ class MySubscriber(Subscriber):
         self._log.debug('ready.')
 
     # ..............................................................................
+    def queue_length(self):
+        return len(self._deque)
+
+    # ..............................................................................
+    def queue_contents(self):
+        str_list = []
+        for _message in self._deque: 
+            str_list.append('msg#{} '.format(_message.number))
+        return ''.join(str_list)
+
+    # ..............................................................................
     def tick(self):
         '''
         Callback from the Ticker, used to pop the queue of any messages.
         '''
-        self._log.info(Fore.YELLOW + 'TICK! {:d} in queue.'.format(len(self._deque)))
+        if self._deque: # is not empty
+            self._log.info(Fore.WHITE + 'TICK! {:d} in queue.'.format(len(self._deque)))
+            _message = self._deque.pop()
+            self._log.info(Fore.WHITE + 'MESSAGE popped:    {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                    self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
+            time.sleep(3.0)
+            self._log.info(Fore.WHITE  + 'MESSAGE processed: {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                    self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
+        else:
+            self._log.debug(Style.DIM + 'TICK! {:d} in empty queue.'.format(len(self._deque)))
         # queue
 
     # ..............................................................................
@@ -212,18 +237,17 @@ class MySubscriber(Subscriber):
         Extends the superclass' method, with a substantial delay to test
         whether the call is synchronous or asynchronous.
         '''
-        self._log.info(Fore.BLUE + 'WAIT 8s: MySubscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
-                self._name, message.number, message.priority, message.description) + Fore.YELLOW + Style.NORMAL + '{}'.format(message.value))
+        self._log.info(Fore.YELLOW + 'WAIT 8s: MySubscriber.handle_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(message.value))
         self._deque.appendleft(message)
-        self._log.info(Fore.GREEN + 'FILTER-2: Subscriber.handle_message(): {} in queue.'.format(len(self._deque)))
-        time.sleep(8.0)
+        self._log.info(Fore.YELLOW + 'FILTER-2: Subscriber.handle_message(): {} in queue.'.format(len(self._deque)))
 
     # ..............................................................................
     def subscribe(self):
         '''
         Subscribes to the MessageBus by passing the call to the superclass.
         '''
-        self._log.debug(Fore.BLUE + 'MySubscriber.subscribe() called.')
+        self._log.debug(Fore.YELLOW + 'MySubscriber.subscribe() called.')
         return super().subscribe()
 
 # ..............................................................................
@@ -231,8 +255,8 @@ class MyPublisher(Publisher):
     '''
     DESCRIPTION.
     '''
-    def __init__(self, message_bus, level=Level.INFO):
-        super().__init__(message_bus, level)
+    def __init__(self, message_factory, message_bus, level=Level.INFO):
+        super().__init__(message_factory, message_bus, level)
 #       self._log = Logger('my-pub', level)
         self._message_bus = message_bus # probably not needed
         self._log.info('ready.')
@@ -242,7 +266,7 @@ class MyPublisher(Publisher):
         '''
         DESCRIPTION.
         '''
-        self._log.info(Fore.MAGENTA + 'MyPublish called, passing... ========= ======= ======== ======= ======== ')
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'MyPublish called, passing... ========= ======= ======== ======= ======== ')
         return super().publish(iterations)
 
 # main .........................................................................
@@ -253,32 +277,38 @@ def main(argv):
     _log = Logger("main", Level.INFO)
     try:
 
-        _log.heading('configuration', 'configuring objects...', '[1/4]')
-        _message_bus = MessageBus()
-#       _publisher = Publisher(_message_bus)
-
-        _message_factory = MessageFactory(Level.INFO)
+        _log.info(Fore.BLUE + 'configuring objects...')
         _loop_freq_hz = 10
-
         _ticker = Ticker(_loop_freq_hz, Level.INFO)
-        _publisher = MyPublisher(_message_bus)
+        _message_factory = MessageFactory(Level.INFO)
+        _message_bus = MessageBus()
+
+#       _publisher = Publisher(_message_bus)
+        _publisher = MyPublisher(_message_factory, _message_bus)
+#       _publisher.enable()
 
         _publish = _publisher.publish(10)
-#       _publisher = MockIntegratedFrontSensor(_message_bus)
-#       _publisher.enable()
-        _log.heading('subscriptions', 'generating subscribers...', '[2/4]')
 
+        _log.info(Fore.BLUE + 'generating subscribers...')
+
+        _subscribers = []
         _subscriptions = []
         for x in range(10):
             _subscriber = MySubscriber('s{}'.format(x), _ticker, _message_bus)
+            _subscribers.append(_subscriber)
             _subscriptions.append(_subscriber.subscribe())
 
         _ticker.enable()
         loop = asyncio.get_event_loop()
-        _log.heading('looping', 'starting loop...', '[3/4]')
+        _log.info(Fore.BLUE + 'starting loop...')
 
         loop.run_until_complete(asyncio.gather(_publish, *_subscriptions))
-        _log.heading('complete', 'loop complete.', '[4/4]')
+
+        _log.info(Fore.BLUE + 'closing {} subscribers...'.format(len(_subscribers)))
+        for subscriber in _subscribers:
+            _log.info(Fore.BLUE + 'subscriber {} has {:d} messages remaining in queue: {}'.format(subscriber.name, subscriber.queue_length(), _subscriber.queue_contents()))
+
+        _log.info(Fore.BLUE + 'loop complete.')
 
     except KeyboardInterrupt:
         _log.info('caught Ctrl-C; exiting...')

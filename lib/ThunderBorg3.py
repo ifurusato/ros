@@ -86,7 +86,7 @@ Scans the I²C bus for a ThunderBorg boards and returns a list of all usable addr
 The busNumber if supplied is which I²C bus to scan, 0 for Rev 1 boards, 1 for Rev 2 boards, if not supplied the default is 1
     """
     found = []
-    print('Scanning I²C bus #%d' % (busNumber))
+    print('Scanning I²C bus #{:d}'.format(busNumber))
     bus = ThunderBorg(Level.INFO)
     for address in range(0x03, 0x78, 1):
         try:
@@ -105,11 +105,11 @@ The busNumber if supplied is which I²C bus to scan, 0 for Rev 1 boards, 1 for Re
         except:
             pass
     if len(found) == 0:
-        print('No ThunderBorg boards found, is bus #%d correct (should be 0 for Rev 1, 1 for Rev 2)' % (busNumber))
+        print('No ThunderBorg boards found, is bus #{:d} correct (should be 0 for Rev 1, 1 for Rev 2)'.format(busNumber))
     elif len(found) == 1:
         print('1 ThunderBorg board found')
     else:
-        print('%d ThunderBorg boards found' % (len(found)))
+        print('{:d} ThunderBorg boards found'.format(len(found)))
     return found
 
 

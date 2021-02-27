@@ -55,11 +55,11 @@ ros:
     temperature:
         warning_threshold: 63.0                  # temperature threshold, exceeding this generates a warning (nominal 63°C)
         max_threshold:     80.0                  # max allowable temperature threshold, exceeding this sends an event (nominal 80°C, Pi max is 85°C))
-        sample_time_sec:     15                  # modulo value against tock frequency (default 15s)
+        sample_time_sec:     10                  # modulo value against tock frequency (default 15s)
     fan:
-        i2c_address:       0x39                  # the I²C address for the HT0740 device controlling the fan
-        setpoint:          50.0                  # thermostat setpoint temperature (nominal 50°C) 
-        hysteresis:         1.0                  # thermostat hysteresis
+        i2c_address:       0x38                  # the I²C address for the HT0740 device controlling the fan
+        fan_threshold:      45.0                 # setpoint temperatury (nominal 50°C) at which fan turns on
+        hysteresis:         2.0                  # thermostat hysteresis
     blob:
         image_width:       320                   # camera resolution: width
         image_height:      240                   # camera resolution: height

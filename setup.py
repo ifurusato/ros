@@ -20,10 +20,14 @@ libraries = [ \
     'colorama', \
     'readchar', \
     'pymessagebus==1.*', \
+    'board', \
     'ht0740', \
     'RPi.GPIO', \
     'pigpio', \
     'pimoroni-ioexpander', \
+    'adafruit-extended-bus', \
+    'adafruit-circuitpython-bno08x', \
+    'pyquaternion', \
     'rgbmatrix5x5', \
     'gpiozero', \
     ]

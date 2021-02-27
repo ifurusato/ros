@@ -141,6 +141,8 @@ class Temperature(Feature):
     # ..........................................................................
     def disable(self):
         if self._enabled:
+            if self._fan:
+                self._fan.disable()
             self._enabled = False
             self._log.info('disabled.')
         else:
@@ -149,6 +151,8 @@ class Temperature(Feature):
     # ..........................................................................
     def close(self):
         self.disable()
+        if self._fan:
+            self._fan.close()
         self._closed = True
         self._log.info('closed.')
 
