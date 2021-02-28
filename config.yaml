@@ -135,11 +135,10 @@ ros:
         use_raw_distance: True                   # use raw distance, faster than when filtered
         read_delay_sec: 0.01                     # how long to wait at position for reading
         servo_number: 2                          # use this servo
-    cat_scan:
-        active_angle:  -90.0                     # servo position with arm raised
-        inactive_angle: 90.0                     # servo position with arm lowered
-        pir_pin:      15                         # pin connected to PIR sensor
-        servo_number: 3                          # use this servo
+    collision_detect:
+        pin:            16                       # pin connected to 15cm infrared collection detection sensor
+    motion_detect:
+        pin:            19                       # pin connected to PIR sensor
     servo1:
         center_offset: 0.0                       # used by lidar: offset necessary to center the servo at 0.0
     servo2:

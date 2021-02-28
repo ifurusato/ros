@@ -40,6 +40,7 @@ class Event(Enum):
     BUTTON                 = ( 7, "button",                   5,     False)
     STANDBY                = ( 8, "standby",                  6,     False)
     # bumper ...........................
+    COLLISION_DETECT       = (  9, "collision detect",         9,   False)
     BUMPER_PORT            = ( 10, "bumper port",             10,    True)
     BUMPER_CNTR            = ( 11, "bumper center",           10,    True)
     BUMPER_STBD            = ( 12, "bumper starboard",        10,    True)
@@ -85,6 +86,7 @@ class Event(Enum):
     EVENT_L2               = ( 93, "L2",                      150,   False) # L2 Button
     EVENT_R1               = ( 94, "R1: cruise",              150,   False) # R1 Button
     LIGHTS                 = ( 95, "R2: lights",              150,   False) # R2 Button
+    MOTION_DETECT          = ( 96, "motion detect",           150,   False)
 
     # movement directives ..............
     FORWARD_VELOCITY       = ( 101, "forward velocity",       200,   False)
