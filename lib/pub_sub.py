@@ -87,6 +87,7 @@ class Subscriber(ABC):
         self._event_types = event_types
         self._log.debug('Subscriber created.')
         self._message_bus = message_bus
+        self._processed = 0
         _queue_limit = 10
         self._deque = Deque([], maxlen=_queue_limit)
         self._log.debug('ready.')
@@ -95,6 +96,11 @@ class Subscriber(ABC):
     @property
     def name(self):
         return self._name
+
+    # ..............................................................................
+    @property
+    def processed(self):
+        return self._processed
 
     # ..............................................................................
     def queue_peek(self):
@@ -122,11 +128,11 @@ class Subscriber(ABC):
         we're interested in, return the message; otherwise return None.
         '''
         if message.event in self._event_types:
-            self._log.info(Fore.GREEN + 'FILTER-PASS   Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+            self._log.debug(Fore.GREEN + 'FILTER-PASS   Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
                     self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(message.value))
             return message
         else:
-            self._log.info(Fore.RED   + 'FILTER-IGNORE Subscriber.filter(): event: {}'.format(message.event.name))
+            self._log.debug(Fore.RED   + 'FILTER-IGNORE Subscriber.filter(): event: {}'.format(message.event.name))
             return None
 
     # ..............................................................................
@@ -144,7 +150,7 @@ class Subscriber(ABC):
             self._log.info(Fore.GREEN + 'FILTER-PASS:  Subscriber.receive_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
                     self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{} .'.format(_message.value))
         else:
-            self._log.info(Fore.GREEN + Style.DIM + 'FILTERED-OUT: Subscriber.receive_message() event: {}'.format(message.event.name))
+            self._log.info(Fore.RED   + 'FILTERED-OUT: Subscriber.receive_message() event: {}'.format(message.event.name))
         return _message
 
     # ..............................................................................
@@ -155,7 +161,7 @@ class Subscriber(ABC):
         _peeked = self.queue_peek()
         if _peeked: # queue was not empty
             self._log.debug(Fore.WHITE + 'TICK! {:d} in queue.'.format(len(self._deque)))
-            # we're only interested in types Event.INFRARED_PORT or Event.INFRARED_CNTR
+            # we're only interested in INFRARED event types
             if _peeked.event is Event.INFRARED_PORT or _peeked.event is Event.INFRARED_STBD:
                 _message = self._deque.pop()
                 self._log.info(Fore.WHITE + 'MESSAGE POPPED:    {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
@@ -177,7 +183,8 @@ class Subscriber(ABC):
         The abstract function that in a subclass would handle further processing
         of an incoming, filtered message.
         '''
-        self._log.info(Fore.YELLOW + Style.DIM + 'handle_message: {} msg #{}'.format(message.eid))
+        self._processed += 1
+        self._log.info(Fore.YELLOW + Style.DIM + 'handle_message: msg #{}'.format(message.eid))
         pass
 
     # ..............................................................................
@@ -233,7 +240,22 @@ class Publisher(ABC):
         '''
         TEMPORARY.
         '''
-        types = [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_STBD, Event.FULL_AHEAD, Event.ROAM, Event.EVENT_R1 ]
+        types = [ Event.STOP, \
+            Event.FULL_AHEAD, \
+            Event.ROAM, \
+            Event.HIGH_TEMPERATURE, \
+            Event.BATTERY_LOW, \
+            Event.COLLISION_DETECT, \
+            Event.BUMPER_PORT, \
+            Event.BUMPER_CNTR, \
+            Event.BUMPER_STBD, \
+            Event.INFRARED_PORT_SIDE, \
+            Event.INFRARED_PORT, \
+            Event.INFRARED_CNTR, \
+            Event.INFRARED_STBD, \
+            Event.INFRARED_STBD_SIDE, \
+            Event.MOTION_DETECT, \
+            Event.EVENT_R1 ]
         return types[random.randint(0, len(types)-1)]
 
     # ..........................................................................

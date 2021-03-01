@@ -151,7 +151,7 @@ ros:
         pin:           24                        # pin connected to hardware button
         toggle:      True                        # toggle or momentary button
     status:
-        led_pin:       27                        # pin connected to status LED
+        led_pin:       21                        # pin connected to status LED
 #   bumper:
 #       port_pin:      21                        # pin connected to port bumper
 #       center_pin:    19                        # pin connected to center bumper

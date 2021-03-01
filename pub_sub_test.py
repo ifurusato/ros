@@ -113,7 +113,8 @@ def main(argv):
 
         _log.info(Fore.BLUE + 'closing {} subscribers...'.format(len(_subscribers)))
         for subscriber in _subscribers:
-            _log.info(Fore.BLUE + 'subscriber {} has {:d} messages remaining in queue: {}'.format(subscriber.name, subscriber.queue_length, _subscriber.print_queue_contents()))
+            _log.info(Fore.BLUE + 'subscriber {} processed {:d} messages, with {:d} remaining in queue: {}'.format(\
+                    subscriber.name, subscriber.processed, subscriber.queue_length, _subscriber.print_queue_contents()))
 
         _log.info(Fore.BLUE + 'loop complete.')
 

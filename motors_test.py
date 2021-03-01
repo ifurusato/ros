@@ -107,8 +107,8 @@ def test_motors():
             _log.warning('cannot enable moth: no IO Expander found.')
             _moth = None
 
-    _pin_A = 12
-    _button_12 = Button(_pin_A, callback_method_A, Level.INFO)
+    _pin_A = 16
+    _button_16 = Button(_pin_A, callback_method_A, Level.INFO)
     _log.info(Style.BRIGHT + 'press button A (connected to pin {:d}) to toggle or initiate action.'.format(_pin_A))
 
     _pin_B = 24
