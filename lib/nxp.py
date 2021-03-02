@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence,
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-23
 # modified: 2020-08-31
 #
-# Wrapper class around the NXP 9 DoF IMU board. See the nxp9dof.py file for 
+# Wrapper class around the NXP 9 DoF IMU board. See the nxp9dof.py file for
 # more details.
 #
 

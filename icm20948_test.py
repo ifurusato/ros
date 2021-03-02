@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+#
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2019-08-03
+# modified: 2019-12-20
+#
 
 import sys, time, traceback, math
 from colorama import init, Fore, Style

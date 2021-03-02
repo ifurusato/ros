@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
 # author:   Murray Altheim
 # created:  2021-02-18
 # modified: 2021-02-18
 #
-# For some reason 'pimoroni-ioexpander' installs but continues
-# to show up here as uninstalled. A bug.
+# For some reason 'pimoroni-ioexpander' installs but continues to show up here
+# as uninstalled. A bug.
+#
 
 import importlib, sys 
 import subprocess as sp

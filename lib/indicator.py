@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2020-03-16
+# modified: 2020-06-12
+#
 
 import time, colorsys
 from colorama import init, Fore, Style
@@ -9,40 +19,39 @@ from lib.event import Event
 from lib.enums import Color
 from rgbmatrix5x5 import RGBMatrix5x5
 
-
 # ..............................................................................
 class Indicator():
     '''
-        This uses an RgbMatrix5x5 display as a sensor indicator:
+    This uses an RgbMatrix5x5 display as a sensor indicator:
 
-               DS  DA  DA  DA  DP
+           DS  DA  DA  DA  DP
 
-               DS  CH  CH  CH  DP
+           DS  CH  CH  CH  DP
 
-               DS  DF  DF  DF  DP
+           DS  DF  DF  DF  DP
 
-               --  BS  BC  BP  --
+           --  BS  BC  BP  --
 
-               SS  IS  IC  IP  PS
+           SS  IS  IC  IP  PS
 
-       where: 
-         -- = no display
-         DP = direction to port
-         DA = direction aft
-         DS = direction to starboard
-         CH = compass heading
-         DF = direction forward
-         BS = starboard bumper
-         BC = center bumper
-         BP = port bumper
-         SS = starboard side IR
-         IS = starboard IR
-         IC = center IR
-         IP = port IR
-         PS = port side IR
+   where:
+     -- = no display
+     DP = direction to port
+     DA = direction aft
+     DS = direction to starboard
+     CH = compass heading
+     DF = direction forward
+     BS = starboard bumper
+     BC = center bumper
+     BP = port bumper
+     SS = starboard side IR
+     IS = starboard IR
+     IC = center IR
+     IP = port IR
+     PS = port side IR
 
-        This additionally implements the add(message) method to act as a
-        consumer on the message queue.
+    This additionally implements the add(message) method to act as a
+    consumer on the message queue.
     '''
     def __init__(self, level):
         self._log = Logger("indicator", level)
@@ -58,8 +67,8 @@ class Indicator():
     # ..........................................................................
     def add(self, message):
         '''
-            Receives a message and reacts by setting the display accordingly.
-            This does not modify the message.
+        Receives a message and reacts by setting the display accordingly.
+        This does not modify the message.
         '''
         self._log.debug('added message #{}: priority {}: {}'.format(message.number, message.priority, message.description))
         event = message.event
@@ -113,11 +122,11 @@ class Indicator():
     # ..........................................................................
     def set_heading(self, hue):
         '''
-            Converts a hue value into an RGB value and displays it on the heading portion of the pixels.
+        Converts a hue value into an RGB value and displays it on the heading portion of the pixels.
 
-            The hue value should be in degrees from 0-360, as colors on a color wheel.
-            If the value goes negative it's expected that the 181-360 degree values are simply
-            negated, so we convert the argument accordingly.
+        The hue value should be in degrees from 0-360, as colors on a color wheel.
+        If the value goes negative it's expected that the 181-360 degree values are simply
+        negated, so we convert the argument accordingly.
         '''
         if hue < 0:
             hue = 360.0 - hue

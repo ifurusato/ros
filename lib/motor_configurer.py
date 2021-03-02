@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, 
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-10-05
@@ -22,7 +22,7 @@ THUNDERBORG_ADDRESS = 0x15
 # ..............................................................................
 class MotorConfigurer():
     '''
-    Configures the ThunderBorg motor controller for a pair of motors. 
+    Configures the ThunderBorg motor controller for a pair of motors.
 
     :param config:       the application configuration
     :param clock:        the 'system' clock providing timing for velocity calculation
@@ -67,7 +67,7 @@ class MotorConfigurer():
                 raise Exception('unable to instantiate ThunderBorg [1].')
 #               sys.exit(1)
             TB.SetLedShowBattery(True)
-    
+
             # initialise ThunderBorg ...........................
             self._log.debug('getting battery reading...')
             # get battery voltage to determine max motor power
@@ -131,5 +131,5 @@ class MotorConfigurer():
         Return the configured motors.
         '''
         return self._motors
-            
+
 #EOF

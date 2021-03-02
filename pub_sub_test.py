@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2021 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, # Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2021-02-24
-# modified: 2021-02-24
+# modified: 2021-03-01
 #
 # see: https://www.aeracode.org/2018/02/19/python-async-simplified/
 
@@ -23,6 +24,9 @@ from lib.message import Message
 from lib.message_factory import MessageFactory
 from lib.logger import Logger, Level
 from lib.pub_sub import MessageBus, Publisher, Subscriber
+
+#from lib.ifs import IntegratedFrontSensor
+from mock.ifs import MockIntegratedFrontSensor
 
 # ..............................................................................
 class MySubscriber(Subscriber):
@@ -72,6 +76,7 @@ class MyPublisher(Publisher):
         DESCRIPTION.
         '''
         self._log.info(Fore.MAGENTA + Style.BRIGHT + 'MyPublish called, passing... ========= ======= ======== ======= ======== ')
+        
         return super().publish(iterations)
 
 # main .........................................................................
@@ -92,6 +97,12 @@ def main(argv):
         _publisher = MyPublisher(_message_factory, _message_bus)
 #       _publisher.enable()
 
+        _log.info('creating clock...')
+        _log.info('creating integrated front sensor...')
+#       _ifs = IntegratedFrontSensor(_config, _clock, Level.INFO)
+        _ifs = MockIntegratedFrontSensor(_message_bus, Level.INFO)
+        _ifs.enable()
+
         _publish = _publisher.publish(10)
 
         _log.info(Fore.BLUE + 'generating subscribers...')
@@ -107,7 +118,10 @@ def main(argv):
 
         _ticker.enable()
         _loop = asyncio.get_event_loop()
-        _log.info(Fore.BLUE + 'starting loop...')
+
+        _log.info(Fore.BLUE + 'starting IFS loop...')
+        while _ifs.enabled:
+            time.sleep(1.0)
 
         _loop.run_until_complete(asyncio.gather(_publish, *_subscriptions))
 
@@ -116,6 +130,7 @@ def main(argv):
             _log.info(Fore.BLUE + 'subscriber {} processed {:d} messages, with {:d} remaining in queue: {}'.format(\
                     subscriber.name, subscriber.processed, subscriber.queue_length, _subscriber.print_queue_contents()))
 
+        _ifs.disable()
         _log.info(Fore.BLUE + 'loop complete.')
 
     except KeyboardInterrupt:

@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2021-02-10
+# modified: 2021-02-10
+#
 # Searches for all import statements from within the current directory tree,
 # then attempts to import each module, producing a report indicating success
 # or failure. This lets you know which modules you'll need to manually import
@@ -9,10 +17,6 @@
 # Note that during the imports an exception handler may call sys.exit(); in
 # this case the script may terminate prior to finishing. If you don't see the
 # "EOF" message the script did not finish.
-#
-# author:   Murray Altheim
-# created:  2021-02-10
-# modified: 2021-02-10
 #
 
 import sys, traceback, itertools, importlib, re, subprocess

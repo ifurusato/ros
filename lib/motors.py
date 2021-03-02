@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-01-18
-# modified: 2020-08-30
+# modified: 2021-02-08
 #
 # To start pigpiod:
 #
-#   % sudo systemctl start pigpiod 
+#   % sudo systemctl start pigpiod
 #
 # To enable/disable pigpiod on boot:
 #
 #   % sudo systemctl [enable|disable] pigpiod
 #
 # To control the daemon:
-# 
+#
 # % sudo systemctl [start|stop|status] pigpiod
 #
 

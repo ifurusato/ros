@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   altheim
 # created:  2020-03-31
 # modified: 2020-03-31
+#
 
-# Import library functions we need
 import time
 from colorama import init, Fore, Style
 init()
@@ -26,12 +26,12 @@ from lib.logger import Logger, Level
 # ..............................................................................
 class Lidar():
     '''
-        A combination of a VL53L1X laser distance sensor and a micro servo as a LIDAR.
+    A combination of a VL53L1X laser distance sensor and a micro servo as a LIDAR.
 
-        The zero position is straight forward, with negative (minimum servo position)
-        sweeping to port, positive (maximum servo position) to starboard.
+    The zero position is straight forward, with negative (minimum servo position)
+    sweeping to port, positive (maximum servo position) to starboard.
 
-        The 'reverse_movement' parameter is used in case the servo movement is backwards.
+    The 'reverse_movement' parameter is used in case the servo movement is backwards.
     '''
     def __init__(self, config, level):
         self._log = Logger('lidar', Level.INFO)
@@ -43,11 +43,11 @@ class Lidar():
             self._double_sweep = _config.get('double_sweep')
             self._min_angle = _config.get('min_angle')
             self._max_angle = _config.get('max_angle')
-            self._degree_step = _config.get('degree_step')  
-            self._step_delay_sec = _config.get('step_delay_sec')  
-            _range_value = _config.get('tof_range')  
+            self._degree_step = _config.get('degree_step')
+            self._step_delay_sec = _config.get('step_delay_sec')
+            _range_value = _config.get('tof_range')
             _range = Range.from_str(_range_value)
-            _servo_number = _config.get('servo_number')  
+            _servo_number = _config.get('servo_number')
         else:
             self._log.warning('no configuration provided.')
             self._log.info('play sound disabled.')
@@ -99,7 +99,7 @@ class Lidar():
             self._log.warning('cannot scan: disabled.')
             return None
         try:
-    
+
             start = time.time()
             _min_mm = 9999.0
             _angle_at_min = 0.0
@@ -172,12 +172,12 @@ class Lidar():
 #           self._servo.set_position(_angle_at_max)
 #           self.close()
             return [ _angle_at_min, _min_mm, _angle_at_max, _max_mm ]
-    
+
         except KeyboardInterrupt:
             self._log.info('caught Ctrl-C.')
             self.close()
             self._log.info('interrupted: incomplete.')
-    
+
 
     # ..........................................................................
     def enable(self):

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
 # created:  2020-10-05
 # modified: 2020-10-05
 #
@@ -83,7 +87,7 @@ def test_motors():
         _pot_limit = 1.0
     else:
         _pot_limit = 0.0
-    _pot.set_output_limits(0.0, _pot_limit) 
+    _pot.set_output_limits(0.0, _pot_limit)
 
 
     try:
@@ -101,7 +105,7 @@ def test_motors():
 
             if POT_CONTROL:
                 _power = _scaled_value
-#               _power = i * 0.1 
+#               _power = i * 0.1
                 _log.info(Fore.YELLOW + 'set motor power: {:5.2f} (original: {:d});'.format(_power, i))
                 if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
                     _port_motor.set_motor_power(-1.0 * _power)
@@ -127,7 +131,7 @@ def test_motors():
 #           time.sleep(1.0)
 #           time.sleep(1.0)
             _rate.wait()
-    
+
         # tests...
         if ORIENTATION == Orientation.BOTH or ORIENTATION == Orientation.PORT:
             _log.info('port motor: {:d} steps.'.format(_port_pid.steps))

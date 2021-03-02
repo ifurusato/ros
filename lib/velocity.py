@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-09-13
@@ -12,6 +12,7 @@
 # Unlike other enums this one requires configuration as it involves the
 # specifics of the motor encoders and physical geometry of the robot.
 # Unconfigured it always returns 0.0, which is harmless but not useful.
+#
 
 import sys, math, time
 from colorama import init, Fore, Style
@@ -31,63 +32,63 @@ class Velocity(object):
     of encoder ticks/steps per second corresponds to a given velocity,
     which can be converted to an SI unit (e.g., cm/sec).
 
-        Based on some hardware constants from the robot:
+    Based on some hardware constants from the robot:
 
-          68.0mm diameter tires
-          213.62830mm/21.362830cm wheel circumference
-          494 encoder steps per rotation
+      68.0mm diameter tires
+      213.62830mm/21.362830cm wheel circumference
+      494 encoder steps per rotation
 
-        we can noodle around and deduce various related values:
+    we can noodle around and deduce various related values:
 
-          494 steps = 213.62830mm
-          494 steps = 21.362830cm
+      494 steps = 213.62830mm
+      494 steps = 21.362830cm
 
-          2312.4278 steps per meter
-          23.124278 steps per cm
-          2.3124278 steps per mm
+      2312.4278 steps per meter
+      23.124278 steps per cm
+      2.3124278 steps per mm
 
-          4.681028 rotations per meter
-          0.04681028 rotations per cm
-          0.004681028 rotations per mm
-          0.432445952mm per step
+      4.681028 rotations per meter
+      0.04681028 rotations per cm
+      0.004681028 rotations per mm
+      0.432445952mm per step
 
-        further deriving:
+    further deriving:
 
-          1 wheel rotation/sec = 21.362830cm/sec
-          494 steps/minute = 8.2333 steps/second @ 1rpm
-          4940 steps/minute = 82.3333 steps/second @ 10rpm
-          49400 steps/minute = 823.3333 steps/second @ 100rpm
-          1 rps = 494 steps/second = 21.362830cm/sec
+      1 wheel rotation/sec = 21.362830cm/sec
+      494 steps/minute = 8.2333 steps/second @ 1rpm
+      4940 steps/minute = 82.3333 steps/second @ 10rpm
+      49400 steps/minute = 823.3333 steps/second @ 100rpm
+      1 rps = 494 steps/second = 21.362830cm/sec
 
-          2312.4278 steps per second @ 1 m/sec
-          2312.4278 steps per second @ 100 cm/sec
-          231.24278 steps per second @ 10 cm/sec
-          23.124278 steps per second @ 1 cm/sec
-          1 cm/sec = 23.124278 steps/sec
+      2312.4278 steps per second @ 1 m/sec
+      2312.4278 steps per second @ 100 cm/sec
+      231.24278 steps per second @ 10 cm/sec
+      23.124278 steps per second @ 1 cm/sec
+      1 cm/sec = 23.124278 steps/sec
 
-        And so for our 50ms (20Hz) loop:
+    And so for our 50ms (20Hz) loop:
 
-          1/20th wheel rotation = 24.7 steps
-          1/20th rotation = 1.06815cm
-          1/20th rotation = 10.6815mm
-          1.1562139 steps per 1/20th sec @ 1 cm/sec
+      1/20th wheel rotation = 24.7 steps
+      1/20th rotation = 1.06815cm
+      1/20th rotation = 10.6815mm
+      1.1562139 steps per 1/20th sec @ 1 cm/sec
 
-        The most important for our purposes being:
+    The most important for our purposes being:
 
-          494 steps/sec = 21.362830cm/sec
+      494 steps/sec = 21.362830cm/sec
 
-        If we wish to calculate velocity in cm/sec we need to find out how many steps
-        have occurred since the last function call, then use that to obtain velocity.
+    If we wish to calculate velocity in cm/sec we need to find out how many steps
+    have occurred since the last function call, then use that to obtain velocity.
 
-        But this is only true if our duty cycle is exactly 20Hz, which it's not. So
-        to properly calculate how many steps we might expect in a certain number of
-        milliseconds, we go back to our earlier deduction:
+    But this is only true if our duty cycle is exactly 20Hz, which it's not. So
+    to properly calculate how many steps we might expect in a certain number of
+    milliseconds, we go back to our earlier deduction:
 
-          2312.4278 steps per 1000ms = 1 cm/sec
-          2.3124278 steps per 1ms = 1 cm/sec
+      2312.4278 steps per 1000ms = 1 cm/sec
+      2.3124278 steps per 1ms = 1 cm/sec
 
-        and multiply that constant times the number of milliseconds passed since the
-        last function call.
+    and multiply that constant times the number of milliseconds passed since the
+    last function call.
 
     TODO:
       a. measure unloaded wheel speed at maximum power (in steps per second,

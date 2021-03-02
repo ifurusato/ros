@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-01-19
 # modified: 2020-02-13
+#
 
 from enum import Enum
 
 from lib.logger import Logger, Level
 
 level = Level.INFO
-
 
 class State(Enum):
     NONE = 0
@@ -24,17 +24,15 @@ class State(Enum):
     DISABLED = 4
     CLOSED = 5
 
-
 class IllegalStateError(RuntimeError):
     pass
 
-
 class FiniteStateMachine():
     '''
-        Implementation of a Finite State Machine (FSM).
+    Implementation of a Finite State Machine (FSM).
 
-        This basically permits an initial run() followed by repeated transitions
-        between enable() and disable(), followed by a terminal close().
+    This basically permits an initial run() followed by repeated transitions
+    between enable() and disable(), followed by a terminal close().
     '''
 
     # ..........................................................................
@@ -49,9 +47,9 @@ class FiniteStateMachine():
     # ..........................................................................
     def __transition__(self, next_state):
         '''
-            This method provides the functionality of a transition table, throwing
-            exceptions or logging warnings if the transition is either invalid or
-            ill-advised (resp.).
+        This method provides the functionality of a transition table, throwing
+        exceptions or logging warnings if the transition is either invalid or
+        ill-advised (resp.).
         '''
         self._log.debug('transition in {} from {} to {}.'.format(self.task_name, self.state, next_state))
         # transition table:

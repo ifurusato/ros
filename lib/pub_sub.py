@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2021 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, 
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2021-02-24
-# modified: 2021-02-28
+# modified: 2021-03-01
 #
 # Contains the MessageBus, Subscription, Subscriber, and Publisher classes.
 #
@@ -128,7 +128,7 @@ class Subscriber(ABC):
         we're interested in, return the message; otherwise return None.
         '''
         if message.event in self._event_types:
-            self._log.debug(Fore.GREEN + 'FILTER-PASS   Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+            self._log.debug(Fore.GREEN + 'FILTER-PASS   Subscriber.filter(): {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
                     self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(message.value))
             return message
         else:
@@ -147,7 +147,7 @@ class Subscriber(ABC):
         _message = self.filter(message)
         if _message:
             self._deque.appendleft(_message)
-            self._log.info(Fore.GREEN + 'FILTER-PASS:  Subscriber.receive_message(): {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+            self._log.info(Fore.GREEN + 'FILTER-PASS:  Subscriber.receive_message(): {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
                     self._name, message.number, message.priority, message.description) + Fore.WHITE + Style.NORMAL + '{} .'.format(_message.value))
         else:
             self._log.info(Fore.RED   + 'FILTERED-OUT: Subscriber.receive_message() event: {}'.format(message.event.name))
@@ -164,11 +164,11 @@ class Subscriber(ABC):
             # we're only interested in INFRARED event types
             if _peeked.event is Event.INFRARED_PORT or _peeked.event is Event.INFRARED_STBD:
                 _message = self._deque.pop()
-                self._log.info(Fore.WHITE + 'MESSAGE POPPED:    {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._log.info(Fore.WHITE + 'MESSAGE POPPED:    {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
                         self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
 #               time.sleep(3.0)
                 self.handle_message(_message)
-                self._log.info(Fore.WHITE + Style.BRIGHT + 'MESSAGE PROCESSED: {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._log.info(Fore.WHITE + Style.BRIGHT + 'MESSAGE PROCESSED: {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
                         self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
             else: # did not expect anything except those two
                 _message = self._deque.pop()
@@ -206,7 +206,7 @@ class Subscriber(ABC):
                 await self.receive_message(_message)
 #               self._log.info(Fore.GREEN + '2. called receive_message(), awaiting..')
                 _message_count += 1
-                self._log.info(Fore.GREEN + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; value: '.format(\
+                self._log.info(Fore.GREEN + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
                         self._name, _message.number, _message.priority, _message.description) + Fore.WHITE + Style.NORMAL + '{}'.format(_message.value))
                 if random.random() < 0.1:
                     self._log.info(Fore.GREEN + 'Subscriber {} has received enough'.format(self._name))

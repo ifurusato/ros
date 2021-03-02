@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Robot Operating System Daemon (rosd)
-#
-# This also uses the rosd.service.
-
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence,
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-01
 # modified: 2021-02-12
+#
+# Robot Operating System Daemon (rosd). This also uses the rosd.service.
 #
 # see: https://dpbl.wordpress.com/2017/02/12/a-tutorial-on-python-daemon/
 # ..............................................................................

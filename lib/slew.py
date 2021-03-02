@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-04-27
 # modified: 2020-05-21
 #
-#  A general purpose slew limiter that limits the rate of change of a value.
+# A general purpose slew limiter that limits the rate of change of a value.
 #
 
 import time
@@ -26,18 +26,17 @@ except ImportError:
 from lib.logger import Level, Logger
 from lib.enums import Orientation
 
-
 # ..............................................................................
 class SlewLimiter():
     '''
-        A general purpose slew limiter that limits the rate of change of a value.
+    A general purpose slew limiter that limits the rate of change of a value.
 
-        This uses the ros:slew: section of the YAML configuration.
+    This uses the ros:slew: section of the YAML configuration.
 
-        Parameters:
-            config: application configuration
-            orientation: motor orientation, used only for logging label (optional)
-            level: the logging Level
+    Parameters:
+    :param config:        application configuration
+    :param orientation:   motor orientation, used only for logging label (optional)
+    :param level:         the logging Level
     '''
     def __init__(self, config, orientation, level):
         if orientation is None:
@@ -61,8 +60,8 @@ class SlewLimiter():
     # ..........................................................................
     def set_rate_limit(self, slew_rate):
         '''
-            Sets the slew rate limit to the argument, in value/second. This
-            overrides the value set in configuration. The default is NORMAL.
+        Sets the slew rate limit to the argument, in value/second. This
+        overrides the value set in configuration. The default is NORMAL.
         '''
         if not isinstance(slew_rate, SlewRate):
             raise Exception('expected SlewRate argument, not {}'.format(type(slew_rate)))
@@ -88,18 +87,18 @@ class SlewLimiter():
     # ..........................................................................
     def reset(self, value):
         '''
-            Resets the elapsed timer.
+        Resets the elapsed timer.
         '''
         self._start_time = self._millis()
 
     # ..........................................................................
     def slew(self, current_value, target_value):
         '''
-            The returned result is the maximum amount of change between the current value
-            and the target value based on the amount of elapsed time between calls (in
-            milliseconds) multiplied by a constant set in configuration.
+        The returned result is the maximum amount of change between the current value
+        and the target value based on the amount of elapsed time between calls (in
+        milliseconds) multiplied by a constant set in configuration.
 
-            If not enabled this returns the passed target value argument.
+        If not enabled this returns the passed target value argument.
         '''
         if not self._enabled:
             self._log.warning('disabled; returning original target value {:+06.2f}.'.format(target_value))

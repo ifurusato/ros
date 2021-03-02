@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.7
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence, 
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-23
@@ -64,7 +64,7 @@ class Rate():
         '''
         Permits auto-adjustment of loop trim should this be needed.
         Note that the trim feature is only used in the millisecond timer
-        mode, not the nanosecond timer. Note that the argument's units 
+        mode, not the nanosecond timer. Note that the argument's units
         are seconds, not milliseconds.
         '''
 #       self._log.info(Fore.BLACK + 'trim argument: {:9.6f}ms'.format(trim_s))

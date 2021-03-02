@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-15
@@ -11,6 +11,24 @@
 #
 # Tests the ICM20948 and Compass class (which uses a BNO055) for an IMU fusion
 # used solely for reading an absolute heading (i.e., as a compass).
+
+
+# We know that if an object is not moving it will experience acceleration 
+# only due to gravity (neglect the other minimal forces). The direction of 
+# gravitational force is always same with respect to the earth’s frame but 
+# based on the orientation of IMU, it will experience different amount of 
+# acceleration along the three axes. These acceleration values can give us 
+# roll and pitch values.
+#
+#   pitch = 180 * atan2(accelX, sqrt(accelY*accelY + accelZ*accelZ))/PI;
+#   roll  = 180 * atan2(accelY, sqrt(accelX*accelX + accelZ*accelZ))/PI;
+#
+# As in accelerometer one can use the X, Y and Z magnetometer readings to 
+# calculate yaw.
+#
+#   mag_x = magReadX*cos(pitch) + magReadY*sin(roll)*sin(pitch) + magReadZ*cos(roll)*sin(pitch)
+#   mag_y = magReadY * cos(roll) - magReadZ * sin(roll)
+#   yaw   = 180 * atan2(-mag_y,mag_x)/M_PI;
 #
 
 import pytest

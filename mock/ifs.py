@@ -15,7 +15,8 @@
 # unrelated to the original IFS.
 #
 
-import sys, asyncio, time, itertools
+import sys, time, itertools
+#import asyncio
 from threading import Thread
 from colorama import init, Fore, Style
 init()
@@ -116,11 +117,12 @@ class MockIntegratedFrontSensor(object):
         self._log.info(Fore.YELLOW + 'exit loop.')
 
     # ..........................................................................
-    async def fire_message(self, event):
+#   async def fire_message(self, event):
+    def fire_message(self, event):
         self._log.debug('firing message for event {}'.format(event))
         _message = self._message_factory.get_message(event, True)
         self._message_bus.publish(_message)
-        await asyncio.sleep(0.1)
+#       await asyncio.sleep(0.1)
 
     # message handling .........................................................
 

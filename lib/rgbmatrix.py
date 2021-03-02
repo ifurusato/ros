@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2020-03-16
+# modified: 2020-05-23
+#
 
 import sys, time, colorsys
 from threading import Thread
@@ -37,9 +47,9 @@ class DisplayType(Enum):
 # ..............................................................................
 class RgbMatrix(Feature):
     '''
-        This class provides access to a pair of Pimoroni 5x5 RGB LED Matrix displays,
-        labeled port and starboard. It also includes several canned demonstrations,
-        which can be used to indicate behaviours in progress.
+    This class provides access to a pair of Pimoroni 5x5 RGB LED Matrix displays,
+    labeled port and starboard. It also includes several canned demonstrations,
+    which can be used to indicate behaviours in progress.
     '''
     def __init__(self, level):
         global enabled
@@ -137,9 +147,9 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _cpu(self, rgbmatrix5x5):
         '''
-            A port of the CPU example from the Matrix 11x7. 
+        A port of the CPU example from the Matrix 11x7.
 
-            For some reasoon the output needs to be rotated 90 degrees to work properly.
+        For some reasoon the output needs to be rotated 90 degrees to work properly.
         '''
         self._log.info('starting cpu...')
         i = 0
@@ -166,11 +176,11 @@ class RgbMatrix(Feature):
     # ......................................................
     def _set_graph(self, rgbmatrix5x5, values, low=None, high=None, x=0, y=0):
         '''
-            Plot a series of values into the display buffer. 
+        Plot a series of values into the display buffer.
         '''
         global enabled
         # def set_graph(self, values, low=None, high=None, brightness=1.0, x=0, y=0, width=None, height=None):
-#       x=0 
+#       x=0
 #       y=0
         _width = self._width - 1
         _height = self._height + 0
@@ -182,7 +192,7 @@ class RgbMatrix(Feature):
         span = high - low
         for p_y in range(0, _height):
             try:
-                _value = values[p_y] 
+                _value = values[p_y]
                 _value -= low
                 _value /= float(span)
                 _value *= _width * 10.0
@@ -215,9 +225,10 @@ class RgbMatrix(Feature):
     # ......................................................
     def _grow_buffer(self, x, y):
         '''
-            Grows a copy of the buffer until the new shape fits inside it.
-            :param x: Minimum x size
-            :param y: Minimum y size
+        Grows a copy of the buffer until the new shape fits inside it.
+
+        :param x: Minimum x size
+        :param y: Minimum y size
         '''
         x_pad = max(0, x - self._buf.shape[0])
         y_pad = max(0, y - self._buf.shape[1])
@@ -226,7 +237,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _rainbow(self, rgbmatrix5x5):
         '''
-            Display a rainbow pattern.
+        Display a rainbow pattern.
         '''
         global enabled
         self._log.info('starting rainbow...')
@@ -253,7 +264,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _sworl(self, rgbmatrix5x5):
         '''
-            Display a sworl pattern, whatever that is.
+        Display a sworl pattern, whatever that is.
         '''
         global enabled
         self._log.info('starting sworl...')
@@ -265,14 +276,14 @@ class RgbMatrix(Feature):
                 time.sleep(0.003)
             for i in range(0, 5):
                 for r in range(10, 250, 10):
-                    _blue = r - 128 if r > 128 else 0 
+                    _blue = r - 128 if r > 128 else 0
                     rgbmatrix5x5.set_all(r, _blue, 0)
                     rgbmatrix5x5.show()
                     time.sleep(0.01)
                 if not enabled:
                     break;
                 for r in range(250, 10, -10):
-                    _blue = r - 128 if r > 128 else 0 
+                    _blue = r - 128 if r > 128 else 0
                     rgbmatrix5x5.set_all(r, _blue, 0)
                     rgbmatrix5x5.show()
                     time.sleep(0.01)
@@ -317,7 +328,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):
         '''
-            Display a specified static, solid color on only the port display.
+        Display a specified static, solid color on only the port display.
         '''
         global enabled
 #       self.set_color(self._color)
@@ -330,7 +341,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):
         '''
-            Display a specified static, solid color on only the port display.
+        Display a specified static, solid color on only the port display.
         '''
         global enabled
 #       self.set_color(self._color)
@@ -343,7 +354,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _dark(self, rgbmatrix5x5):
         '''
-            Display a dark static color.
+        Display a dark static color.
         '''
         global enabled
         self._log.info('starting dark...')
@@ -364,7 +375,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _blinky(self, rgbmatrix5x5):
         '''
-            Display a pair of blinky spots.
+        Display a pair of blinky spots.
         '''
         global enabled
         self._log.info('starting blinky...')
@@ -408,7 +419,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _scan(self, rgbmatrix5x5):
         '''
-            KITT- or Cylon-like eyeball scanning.
+        KITT- or Cylon-like eyeball scanning.
         '''
         global enabled
         self._log.info('starting scan...')
@@ -441,7 +452,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _random(self, rgbmatrix5x5):
         '''
-            Display an ever-changing random pattern.
+        Display an ever-changing random pattern.
         '''
         global enabled
         self._log.info('starting random...')
@@ -470,7 +481,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def set_color(self, color):
         '''
-            Set the color of both RGB Matrix displays.
+        Set the color of both RGB Matrix displays.
         '''
         self._set_color(self._rgbmatrix5x5_PORT, color)
         self._set_color(self._rgbmatrix5x5_STBD, color)
@@ -478,7 +489,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _set_color(self, rgbmatrix5x5, color):
         '''
-            Set the color of the RGB Matrix.
+        Set the color of the RGB Matrix.
         '''
         rgbmatrix5x5.set_all(color.red, color.green, color.blue)
         rgbmatrix5x5.show()
@@ -486,7 +497,7 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _clear(self, rgbmatrix5x5):
         '''
-            Clears the RGB Matrix by setting its color to black.
+        Clears the RGB Matrix by setting its color to black.
         '''
         self._set_color(rgbmatrix5x5, Color.BLACK)
 

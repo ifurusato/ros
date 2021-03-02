@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-03-31
 # modified: 2020-03-31
+#
 
 import sys, time
 sys.path.append('/home/pi/ultraborg')
@@ -20,9 +21,9 @@ from lib.logger import Level, Logger
 
 class Servo():
     '''
-        Provided with configuration this permits setting of the center position offset.
+    Provided with configuration this permits setting of the center position offset.
 
-        The UltraBorg supports four servos, numbered 1-4.
+    The UltraBorg supports four servos, numbered 1-4.
     '''
     def __init__(self, config, number, level):
         self._number = number
@@ -53,32 +54,32 @@ class Servo():
     # ..........................................................................
     def get_min_angle(self):
         '''
-            Return the configured minimum servo angle.
+        Return the configured minimum servo angle.
         '''
         return self._min_angle
 
     # ..........................................................................
     def get_max_angle(self):
         '''
-            Return the configured maximum servo angle.
+        Return the configured maximum servo angle.
         '''
         return self._max_angle
 
     # ..........................................................................
     def is_in_range(self, degrees):
         '''
-            A convenience method that returns true if the argument is within the
-            minimum and maximum range (inclusive of endpoints) of the servo.
+        A convenience method that returns true if the argument is within the
+        minimum and maximum range (inclusive of endpoints) of the servo.
         '''
         return degrees >= self._min_angle and degrees <= self._max_angle
 
     # ..........................................................................
     def set_position(self, position):
         '''
-            Set the position of the servo to a value between -90.0 and 90.0 degrees.
-            Values outside this range set to their respective min/max.
+        Set the position of the servo to a value between -90.0 and 90.0 degrees.
+        Values outside this range set to their respective min/max.
 
-            This adjusts the argument by the value of the center offset.
+        This adjusts the argument by the value of the center offset.
         '''
         self._log.debug('set servo position to: {:+5.2f}° (center offset {:+5.2f}°)'.format(position, self._center_offset))
         position += self._center_offset
@@ -102,7 +103,7 @@ class Servo():
     # ..........................................................................
     def get_position(self, defaultValue):
         '''
-            Get the position of the servo. If unavailable return the default. 
+        Get the position of the servo. If unavailable return the default.
         '''
         if self._number == 1:
             _position = self._UB.GetServoPosition1()
@@ -120,23 +121,23 @@ class Servo():
     # ..........................................................................
     def get_distance(self, retry_count, useRawDistance):
         '''
-            Gets the filtered distance for the ultrasonic module in millimeters.
-            Parameters:
-                retry_count: how many times to attempt to read from the sensor
-                             before giving up (this value is ignored when 
-                             useRawDistance is True)
-                useRawDistance: if you need a faster response use this instead 
-                             (no filtering) e.g.:
-                                 0     -> No object in range
-                                 25    -> Object 25 mm away
-                                 1000  -> Object 1000 mm (1 m) away
-                                 3500  -> Object 3500 mm (3.5 m) away
+        Gets the filtered distance for the ultrasonic module in millimeters.
+        Parameters:
+            retry_count: how many times to attempt to read from the sensor
+                         before giving up (this value is ignored when
+                         useRawDistance is True)
+            useRawDistance: if you need a faster response use this instead
+                         (no filtering) e.g.:
+                             0     -> No object in range
+                             25    -> Object 25 mm away
+                             1000  -> Object 1000 mm (1 m) away
+                             3500  -> Object 3500 mm (3.5 m) away
 
-            Returns 0 for no object detected or no ultrasonic module attached.
+        Returns 0 for no object detected or no ultrasonic module attached.
 
-            This admittedly is not a servo function but since we have an UltraBorg
-            supporting this servo, this becomes a convenience method. The ultrasonic
-            sensor should be connected to the same number as the servo.
+        This admittedly is not a servo function but since we have an UltraBorg
+        supporting this servo, this becomes a convenience method. The ultrasonic
+        sensor should be connected to the same number as the servo.
         '''
         if self._number == 1:
             if useRawDistance:
@@ -162,7 +163,7 @@ class Servo():
     # ..........................................................................
     def sweep(self):
         '''
-            Repeatedly sweeps between minimum and maximum until disabled.
+        Repeatedly sweeps between minimum and maximum until disabled.
         '''
         self._log.info('press CTRL+C to quit.')
         try:
@@ -197,7 +198,7 @@ class Servo():
     # ..........................................................................
     def get_ultraborg(self):
         '''
-            Return the UltraBorg supporting this Servo.
+        Return the UltraBorg supporting this Servo.
         '''
         return self._UB
 
@@ -226,8 +227,8 @@ class Servo():
     # ..........................................................................
     def close(self):
         '''
-            Close the servo. If it has not already been disabled its position
-            will reset to zero.
+        Close the servo. If it has not already been disabled its position
+        will reset to zero.
         '''
         if self._enabled:
             self.reset()

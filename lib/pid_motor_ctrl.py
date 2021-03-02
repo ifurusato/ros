@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot Operating System project and is released under the "Apache Licence,
-# Version 2.0". Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
 # created:  2020-08-08
@@ -23,8 +23,8 @@ from lib.pid_ctrl import PIDController
 # ..............................................................................
 class PIDMotorController(object):
     '''
-       A simple composite pattern consisting of two PIDControllers, one for
-       control of the port motor, another for the starboard motor.
+    A simple composite pattern consisting of two PIDControllers, one for
+    control of the port motor, another for the starboard motor.
     '''
     def __init__(self, config, motors, level):
         super().__init__()

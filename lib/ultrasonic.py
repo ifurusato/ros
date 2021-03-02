@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 by Murray Altheim. All rights reserved. This file is part of
-# the Robot OS project and is released under the "Apache Licence, Version 2.0".
-# Please see the LICENSE file included as part of this package.
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
 #
 # author:   altheim
 # created:  2020-03-31
 # modified: 2020-03-31
+#
 
-# Import library functions we need
 import time
 from colorama import init, Fore, Style
 init()
@@ -26,18 +26,18 @@ from lib.logger import Logger, Level
 class UltrasonicScanner():
 
     def __init__(self, config, level):
-        self._log = Logger('uscanner', Level.INFO)
+        self._log = Logger('ultrasonic', Level.INFO)
         self._config = config
         if self._config:
             self._log.info('configuration provided.')
             _config = self._config['ros'].get('ultrasonic_scanner')
             self._min_angle = _config.get('min_angle')
             self._max_angle = _config.get('max_angle')
-            self._degree_step = _config.get('degree_step')  
-            self._use_raw_distance = _config.get('use_raw_distance')  
+            self._degree_step = _config.get('degree_step')
+            self._use_raw_distance = _config.get('use_raw_distance')
             self._read_delay_sec = _config.get('read_delay_sec')
             self._log.info('read delay: {:>4.1f} sec'.format(self._read_delay_sec))
-            _servo_number = _config.get('servo_number')  
+            _servo_number = _config.get('servo_number')
         else:
             self._log.warning('no configuration provided.')
             self._min_angle = -60.0
@@ -56,18 +56,16 @@ class UltrasonicScanner():
         self._closed = False
         self._log.info('ready.')
 
-
     # ..........................................................................
     def _in_range(self, p, q):
         return p >= ( q - self._error_range ) and p <= ( q + self._error_range )
-
 
     # ..........................................................................
     def scan(self):
         if not self._enabled:
             self._log.warning('cannot scan: disabled.')
             return
-    
+
         start = time.time()
         _min_mm = 9999.0
         _angle_at_min = 0.0
@@ -131,7 +129,6 @@ class UltrasonicScanner():
         self._log.info(Fore.CYAN + Style.BRIGHT + 'max. distance at {:>5.2f}°:\t{}mm'.format(_angle_at_max, _max_mm))
         self._servo.set_position(0.0)
         return [ _angle_at_min, _min_mm, _angle_at_max, _max_mm ]
-    
 
     # ..........................................................................
     def enable(self):
@@ -141,19 +138,16 @@ class UltrasonicScanner():
 #       self._tof.enable()
         self._enabled = True
 
-
     # ..........................................................................
     def disable(self):
         self._enabled = False
         self._servo.disable()
 #       self._tof.disable()
 
-
     # ..........................................................................
     def close(self):
         self.disable()
         self._servo.close()
         self._closed = True
-
 
 #EOF

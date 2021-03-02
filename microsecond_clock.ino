@@ -1,5 +1,9 @@
 /*
    Create a simple 50ms/20Hz clock, blinking the onboard LED every second.
+
+   Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+   of the Robot Operating System project, released under the MIT License. Please
+   see the LICENSE file included as part of this package.
 */
 
 const int ledPin   =  13;    // the LED pin
