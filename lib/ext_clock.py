@@ -14,8 +14,9 @@
 
 import sys, itertools
 from datetime import datetime as dt
-from collections import deque as Deque
 import RPi.GPIO as GPIO
+from collections import deque as Deque
+import statistics
 from colorama import init, Fore, Style
 init()
 
@@ -42,11 +43,19 @@ class ExternalClock(object):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self._pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self._enabled = False
-        _queue_limit = 50 # larger number means it takes longer to change
-        self._queue  = Deque([], maxlen=_queue_limit)
+        # testing ....................
+        self._queue_len = 50 # larger number means it takes longer to change
+        self._queue  = Deque([], maxlen=self._queue_len)
         self._counter = itertools.count()
         self._last_time = dt.now()
+        self._max_error = 0.0
+        self._max_vari  = 0.0
         self._log.info('ready.')
+
+    # ..........................................................................
+    @property
+    def enabled(self):
+        return self._enabled
 
     # ..........................................................................
     def enable(self):
@@ -84,25 +93,36 @@ class ExternalClock(object):
     # ..........................................................................
     def _tick_callback(self, value):
         if self._enabled:
+            _now = dt.now()
             self._count = next(self._counter)
+            _delta_ms = 1000.0 * (_now - self._last_time).total_seconds()
+            _mean = self._get_mean(_delta_ms)
+            if len(self._queue) > 5:
+                _error_ms = _delta_ms - self._dt_ms
+                self._max_error = max(self._max_error, _error_ms)
+                _vari1 = statistics.variance(self._queue) # if len(self._queue) > 5 else 0.0
+                _vari  = sum((item - _mean)**2 for item in self._queue) / (len(self._queue) - 1)
+                if self._count <= self._queue_len:
+                    _vari = 0.0
+                    self._max_vari = 0.0
+                else:
+                    self._max_vari = max(self._max_vari, _vari)
+                if _error_ms > 0.5000:
+                    self._log.info(Fore.RED + Style.BRIGHT + '[{:05d}]\tΔ {:8.5f}; err: {:8.5f}; '.format(self._count, _delta_ms, _error_ms) 
+                            + Fore.CYAN + Style.NORMAL + 'max err: {:8.5f}; mean: {:8.5f}; max vari: {:8.5f}'.format(self._max_error, _mean, self._max_vari))
+                elif _error_ms > 0.1000:
+                    self._log.info(Fore.YELLOW + Style.BRIGHT + '[{:05d}]\tΔ {:8.5f}; err: {:8.5f}; '.format(self._count, _delta_ms, _error_ms)
+                            + Fore.CYAN + Style.NORMAL + 'max err: {:8.5f}; mean: {:8.5f}; max vari: {:8.5f}'.format(self._max_error, _mean, self._max_vari))
+                else:
+                    self._log.info(Fore.GREEN  + '[{:05d}]\tΔ {:8.5f}; err: {:8.5f}; '.format(self._count, _delta_ms, _error_ms)
+                            + Fore.CYAN                + 'max err: {:8.5f}; mean: {:8.5f}; max vari: {:8.5f}'.format(self._max_error, _mean, self._max_vari))
+            else:
+                self._log.info(Fore.CYAN + '[{:05d}]\tΔ {:8.5f}; '.format(self._count, _delta_ms) + Fore.CYAN + 'mean: {:8.5f}'.format(_mean))
+
+            self._last_time = _now
             if self._count > 1000: 
                 self._log.info('reached count limit, exiting...')
-                sys.exit(0)
-            _now = dt.now()
-            _delta_ms = 1000.0 * (_now - self._last_time).total_seconds()
-            _error_ms = _delta_ms - self._dt_ms
-
-            _mean = self._get_mean(_delta_ms)
-
-            if _error_ms > 0.5000:
-                self._log.info(Fore.RED + Style.BRIGHT + '[{:05d}]\tdelta {:8.5f}ms; error: {:8.5f}ms; '.format(self._count, _delta_ms, _error_ms) 
-                        + Fore.MAGENTA + '; mean: {:8.5f}'.format(_mean))
-            elif _error_ms > 0.1000:
-                self._log.info(Fore.YELLOW + Style.BRIGHT + '[{:05d}]\tdelta {:8.5f}ms; error: {:8.5f}ms; '.format(self._count, _delta_ms, _error_ms)
-                        + Fore.MAGENTA + '; mean: {:8.5f}'.format(_mean))
-            else:
-                self._log.info(Fore.GREEN  + '[{:05d}]\tdelta {:8.5f}ms; error: {:8.5f}ms; '.format(self._count, _delta_ms, _error_ms)
-                        + Fore.MAGENTA + '; mean: {:8.5f}'.format(_mean))
-            self._last_time = _now
+                self._enabled = False
+#               sys.exit(0)
 
 #EOF

@@ -38,10 +38,12 @@ def test_external_clock():
     _clock = ExternalClock(_config, _message_bus, Level.INFO)
 
     try:
+
         _log.info('starting clock...')
         _clock.enable()
-        while True:
+        while _clock.enabled:
             time.sleep(1.0)
+
     except KeyboardInterrupt:
         _log.info("caught Ctrl-C.")
     finally:
