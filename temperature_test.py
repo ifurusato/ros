@@ -11,8 +11,8 @@
 #
 # Install and run stress test:
 #
-# % sudo apt install stress
-# % stress --cpu 4
+#   % sudo apt install stress
+#   % stress --cpu 4
 #
 
 import pytest

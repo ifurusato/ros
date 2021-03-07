@@ -17,7 +17,7 @@
 
 import sys, time, itertools
 #import asyncio
-from threading import Thread
+#from threading import Thread
 from colorama import init, Fore, Style
 init()
 try:
@@ -71,55 +71,58 @@ class MockIntegratedFrontSensor(object):
         self._suppress = mode
 
     # ..........................................................................
-    def _loop(self, f_is_enabled):
+    def _start_loop(self, f_is_enabled):
         self._log.info('start loop:\t' + Fore.YELLOW + 'type the \"' + Fore.RED + 'Delete' + Fore.YELLOW \
                 + '\" or \"' + Fore.RED + 'q' + Fore.YELLOW + '\" key to exit sensor loop, the \"' \
                 + Fore.RED + 'h' + Fore.YELLOW + '\" key for help.')
         print('\n')
         while f_is_enabled():
-            if self._suppress: # then just sleep during the loop
-                time.sleep(0.2)
-            else:
-                _count = next(self._counter)
-                self._log.debug('[{:03d}]'.format(_count))
-                ch  = readchar.readchar()
-                och = ord(ch)
-                if och == 91 or och == 113 or och == 127: # 'q' or delete
-                    break
-                elif och == 104: # 'h' for help
-                    self.print_keymap()
-                    continue
-                elif och == 109: # 'j' to toggle messages sent to IFS
-                    self._verbose = not self._verbose
-                    self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
-                _event = self.get_event_for_char(och)
-                if _event is not None:
-
-#                   self._log.info('firing message for event {}'.format(event))
-#                   _message = self._message_factory.get_message(event, True)
-#                   self._message_bus.publish(_message)
-#                   await asyncio.sleep(0.1)
-
-                    self.fire_message(_event)
-                    if self.exit_on_complete:
-                        self._log.debug('[{:03d}] COMPLETE.'.format(_count))
-                        break
-                    else:
-                        self._log.debug('[{:03d}] "{}" ({}) pressed; event: {}'.format(_count, ch, och, _event))
-                    if self.all_triggered:
-                        break
-                    elif self._verbose:
-                        self.waiting_for_message()
-                else:
-                    self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
-                self._rate.wait()
-
+            self.sense()
+            self._rate.wait()
         self._log.info(Fore.YELLOW + 'exit loop.')
+
+    # ..........................................................................
+    def sense(self):
+        '''
+        See if any sensor (key) has been activated.
+        '''
+        if self._suppress: # then just sleep during the loop
+            time.sleep(0.2)
+        else:
+            _count = next(self._counter)
+            self._log.info('[{:03d}]'.format(_count))
+            ch  = readchar.readchar()
+            och = ord(ch)
+            if och == 91 or och == 113 or och == 127: # 'q' or delete
+                self.disable()
+                return
+            elif och == 104: # 'h' for help
+                self.print_keymap()
+                return
+            elif och == 109: # 'j' to toggle messages sent to IFS
+                self._verbose = not self._verbose
+                self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
+            _event = self.get_event_for_char(och)
+            if _event is not None:
+#               self._log.info('firing message for event {}'.format(event))
+#               _message = self._message_factory.get_message(event, True)
+#               self._message_bus.publish(_message)
+#               await asyncio.sleep(0.1)
+                self.fire_message(_event)
+                self._log.info('[{:03d}] "{}" ({}) pressed; event: {}'.format(_count, ch, och, _event))
+                if self.exit_on_complete and self.all_triggered:
+                    self._log.info('[{:03d}] COMPLETE.'.format(_count))
+                    self.disable()
+                    return
+                elif self._verbose:
+                    self.waiting_for_message()
+            else:
+                self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
 
     # ..........................................................................
 #   async def fire_message(self, event):
     def fire_message(self, event):
-        self._log.debug('firing message for event {}'.format(event))
+        self._log.info('firing message for event {}'.format(event))
         _message = self._message_factory.get_message(event, True)
         self._message_bus.publish(_message)
 #       await asyncio.sleep(0.1)
@@ -230,8 +233,8 @@ class MockIntegratedFrontSensor(object):
                 # if we haven't started the thread yet, do so now...
                 if self._thread is None:
                     self._enabled = True
-                    self._thread = Thread(name='mock-ifs', target=MockIntegratedFrontSensor._loop, args=[self, lambda: self.enabled], daemon=True)
-                    self._thread.start()
+#                   self._thread = Thread(name='mock-ifs', target=MockIntegratedFrontSensor._start_loop, args=[self, lambda: self.enabled], daemon=True)
+#                   self._thread.start()
                     self._log.info('enabled.')
                 else:
                     self._log.warning('cannot enable: thread already exists.')

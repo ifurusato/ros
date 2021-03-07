@@ -58,7 +58,7 @@ ros:
         sample_time_sec:     10                  # modulo value against tock frequency (default 15s)
     fan:
         i2c_address:       0x38                  # the I²C address for the HT0740 device controlling the fan
-        fan_threshold:      45.0                 # setpoint temperatury (nominal 50°C) at which fan turns on
+        fan_threshold:      48.0                 # setpoint temperatury (nominal 50°C) at which fan turns on
         hysteresis:         2.0                  # thermostat hysteresis
     blob:
         image_width:       320                   # camera resolution: width

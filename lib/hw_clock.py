@@ -73,8 +73,8 @@ class HardwareClock(object):
     '''
     def __init__(self, level):
         self._log = Logger("hwclock", level)
-        self._check_boot_config()
-        self._configure()
+        self.check_boot_config()
+        self.configure()
         self._callbacks = []
         _pin = 21 # BCM 21
         self._sensor = DigitalInputDevice(_pin, pull_up=False)
@@ -137,7 +137,7 @@ class HardwareClock(object):
         self._message_factory = message_factory
 
     # ..........................................................................
-    def _check_boot_config(self):
+    def check_boot_config(self):
         _term = 'dtoverlay=pwm-2chan'
         with open(HWCLOCK_BOOTCONFIG_PATH,) as f:
             lines = [line.rstrip() for line in f]
@@ -155,7 +155,7 @@ For a hardware clock, PWM support needs to be added to the boot configuration:
 ''' + Style.RESET_ALL)
 
     # ..........................................................................
-    def _configure(self):
+    def configure(self):
         # static logger specific to configure()
         if not path.exists(HWCLOCK_PWM1_PATH):
             if os.geteuid() != 0:
