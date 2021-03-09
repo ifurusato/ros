@@ -47,11 +47,11 @@ class MessageBus():
         return self._subscriptions
 
     # ..........................................................................
-    def publish(self, message: Message):
+    async def publish_to_bus(self, message: Message):
         '''
         Publishes the Message to all Subscribers.
         '''
-        self._log.info(Style.BRIGHT + 'publish message: {}'.format(message))
+        self._log.info(Style.BRIGHT + 'publish message: eid: {}; event: {}'.format(message.eid, message.event.name))
         for queue in self._subscriptions:
             queue.put_nowait(message)
 
@@ -136,7 +136,7 @@ class Subscriber(ABC):
             return None
 
     # ..............................................................................
-    async def receive_message(self, message):
+    def receive_message(self, message):
         '''
         Receives a message obtained from a Subscription to the MessageBus,
         performing an actions based on receipt.
@@ -189,21 +189,23 @@ class Subscriber(ABC):
 
     # ..............................................................................
     @abstractmethod
-    async def subscribe(self):
+    def subscribe(self):
         '''
         DESCRIPTION.
         '''
         self._log.debug('subscribe called.')
-        await asyncio.sleep(random.random() * 8)
+#       await asyncio.sleep(random.random() * 8)
         self._log.info(Fore.GREEN + 'Subscriber {} has subscribed.'.format(self._name))
     
         _message_count = 0
         _message = Message(-1, Event.NO_ACTION, None) # initial non-null message
         with Subscription(self._message_bus) as queue:
             while _message.event != Event.SHUTDOWN:
-                _message = await queue.get()
+                _message = queue.get()
+#               _message = await queue.get()
 #               self._log.info(Fore.GREEN + '1. calling receive_message()...')
-                await self.receive_message(_message)
+#               await self.receive_message(_message)
+                self.receive_message(_message)
 #               self._log.info(Fore.GREEN + '2. called receive_message(), awaiting..')
                 _message_count += 1
                 self._log.info(Fore.GREEN + 'Subscriber {} rxd msg #{}: priority: {}; desc: "{}"; VALUE: '.format(\
@@ -227,6 +229,27 @@ class Publisher(ABC):
         self._message_bus = message_bus
         self._counter = itertools.count()
         self._log.debug('ready.')
+
+    # ..........................................................................
+    @abstractmethod
+    async def publish(self, iterations):
+        '''
+        TEMPORARY.
+        Over the specified number of iterations, each publishing a random set of messages
+        to the available subscriptions, shutting down once all have been completed.
+        '''
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'Publish called.')
+        for x in range(iterations):
+            self._log.info(Fore.MAGENTA + 'Publisher: I have {} subscribers now'.format(len(self._message_bus.subscriptions)))
+            _uuid = str(uuid.uuid4())
+            _message = self.get_message_of_type(self.get_random_event_type(), 'msg_{:d}-{}'.format(x, _uuid))
+            _message.number = next(self._counter)
+            self._message_bus.publish_to_bus(_message)
+            await asyncio.sleep(0.1)
+    
+        _shutdown_message = self.get_message_of_type(Event.SHUTDOWN, 'shutdown')
+        self._message_bus.publish_to_bus(_shutdown_message)
+        await asyncio.sleep(0.1)
 
     # ..........................................................................
     def get_message_of_type(self, event, value):
@@ -257,25 +280,5 @@ class Publisher(ABC):
             Event.MOTION_DETECT, \
             Event.EVENT_R1 ]
         return types[random.randint(0, len(types)-1)]
-
-    # ..........................................................................
-    @abstractmethod
-    async def publish(self, iterations):
-        '''
-        TEMPORARY.
-        Over the specified number of iterations, each publishing a random set of messages
-        to the available subscriptions, shutting down once all have been completed.
-        '''
-        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'Publish called.')
-        for x in range(iterations):
-            self._log.info(Fore.MAGENTA + 'Publisher: I have {} subscribers now'.format(len(self._message_bus.subscriptions)))
-            _uuid = str(uuid.uuid4())
-            _message = self.get_message_of_type(self.get_random_event_type(), 'msg_{:d}-{}'.format(x, _uuid))
-            _message.number = next(self._counter)
-            self._message_bus.publish(_message)
-            await asyncio.sleep(1)
-    
-        _shutdown_message = self.get_message_of_type(Event.SHUTDOWN, 'shutdown')
-        self._message_bus.publish(_shutdown_message)
 
 #EOF

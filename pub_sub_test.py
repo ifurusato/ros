@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # Copyright (c) 2018-2019 Lynn Root
 '''
 Tasks that monitor other tasks using `asyncio`'s `Event` object - modified.
@@ -14,14 +14,11 @@ Follow along: https://roguelynn.com/words/asyncio-true-concurrency/
 Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
 '''
 
-import asyncio
+import asyncio, attr, itertools, signal, string, uuid
 import logging
 import random
-import signal
-import string
-import uuid
-
-import attr
+import time
+from datetime import datetime as dt
 
 from colorama import init, Fore, Style
 init()
@@ -29,6 +26,7 @@ init()
 # ..............
 
 from lib.logger import Logger, Level
+#from lib.message_factory import MessageFactory
 from lib.event import Event
 
 # NB: Using f-strings with log messages may not be ideal since no matter
@@ -41,12 +39,17 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+# ..............................................................................
 @attr.s
-class PubSubMessage:
+class Message:
+    '''
+    Don't create one of these directly: use the MessageFactory class.
+    '''
     instance_name = attr.ib()
-    message_id    = attr.ib(repr=False)
+    message_id    = attr.ib(repr=False, default=str(uuid.uuid4()))
+    timestamp     = attr.ib(repr=False, default=dt.now())
     hostname      = attr.ib(repr=False, init=False)
-    restarted     = attr.ib(repr=False, default=False)
+#   restarted     = attr.ib(repr=False, default=False)
     saved         = attr.ib(repr=False, default=False)
     acked         = attr.ib(repr=False, default=False)
     extended_cnt  = attr.ib(repr=False, default=0)
@@ -56,9 +59,27 @@ class PubSubMessage:
     def __attrs_post_init__(self):
         self.hostname = f"{self.instance_name}.example.net"
 
+# ..............................................................................
+class MessageFactory(object):
+    '''
+    A factory for Messages.
+    '''
+    def __init__(self, level):
+        self._log = Logger("msgfactory", level)
+        self._counter = itertools.count()
+        self._choices = string.ascii_lowercase + string.digits
+        self._log.info('ready.')
+ 
+    # ..........................................................................
+    def get_message(self, event, value):
+#       return Message(next(self._counter), event, value)
+        _host_id = "".join(random.choices(self._choices, k=4))
+        _instance_name = 'cattle-{}'.format(_host_id)
+        return Message(instance_name=_instance_name, event=event, value=value)
+
 # Publisher ....................................................................
 class Publisher(object):
-    def __init__(self, queue, level=Level.INFO):
+    def __init__(self, queue, message_factory, level=Level.INFO):
         '''
         Simulates an external publisher of messages.
 
@@ -66,24 +87,31 @@ class Publisher(object):
             queue (asyncio.Queue): Queue to publish messages to.
         '''
         self._log = Logger('publisher', level)
-        self._log.info(Fore.MAGENTA + 'initialised...')
+        self._log.info(Fore.BLACK + 'initialised...')
+        if queue is None:
+            raise ValueError('null queue argument.')
         self._queue = queue
-        self._log.info(Fore.MAGENTA + 'ready.')
+        if message_factory is None:
+            raise ValueError('null message factory argument.')
+        self._message_factory = message_factory
+        self._log.info(Fore.BLACK + 'ready.')
+
+    def get_random_event(self):
+        types = [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_STBD, Event.FULL_AHEAD, Event.ROAM, Event.EVENT_R1 ]
+        return types[random.randint(0, len(types)-1)]
 
     # ................................................................
     async def publish(self):
-        choices = string.ascii_lowercase + string.digits
-
         while True:
-            msg_id = str(uuid.uuid4())
-            host_id = "".join(random.choices(choices, k=4))
-            instance_name = f"cattle-{host_id}"
-            msg = PubSubMessage(message_id=msg_id, instance_name=instance_name, event=Event.BRAKE, value=None)
-            # publish an item
-            asyncio.create_task(self._queue.put(msg))
-            self._log.info(Fore.MAGENTA + 'published message: {}'.format(msg))
+            _event = self.get_random_event()
+            _message = self._message_factory.get_message(_event, _event.description)
+            # publish the message
+            self._log.info(Fore.BLACK + Style.BRIGHT + 'PUBLISHING message: {}'.format(_message))
+            asyncio.create_task(self._queue.put(_message))
+            self._log.info(Fore.BLACK + Style.BRIGHT + 'PRE-published message: {}; queue: {:d} items.'.format(_message, self._queue.qsize()))
             # simulate randomness of publishing messages
             await asyncio.sleep(random.random())
+            self._log.info(Fore.BLACK + Style.BRIGHT + 'POST-published message: {}; queue: {:d} items.'.format(_message, self._queue.qsize()))
 
 # Subscriber ...................................................................
 class Subscriber(object):
@@ -94,28 +122,43 @@ class Subscriber(object):
         self._log = Logger('sub-{}'.format(name), level)
         self._color = color
         self._log.info(self._color + 'initialised...')
+        if queue is None:
+            raise ValueError('null queue argument.')
         self._queue = queue
         self._log.info(self._color + 'ready.')
 
     # ................................................................
     async def consume(self):
-        """Consumer client to simulate subscribing to a publisher.
+        '''
+        Consumer client to simulate subscribing to a publisher.
 
         Args:
             queue (asyncio.Queue): Queue from which to consume messages.
-        """
+        '''
         while True:
-            msg = await self._queue.get()
-            self._log.info(self._color + 'consumed message: {}'.format(msg))
-            asyncio.create_task(self.handle_message(msg))
+#           msg = await self._queue.get()
+#           if self._queue.qsize() > 0:
+            _peeked_message = await self._queue._get()
+            if _peeked_message != None:
+                print(Fore.RED + 'OBJECT: {}; len: {}'.format(_peeked_message, len(self._queue)) + Style.RESET_ALL)
+                self._log.info(Fore.WHITE + 'peeked message: {}'.format(peeked_msg))
+                # filter on...
+                # types = [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_STBD, Event.FULL_AHEAD, Event.ROAM, Event.EVENT_R1 ]
+                if _peeked_message.event == Event.INFRARED_PORT or _peeked_message.event == Event.INFRARED_STBD:
+                    self._log.info(self._color + 'consumed message: {}'.format(msg))
+                    asyncio.create_task(self.handle_message(msg))
+                else:
+                    self._log.info(self._color + 'passed on message: {}'.format(msg))
+                    self._put(_peeked_message)
 
     # ................................................................
     async def handle_message(self, msg):
-        """Kick off tasks for a given message.
+        '''
+        Kick off tasks for a given message.
 
         Args:
-            msg (PubSubMessage): consumed message to process.
-        """
+            msg (Message): consumed message to process.
+        '''
         event = asyncio.Event()
         asyncio.create_task(self.extend(msg, event))
         asyncio.create_task(self.cleanup(msg, event))
@@ -125,13 +168,14 @@ class Subscriber(object):
 
     # ................................................................
     async def extend(self, msg, event):
-        """Periodically extend the message acknowledgement deadline.
+        '''
+        Periodically extend the message acknowledgement deadline.
 
         Args:
-            msg (PubSubMessage): consumed event message to extend.
+            msg (Message): consumed event message to extend.
             event (asyncio.Event): event to watch for message extention or
                 cleaning up.
-        """
+        '''
         while not event.is_set():
             msg.extended_cnt += 1
             self._log.info(self._color + Style.DIM + 'extended deadline by 3 seconds for {}'.format(msg))
@@ -143,7 +187,7 @@ class Subscriber(object):
         """Cleanup tasks related to completing work on a message.
 
         Args:
-            msg (PubSubMessage): consumed event message that is done being
+            msg (Message): consumed event message that is done being
                 processed.
         """
         # this will block the rest of the coro until `event.set` is called
@@ -158,7 +202,7 @@ class Subscriber(object):
         """Save message to a database.
 
         Args:
-            msg (PubSubMessage): consumed event message to be saved.
+            msg (Message): consumed event message to be saved.
         """
         # unhelpful simulation of i/o work
         await asyncio.sleep(random.random())
@@ -170,7 +214,7 @@ class Subscriber(object):
         """Restart a given host.
 
         Args:
-            msg (PubSubMessage): consumed event message for a particular
+            msg (Message): consumed event message for a particular
                 host to be restarted.
         """
         # unhelpful simulation of i/o work
@@ -208,11 +252,12 @@ def main():
         loop.add_signal_handler(
             s, lambda s=s: asyncio.create_task(shutdown(s, loop)))
 
-    queue = asyncio.Queue()
+    _queue = asyncio.Queue()
 
-    _publisher = Publisher(queue, Level.INFO)
-    _subscriber1 = Subscriber('1', Fore.GREEN, queue, Level.INFO)
-    _subscriber2 = Subscriber('2', Fore.YELLOW, queue, Level.INFO)
+    _message_factory = MessageFactory(Level.INFO)
+    _publisher = Publisher(_queue, _message_factory, Level.INFO)
+    _subscriber1 = Subscriber('1', Fore.YELLOW, _queue, Level.INFO)
+    _subscriber2 = Subscriber('2', Fore.MAGENTA, _queue, Level.INFO)
 
     try:
         loop.create_task(_publisher.publish())
