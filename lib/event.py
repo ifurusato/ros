@@ -40,11 +40,12 @@ class Event(Enum):
     BRAKE                  = ( 6, "brake",                    4,     False)
     BUTTON                 = ( 7, "button",                   5,     False)
     STANDBY                = ( 8, "standby",                  6,     False)
+
     # bumper ...........................
-    COLLISION_DETECT       = (  9, "collision detect",         9,   False)
-    BUMPER_PORT            = ( 10, "bumper port",             10,    True)
-    BUMPER_CNTR            = ( 11, "bumper center",           10,    True)
-    BUMPER_STBD            = ( 12, "bumper starboard",        10,    True)
+    COLLISION_DETECT       = ( 10, "collision detect",         9,   False)
+    BUMPER_PORT            = ( 11, "bumper port",             10,    True)
+    BUMPER_CNTR            = ( 12, "bumper center",           10,    True)
+    BUMPER_STBD            = ( 13, "bumper starboard",        10,    True)
     # infrared .........................
     INFRARED_PORT_SIDE     = ( 20, "infrared port side",      20,    True)
     INFRARED_PORT          = ( 21, "infrared port",           20,    True)
@@ -121,6 +122,16 @@ class Event(Enum):
         self._description = description
         self._priority = priority
         self._is_ballistic = is_ballistic
+
+    # ..................................
+    @staticmethod
+    def is_bumper(event):
+        return event.value >= 10 and event.value < 20
+
+    # ..................................
+    @staticmethod
+    def is_infrared(event):
+        return event.value >= 20 and event.value < 30
 
     # this makes sure the description is read-only
     @property

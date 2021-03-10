@@ -12,6 +12,7 @@ To run:
 
 Follow along: https://roguelynn.com/words/asyncio-true-concurrency/
 Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
+See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
 '''
 
 import asyncio, attr, itertools, signal, string, uuid
@@ -71,10 +72,21 @@ class MessageFactory(object):
         self._log.info('ready.')
  
     # ..........................................................................
+    def get_random_event(self):
+        '''
+        Returns one of the randomly-assigned event types.
+        '''
+        types = [ Event.STOP, \
+                  Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
+                  Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
+                  Event.FULL_AHEAD, Event.ROAM, Event.ASTERN ] # not handled
+        return types[random.randint(0, len(types)-1)]
+
+    # ..........................................................................
     def get_message(self, event, value):
 #       return Message(next(self._counter), event, value)
         _host_id = "".join(random.choices(self._choices, k=4))
-        _instance_name = 'cattle-{}'.format(_host_id)
+        _instance_name = 'id-{}'.format(_host_id)
         return Message(instance_name=_instance_name, event=event, value=value)
 
 # Publisher ....................................................................
@@ -96,60 +108,77 @@ class Publisher(object):
         self._message_factory = message_factory
         self._log.info(Fore.BLACK + 'ready.')
 
-    def get_random_event(self):
-        types = [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_STBD, Event.FULL_AHEAD, Event.ROAM, Event.EVENT_R1 ]
-        return types[random.randint(0, len(types)-1)]
-
     # ................................................................
     async def publish(self):
         while True:
-            _event = self.get_random_event()
+            _event = self._message_factory.get_random_event()
             _message = self._message_factory.get_message(_event, _event.description)
             # publish the message
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'PUBLISHING message: {}'.format(_message))
+            # 💭 💮  📤 📥
+#           self._log.info(Fore.BLACK + Style.BRIGHT + '📢 PUBLISHING message: {} (event: {})'.format(_message, _event.description))
             asyncio.create_task(self._queue.put(_message))
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'PRE-published message: {}; queue: {:d} items.'.format(_message, self._queue.qsize()))
+            self._log.info(Fore.BLACK + Style.BRIGHT + '📢 PUBLISHED  message: {} (event: {})'.format(_message, _event.description)  + Fore.WHITE + ' ({:d} in queue)'.format(self._queue.qsize()))
             # simulate randomness of publishing messages
             await asyncio.sleep(random.random())
-            self._log.info(Fore.BLACK + Style.BRIGHT + 'POST-published message: {}; queue: {:d} items.'.format(_message, self._queue.qsize()))
+            self._log.debug(Fore.BLACK + Style.BRIGHT + 'after await sleep.')
 
 # Subscriber ...................................................................
 class Subscriber(object):
     '''
     Description.
     '''
-    def __init__(self, name, color, queue, level=Level.INFO):
+    def __init__(self, name, color, queue, events, level=Level.INFO):
         self._log = Logger('sub-{}'.format(name), level)
         self._color = color
         self._log.info(self._color + 'initialised...')
         if queue is None:
             raise ValueError('null queue argument.')
         self._queue = queue
+        self._events = events # list of event types
+        self._is_cleanup_task = events is None
         self._log.info(self._color + 'ready.')
+
+    def accept(self, event):
+        '''
+        An event filter that teturns True if the subscriber should accept the event.
+        '''
+        return ( self._events is None ) or ( event in self._events )
+
+    def acceptable(self, event):
+        return event in [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ]
 
     # ................................................................
     async def consume(self):
         '''
         Consumer client to simulate subscribing to a publisher.
+        This filters on event type, either consuming the message,
+        ignoring it (and putting it back on the bus), or, if this
+        is the cleanup task, sinking it.
 
         Args:
             queue (asyncio.Queue): Queue from which to consume messages.
         '''
+        # 🍈🍅🍐🍑🍓🥝🥚🥧
         while True:
-#           msg = await self._queue.get()
-#           if self._queue.qsize() > 0:
-            _peeked_message = await self._queue._get()
-            if _peeked_message != None:
-                print(Fore.RED + 'OBJECT: {}; len: {}'.format(_peeked_message, len(self._queue)) + Style.RESET_ALL)
-                self._log.info(Fore.WHITE + 'peeked message: {}'.format(peeked_msg))
-                # filter on...
-                # types = [ Event.STOP, Event.INFRARED_PORT, Event.INFRARED_STBD, Event.FULL_AHEAD, Event.ROAM, Event.EVENT_R1 ]
-                if _peeked_message.event == Event.INFRARED_PORT or _peeked_message.event == Event.INFRARED_STBD:
-                    self._log.info(self._color + 'consumed message: {}'.format(msg))
-                    asyncio.create_task(self.handle_message(msg))
+            # cleanup, consume or ignore the message
+            _message = await self._queue.get()
+            if self._is_cleanup_task:
+                if _message.acked:
+                    self._log.info(self._color + Style.BRIGHT + '🍏 CLEANUP message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                    if self.acceptable(_message.event):
+                        raise Exception('🍏 UNPROCESSED acceptable message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                    # otherwise we let it die here
                 else:
-                    self._log.info(self._color + 'passed on message: {}'.format(msg))
-                    self._put(_peeked_message)
+                    asyncio.create_task(self._queue.put(_message))
+                    self._log.info(self._color + Style.BRIGHT + '🧀 RETURN unacknowledged message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+            elif self.accept(_message.event):
+                self._log.info(self._color + Style.BRIGHT + '🍎 CONSUMED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                asyncio.create_task(self.handle_message(_message))
+            else:
+                # acknowledge, put it back onto the message bus, ignored.
+                _message.acked = True
+                asyncio.create_task(self._queue.put(_message))
+                self._log.info(self._color + Style.DIM + '🍋 IGNORED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
 
     # ................................................................
     async def handle_message(self, msg):
@@ -184,12 +213,13 @@ class Subscriber(object):
 
     # ................................................................
     async def cleanup(self, msg, event):
-        """Cleanup tasks related to completing work on a message.
+        '''
+        Cleanup tasks related to completing work on a message.
 
         Args:
             msg (Message): consumed event message that is done being
                 processed.
-        """
+        '''
         # this will block the rest of the coro until `event.set` is called
         await event.wait()
         # unhelpful simulation of i/o work
@@ -244,6 +274,7 @@ async def shutdown(signal, loop):
 # main .........................................................................
 def main():
 
+    print(Fore.BLUE + '1. configuring test...' + Style.RESET_ALL)
     loop = asyncio.get_event_loop()
 
     # May want to catch other signals too
@@ -253,16 +284,33 @@ def main():
             s, lambda s=s: asyncio.create_task(shutdown(s, loop)))
 
     _queue = asyncio.Queue()
-
     _message_factory = MessageFactory(Level.INFO)
     _publisher = Publisher(_queue, _message_factory, Level.INFO)
-    _subscriber1 = Subscriber('1', Fore.YELLOW, _queue, Level.INFO)
-    _subscriber2 = Subscriber('2', Fore.MAGENTA, _queue, Level.INFO)
+    _subscriber1 = Subscriber('1-stp', Fore.YELLOW, _queue, [ Event.STOP ], Level.INFO) # reacts to STOP
+    _subscriber2 = Subscriber('2-irs', Fore.MAGENTA, _queue,  [ Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD ], Level.INFO) # reacts to IR
+    _subscriber3 = Subscriber('3-bmp', Fore.GREEN, _queue, [ Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ], Level.INFO) # reacts to bumpers
+    _subscriber4 = Subscriber('4-cup', Fore.RED, _queue, None, Level.INFO)              # cleanup subscriber
+                  
+
+#   for i in range(10):
+#       _event = _message_factory.get_random_event()
+#       _message = _message_factory.get_message(_event, _event.description)
+#       print(Fore.YELLOW + '[{:02d}] message {}; event: {}'.format(i, _message, _message.event.description) + Style.RESET_ALL)
+#   sys.exit(0)
 
     try:
+        print(Fore.BLUE + '2. creating task for publishers...' + Style.RESET_ALL)
         loop.create_task(_publisher.publish())
+        print(Fore.BLUE + '3. creating task for subscriber 1...' + Style.RESET_ALL)
         loop.create_task(_subscriber1.consume())
+        print(Fore.BLUE + '4. creating task for subscriber 2...' + Style.RESET_ALL)
         loop.create_task(_subscriber2.consume())
+        print(Fore.BLUE + '5. creating task for subscriber 3...' + Style.RESET_ALL)
+        loop.create_task(_subscriber3.consume())
+        print(Fore.BLUE + '6. creating task for subscriber 4...' + Style.RESET_ALL)
+        loop.create_task(_subscriber4.consume())
+
+        print(Fore.BLUE + '5. run forever...' + Style.RESET_ALL)
         loop.run_forever()
     except KeyboardInterrupt:
         logging.info("Process interrupted")
