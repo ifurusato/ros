@@ -13,6 +13,12 @@ To run:
 Follow along: https://roguelynn.com/words/asyncio-true-concurrency/
 Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
 See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
+And another:  https://codepr.github.io/posts/asyncio-pubsub/
+              https://gist.github.com/appeltel/fd3ddeeed6c330c7208502462639d2c9
+              https://www.oreilly.com/library/view/using-asyncio-in/9781492075325/ch04.html
+
+unrelated:
+Python Style Guide: https://www.python.org/dev/peps/pep-0008/
 '''
 
 import asyncio, attr, itertools, signal, string, uuid
