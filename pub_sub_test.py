@@ -211,8 +211,9 @@ class Subscriber(object):
                     raise Exception('🍏 UNPROCESSED acceptable message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
                 # otherwise we let it die here
             else:
-                asyncio.create_task(self._queue.put(_message))
                 self._log.info(self._color + Style.BRIGHT + '🧀 RETURN unacknowledged message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                asyncio.create_task(self._queue.put(_message))
+                self._log.info(self._color + Style.BRIGHT + '🧀 RETURNED unacknowledged message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
         elif self.accept(_message.event):
             self._log.info(self._color + Style.BRIGHT + '🍎 CONSUMED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
             asyncio.create_task(self.handle_message(_message))
@@ -325,7 +326,7 @@ class MessageBus(object):
         self._log.info(Fore.GREEN + 'LOOP: {}'.format(loop))
         msg = context.get("exception", context["message"])
         self._log.error('caught exception: {}'.format(msg))
-        if loop.running() and not loop.closed():
+        if loop.is_running() and not loop.is_closed():
             # see if the loop is active before calling for a shutdown
             asyncio.create_task(self.shutdown(loop))
         else:
@@ -400,11 +401,12 @@ def main():
 
         _log.info(Fore.BLUE + 'z. run forever...' + Style.RESET_ALL)
         _loop.run_forever()
+
     except KeyboardInterrupt:
-        _log.info("Process interrupted")
+        _log.info("process interrupted")
     finally:
         _loop.close()
-        _log.info("Successfully shutdown the Mayhem service.")
+        _log.info("successfully shutdown the message bus service.")
 
 
 # ........................
