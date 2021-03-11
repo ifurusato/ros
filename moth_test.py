@@ -14,6 +14,8 @@
 # returned via a Pimoroni IO Expander Breakout Garden board, an I²C-based
 # microcontroller.
 #
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
 
 import pytest
 import time, traceback
@@ -25,7 +27,6 @@ from lib.logger import Logger, Level
 from lib.config_loader import ConfigLoader
 from lib.moth import Moth
 from lib.rgbmatrix import RgbMatrix, Color, DisplayType
-
 
 # ..............................................................................
 @pytest.mark.unit
