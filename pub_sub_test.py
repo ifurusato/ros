@@ -20,11 +20,13 @@ And another:  https://codepr.github.io/posts/asyncio-pubsub/
 unrelated:
 Python Style Guide: https://www.python.org/dev/peps/pep-0008/
 '''
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
 
 import asyncio, attr, itertools, signal, string, uuid
 import logging
 import random
-import time
+import sys, time # TEMP
 from datetime import datetime as dt
 
 from colorama import init, Fore, Style
@@ -123,10 +125,34 @@ class Publisher(object):
             # 💭 💮  📤 📥
 #           self._log.info(Fore.BLACK + Style.BRIGHT + '📢 PUBLISHING message: {} (event: {})'.format(_message, _event.description))
             asyncio.create_task(self._queue.put(_message))
-            self._log.info(Fore.BLACK + Style.BRIGHT + '📢 PUBLISHED  message: {} (event: {})'.format(_message, _event.description)  + Fore.WHITE + ' ({:d} in queue)'.format(self._queue.qsize()))
+            self._log.info(Fore.BLACK + Style.BRIGHT + '📢 PUBLISHED  message: {} (event: {})'.format(_message, _event.description) \
+                    + Fore.WHITE + ' ({:d} in queue)'.format(self._queue.qsize()))
             # simulate randomness of publishing messages
             await asyncio.sleep(random.random())
             self._log.debug(Fore.BLACK + Style.BRIGHT + 'after await sleep.')
+
+# Subscribers ..................................................................
+class Subscribers(object):
+    '''
+    The list of Subscribers.
+    '''
+    def __init__(self, level=Level.INFO):
+        self._log = Logger('subs', level)
+        self._subscribers = []
+        self._log.info('ready.')
+
+    def add(self, subscriber):
+        self._subscribers.append(subscriber)
+
+    @property
+    def count(self):
+        return len(self._subscribers)
+
+    async def consume(self):
+        while True:
+            for subscriber in self._subscribers:
+                self._log.debug('publishing to subscriber {}...'.format(subscriber.name))
+                await subscriber.consume()
 
 # Subscriber ...................................................................
 class Subscriber(object):
@@ -135,6 +161,7 @@ class Subscriber(object):
     '''
     def __init__(self, name, color, queue, events, level=Level.INFO):
         self._log = Logger('sub-{}'.format(name), level)
+        self._name = name
         self._color = color
         self._log.info(self._color + 'initialised...')
         if queue is None:
@@ -144,6 +171,12 @@ class Subscriber(object):
         self._is_cleanup_task = events is None
         self._log.info(self._color + 'ready.')
 
+    # ..........................................................................
+    @property
+    def name(self):
+        return self._name
+
+    # ..........................................................................
     def accept(self, event):
         '''
         An event filter that teturns True if the subscriber should accept the event.
@@ -165,26 +198,27 @@ class Subscriber(object):
             queue (asyncio.Queue): Queue from which to consume messages.
         '''
         # 🍈🍅🍐🍑🍓🥝🥚🥧
-        while True:
-            # cleanup, consume or ignore the message
-            _message = await self._queue.get()
-            if self._is_cleanup_task:
-                if _message.acked:
-                    self._log.info(self._color + Style.BRIGHT + '🍏 CLEANUP message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
-                    if self.acceptable(_message.event):
-                        raise Exception('🍏 UNPROCESSED acceptable message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
-                    # otherwise we let it die here
-                else:
-                    asyncio.create_task(self._queue.put(_message))
-                    self._log.info(self._color + Style.BRIGHT + '🧀 RETURN unacknowledged message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
-            elif self.accept(_message.event):
-                self._log.info(self._color + Style.BRIGHT + '🍎 CONSUMED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
-                asyncio.create_task(self.handle_message(_message))
+#       while True:
+        # cleanup, consume or ignore the message
+        _message = await self._queue.get()
+        if self._is_cleanup_task:
+            if _message.acked:
+                self._log.info(self._color + Style.BRIGHT + '🍏 CLEANUP message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                if self.acceptable(_message.event):
+                    raise Exception('🍏 UNPROCESSED acceptable message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                # otherwise we let it die here
             else:
-                # acknowledge, put it back onto the message bus, ignored.
-                _message.acked = True
                 asyncio.create_task(self._queue.put(_message))
-                self._log.info(self._color + Style.DIM + '🍋 IGNORED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+                self._log.info(self._color + Style.BRIGHT + '🧀 RETURN unacknowledged message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+        elif self.accept(_message.event):
+            self._log.info(self._color + Style.BRIGHT + '🍎 CONSUMED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+            asyncio.create_task(self.handle_message(_message))
+        else:
+            # acknowledge, put it back onto the message bus, ignored.
+            _message.acked = True
+            asyncio.create_task(self._queue.put(_message))
+#           self._queue._put(_message)
+            self._log.info(self._color + Style.DIM + '🍋 IGNORED message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
 
     # ................................................................
     async def handle_message(self, msg):
@@ -258,73 +292,119 @@ class Subscriber(object):
         msg.restart = True
         self._log.info(self._color + Style.DIM + 'restarted host {}'.format(msg.hostname))
 
-# shutdown .....................................................................
-async def shutdown(signal, loop):
-    '''
-    Cleanup tasks tied to the service's shutdown.
-    '''
-    logging.info(Fore.RED + 'received exit signal {}...'.format(signal.name) + Style.RESET_ALL)
-    logging.info(Fore.RED + 'Closing database connections' + Style.RESET_ALL)
-    logging.info(Fore.RED + 'Nacking outstanding messages' + Style.RESET_ALL)
-    tasks = [t for t in asyncio.all_tasks() if t is not
-             asyncio.current_task()]
-
-    [task.cancel() for task in tasks]
-
-    logging.info(Fore.RED + 'cancelling {:d} outstanding tasks'.format(len(tasks)) + Style.RESET_ALL)
-    await asyncio.gather(*tasks, return_exceptions=True)
-    logging.info(Fore.RED + "flushing metrics." + Style.RESET_ALL)
-    loop.stop()
 
 # ..............................................................................
+class MessageBus(object):
+    '''
+    An asynchronous message bus.
+    '''
+    def __init__(self, loop, level):
+        self._log = Logger("bus", level)
+        self._loop = loop
+        self._queue = asyncio.Queue()
+        # May want to catch other signals too
+        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        for s in signals:
+            self._loop.add_signal_handler(
+                s, lambda s=s: asyncio.create_task(self.shutdown(s)))
+        self._loop.set_exception_handler(self.handle_exception)
+        self._log.info('ready.')
+
+    # ..........................................................................
+    @property
+    def queue(self):
+        return self._queue
+
+    # exception handling .......................................................
+    
+    def handle_exception(self, loop, context):
+        # context["message"] will always be there; but context["exception"] may not
+        self._log.info(Fore.GREEN + 'LOOP: {}'.format(loop))
+        msg = context.get("exception", context["message"])
+        self._log.error('caught exception: {}'.format(msg))
+        if loop.running() and not loop.closed():
+            # see if the loop is active before calling for a shutdown
+            asyncio.create_task(self.shutdown(loop))
+        else:
+            self._log.info("loop already shut down.")
+        self._log.info("Shutting down...")
+    
+    # shutdown .....................................................................
+    async def shutdown(self, signal=None):
+        '''
+        Cleanup tasks tied to the service's shutdown.
+        '''
+        if signal:
+            self._log.info('received exit signal {}...'.format(signal))
+        self._log.info(Fore.RED + 'closing database connections' + Style.RESET_ALL)
+        self._log.info(Fore.RED + 'nacking outstanding messages' + Style.RESET_ALL)
+        tasks = [t for t in asyncio.all_tasks() if t is not
+                 asyncio.current_task()]
+    
+        [task.cancel() for task in tasks]
+    
+        self._log.info(Fore.RED + 'cancelling {:d} outstanding tasks'.format(len(tasks)) + Style.RESET_ALL)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        self._log.info(Fore.RED + "flushing metrics." + Style.RESET_ALL)
+        self._loop.stop()
+        sys.exit(1)
+    
 # main .........................................................................
 def main():
 
-    print(Fore.BLUE + '1. configuring test...' + Style.RESET_ALL)
-    loop = asyncio.get_event_loop()
+    _log = Logger("main", Level.INFO)
+    _log.info(Fore.BLUE + '1. configuring test...')
+    _loop = asyncio.get_event_loop()
 
-    # May want to catch other signals too
-    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
-    for s in signals:
-        loop.add_signal_handler(
-            s, lambda s=s: asyncio.create_task(shutdown(s, loop)))
+    _message_bus = MessageBus(_loop, Level.INFO)
+    _queue = _message_bus.queue
 
-    _queue = asyncio.Queue()
     _message_factory = MessageFactory(Level.INFO)
     _publisher = Publisher(_queue, _message_factory, Level.INFO)
+    _subscribers = Subscribers(Level.INFO)                 
     _subscriber1 = Subscriber('1-stp', Fore.YELLOW, _queue, [ Event.STOP ], Level.INFO) # reacts to STOP
+    _subscribers.add(_subscriber1)
     _subscriber2 = Subscriber('2-irs', Fore.MAGENTA, _queue,  [ Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD ], Level.INFO) # reacts to IR
+    _subscribers.add(_subscriber2)
     _subscriber3 = Subscriber('3-bmp', Fore.GREEN, _queue, [ Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ], Level.INFO) # reacts to bumpers
+    _subscribers.add(_subscriber3)
     _subscriber4 = Subscriber('4-cup', Fore.RED, _queue, None, Level.INFO)              # cleanup subscriber
-                  
+    _subscribers.add(_subscriber4)
+
+    _log.info(Fore.BLUE + '{:d} subscribers in list.'.format(_subscribers.count))
 
 #   for i in range(10):
 #       _event = _message_factory.get_random_event()
 #       _message = _message_factory.get_message(_event, _event.description)
-#       print(Fore.YELLOW + '[{:02d}] message {}; event: {}'.format(i, _message, _message.event.description) + Style.RESET_ALL)
+#       _log.info(Fore.YELLOW + '[{:02d}] message {}; event: {}'.format(i, _message, _message.event.description))
 #   sys.exit(0)
 
     try:
-        print(Fore.BLUE + '2. creating task for publishers...' + Style.RESET_ALL)
-        loop.create_task(_publisher.publish())
-        print(Fore.BLUE + '3. creating task for subscriber 1...' + Style.RESET_ALL)
-        loop.create_task(_subscriber1.consume())
-        print(Fore.BLUE + '4. creating task for subscriber 2...' + Style.RESET_ALL)
-        loop.create_task(_subscriber2.consume())
-        print(Fore.BLUE + '5. creating task for subscriber 3...' + Style.RESET_ALL)
-        loop.create_task(_subscriber3.consume())
-        print(Fore.BLUE + '6. creating task for subscriber 4...' + Style.RESET_ALL)
-        loop.create_task(_subscriber4.consume())
+        _log.info(Fore.BLUE + '2. creating task for publishers...')
+        _loop.create_task(_publisher.publish())
 
-        print(Fore.BLUE + '5. run forever...' + Style.RESET_ALL)
-        loop.run_forever()
+#       _log.info(Fore.BLUE + '3. creating task for subscriber 1...')
+#       _loop.create_task(_subscriber1.consume())
+#       _log.info(Fore.BLUE + '4. creating task for subscriber 2...')
+#       _loop.create_task(_subscriber2.consume())
+#       _log.info(Fore.BLUE + '5. creating task for subscriber 3...' + Style.RESET_ALL)
+#       _loop.create_task(_subscriber3.consume())
+#       _log.info(Fore.BLUE + '6. creating task for subscriber 4...' + Style.RESET_ALL)
+#       _loop.create_task(_subscriber4.consume())
+
+        _log.info(Fore.BLUE + '3. creating task for subscribers...' + Style.RESET_ALL)
+        _loop.create_task(_subscribers.consume())
+
+        _log.info(Fore.BLUE + 'z. run forever...' + Style.RESET_ALL)
+        _loop.run_forever()
     except KeyboardInterrupt:
-        logging.info("Process interrupted")
+        _log.info("Process interrupted")
     finally:
-        loop.close()
-        logging.info("Successfully shutdown the Mayhem service.")
+        _loop.close()
+        _log.info("Successfully shutdown the Mayhem service.")
 
 
+# ........................
 if __name__ == "__main__":
     main()
 
