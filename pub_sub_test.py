@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2019 Lynn Root
-'''
-Tasks that monitor other tasks using `asyncio`'s `Event` object - modified.
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2019-12-23
+# modified: 2020-03-12
+#
+# Tasks that monitor other tasks using `asyncio`'s `Event` object - modified.
+# 
+# Notice! This requires:  attrs==19.1.0
+# 
+# See:          https://roguelynn.com/words/asyncio-true-concurrency/
+# Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
+# See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
+# And another:  https://codepr.github.io/posts/asyncio-pubsub/
+#               https://gist.github.com/appeltel/fd3ddeeed6c330c7208502462639d2c9
+#               https://www.oreilly.com/library/view/using-asyncio-in/9781492075325/ch04.html
+# 
+# unrelated:
+# Python Style Guide: https://www.python.org/dev/peps/pep-0008/
 
-Notice! This requires:
- - attrs==19.1.0
-
-To run:
-
-    $ python part-1/mayhem_10.py
-
-Follow along: https://roguelynn.com/words/asyncio-true-concurrency/
-Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
-See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
-And another:  https://codepr.github.io/posts/asyncio-pubsub/
-              https://gist.github.com/appeltel/fd3ddeeed6c330c7208502462639d2c9
-              https://www.oreilly.com/library/view/using-asyncio-in/9781492075325/ch04.html
-
-unrelated:
-Python Style Guide: https://www.python.org/dev/peps/pep-0008/
-'''
 #        1         2         3         4         5         6         7         8
 #2345678901234567890123456789012345678901234567890123456789012345678901234567890
 
