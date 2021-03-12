@@ -10,7 +10,6 @@
 # modified: 2020-11-06
 #
 
-import itertools
 from datetime import datetime as dt
 from colorama import init, Fore, Style
 init()
@@ -34,40 +33,40 @@ class Message():
         self._description = event.description
         self._priority    = event.priority
         self._timestamp   = dt.now()
-        self._state       = ActionState.INIT
+#       self._state       = ActionState.INIT
         self._value       = value
 
     # state transitions ........................................................
 
     # ......................................................
-    def start(self):
-        if self._state is ActionState.INIT:
-            self._state = ActionState.STARTED
-        else:
-            raise IllegalStateError('invalid transition in {} from {} to STARTED.'.format(self._event.description, self._state.name))
+#   def start(self):
+#       if self._state is ActionState.INIT:
+#           self._state = ActionState.STARTED
+#       else:
+#           raise IllegalStateError('invalid transition in {} from {} to STARTED.'.format(self._event.description, self._state.name))
 
     # ......................................................
-    def complete(self):
-        if self._state is ActionState.STARTED:
-            self._state = ActionState.COMPLETED
-        else:
-            raise IllegalStateError('invalid transition in {} from {} to COMPLETED.'.format(self._event.description, self._state.name))
+#   def complete(self):
+#       if self._state is ActionState.STARTED:
+#           self._state = ActionState.COMPLETED
+#       else:
+#           raise IllegalStateError('invalid transition in {} from {} to COMPLETED.'.format(self._event.description, self._state.name))
 
     # ......................................................
-    def interrupt(self):
-        '''
-            We don't pay attention to state transitions: just close it.
-        '''
-        print(Fore.MAGENTA + 'interrupted {} event from {} to CLOSED.'.format(self._event.description, self._state.name) + Style.RESET_ALL)
-        self._state = ActionState.CLOSED
+#   def interrupt(self):
+#       '''
+#           We don't pay attention to state transitions: just close it.
+#       '''
+#       print(Fore.MAGENTA + 'interrupted {} event from {} to CLOSED.'.format(self._event.description, self._state.name) + Style.RESET_ALL)
+#       self._state = ActionState.CLOSED
 
     # ......................................................
-    def is_complete(self):
-        return self._state is ActionState.COMPLETED or self._state is ActionState.CLOSED
+#   def is_complete(self):
+#       return self._state is ActionState.COMPLETED or self._state is ActionState.CLOSED
 
     # ......................................................
-    def get_state(self):
-        return self._state
+#   def get_state(self):
+#       return self._state
 
     # ......................................................
     @property

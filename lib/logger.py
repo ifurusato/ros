@@ -193,7 +193,7 @@ class Logger:
         '''
         if not self.suppressed:
             with self._mutex:
-                self.__log.error(self._mf.format(Logger.__color_error, self.__ERROR_TOKEN, Style.BRIGHT + message, Logger.__color_reset))
+                self.__log.error(self._mf.format(Logger.__color_error, self.__ERROR_TOKEN, Style.NORMAL + message, Logger.__color_reset))
 
     # ..........................................................................
     def critical(self, message):
