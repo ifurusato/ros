@@ -173,10 +173,8 @@ class Clock(object):
             _now = dt.now()
             _count = next(self._counter)
             if (( _count % self._tock_modulo ) == 0 ):
-#               _message = self._message_factory.get_message_of_type(self._tock_type, Event.CLOCK_TOCK, _count)
                 _message = self._message_factory.get_message(Event.CLOCK_TOCK, _count)
             else:
-#               _message = self._message_factory.get_message_of_type(self._tick_type, Event.CLOCK_TICK, _count)
                 _message = self._message_factory.get_message(Event.CLOCK_TICK, _count)
             self._message_bus.handle(_message)
 

@@ -6,29 +6,39 @@
 # see the LICENSE file included as part of this package.
 #
 # author:   Murray Altheim
-# created:  2020-05-09
-# modified: 2020-11-07
+# created:  2019-12-23
+# modified: 2020-03-12
 #
 
-import itertools
+import itertools, string
+import random
+from datetime import datetime as dt
+
+from colorama import init, Fore, Style
+init()
+
+# ..............
 
 from lib.logger import Logger, Level
+#from lib.message_factory import MessageFactory
 from lib.message import Message
+from lib.event import Event
 
 # ..............................................................................
 class MessageFactory(object):
-
+    '''
+    A factory for Messages.
+    '''
     def __init__(self, level):
         self._log = Logger("msgfactory", level)
         self._counter = itertools.count()
+        self._choices = string.ascii_lowercase + string.digits
         self._log.info('ready.')
- 
+
     # ..........................................................................
     def get_message(self, event, value):
-        return Message(next(self._counter), event, value)
+        _host_id = "".join(random.choices(self._choices, k=4))
+        _instance_name = 'id-{}'.format(_host_id)
+#       return Message(instance_name=_instance_name, timestamp=dt.now(), event=event, value=value)
+        return Message(instance_name=_instance_name, event=event, value=value)
 
-    # ..........................................................................
-    def get_message_of_type(self, message_type, event, value):
-        return message_type(next(self._counter), event, value)
-
-#EOF

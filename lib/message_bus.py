@@ -28,8 +28,11 @@ from lib.logger import Logger, Level
 # ..............................................................................
 class MessageBus():
     '''
-    A message bus wrapper around PyMessageBus, this provides a simple
-    centralised pub-sub-like framework for handling Message objects.
+    A message bus wrapper around PyMessageBus, this provides a simple,
+    pub-sub-like framework for handling Message objects.
+
+    Note that this is a synchronous bus and handle() blocks until the
+    callback returns.
     '''
     def __init__(self, level):
         super().__init__()
@@ -54,6 +57,6 @@ class MessageBus():
 #       self._log.info(Fore.BLACK + 'HANDLE message eid#{}; priority={}; description: {}'.format(message.eid, message.priority, message.description))
         _result = self._message_bus.handle(message)
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info(Fore.BLACK + 'RESULT: {} ({})'.format(_result, len(_result)))
+            self._log.info(Fore.BLACK + 'RESULT: {} ({}); event: {}'.format(_result, len(_result), message.event))
 
 #EOF
