@@ -38,7 +38,7 @@ class MessageFactory(object):
     # ..........................................................................
     def get_message(self, event, value):
         _host_id = "".join(random.choices(self._choices, k=4))
-        _instance_name = 'id-{}'.format(_host_id)
-#       return Message(instance_name=_instance_name, timestamp=dt.now(), event=event, value=value)
-        return Message(instance_name=_instance_name, event=event, value=value)
+        _name = 'id-{}'.format(_host_id)
+        return Message(instance_name=_name, timestamp=dt.now(), event=event, value=value)
 
+#EOF

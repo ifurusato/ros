@@ -11,13 +11,9 @@
 #
 # An asyncio-based publish/subscribe-style message bus.
 #
-# See:          https://roguelynn.com/words/asyncio-true-concurrency/
-# Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
-# See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
-# And another:  https://codepr.github.io/posts/asyncio-pubsub/
-#               https://gist.github.com/appeltel/fd3ddeeed6c330c7208502462639d2c9
-#               https://www.oreilly.com/library/view/using-asyncio-in/9781492075325/ch04.html
+# See: https://roguelynn.com/words/asyncio-true-concurrency/
 #
+
 import asyncio, signal, traceback
 import sys
 from colorama import init, Fore, Style
@@ -26,6 +22,7 @@ init()
 from lib.logger import Logger, Level
 from lib.event import Event
 from lib.message import Message
+from lib.subscriber import GarbageCollector
 
 # ..............................................................................
 class MessageBus(object):
@@ -43,6 +40,8 @@ class MessageBus(object):
             self._loop.add_signal_handler(
                 s, lambda s=s: asyncio.create_task(self.shutdown(s)))
         self._loop.set_exception_handler(self.handle_exception)
+        _garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
+        self._subscribers.append(_garbage_collector)
         self._enabled    = True # by default
         self._closed     = False
         self._log.info('ready.')
@@ -58,9 +57,15 @@ class MessageBus(object):
         return self._queue.qsize()
 
     # ..........................................................................
+    def print_subscribers(self):
+        self._log.info('{:d} subscribers in list:'.format(len(self._subscribers)))
+        for subscriber in self._subscribers:
+            self._log.info('    subscriber: {}'.format(subscriber.name))
+
+    # ..........................................................................
     def add_subscriber(self, subscriber):
-        self._subscribers.append(subscriber)
-        self._log.info(Fore.BLUE + '{:d} subscribers in list.'.format(len(self._subscribers)))
+        self._subscribers.insert(0, subscriber)
+        self._log.info('added subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
 
     # ..........................................................................
     async def consume(self):
@@ -82,36 +87,43 @@ class MessageBus(object):
         return self._queue.get()
 
     # ..........................................................................
-    async def publish_message(self, message):
+    def publish_message(self, message):
         '''
-        Asynchronously waits until it pops a message from the queue.
+        Asynchronously publishes the Message to the MessageBus, and therefore to any Subscribers.
 
         NOTE: calls to this function should be await'd.
         '''
+        if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
+            self._log.info('publishing message: {} (event: {});'.format(message.name, message.event))
         asyncio.create_task(self._queue.put(message))
 
     # ..........................................................................
-    def handle(self, message: Message):
+    def republish_message(self, message):
         '''
-        Add a new Message to the message bus, and any associated handlers.
+        Asynchronously re-publishes the Message to the MessageBus, and therefore to any Subscribers.
+        This isn't any different than publishing but we might start treating it differently.
+
+        NOTE: calls to this function should be await'd.
         '''
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info(Fore.BLACK + 'HANDLE message: {} (event: {})'.format(message.instance_name, message.event))
-        asyncio.create_task(self._queue.put(message))
+            self._log.info(Fore.BLACK + 'republishing message: {} (event: {});'.format(message.name, message.event))
+            asyncio.create_task(self._queue.put(message))
+        else:
+            self._log.warning(Fore.BLACK + 'ignoring republication of message: {} (event: {});'.format(message.name, message.event))
+
 
     # exception handling .......................................................
 
     def handle_exception(self, loop, context):
         self._log.error('handle exception on loop: {}'.format(loop))
-        message = context.get("exception", context["message"])
         # context["message"] will always be there; but context["exception"] may not
+        message = context.get("exception", context["message"])
         self._log.error('caught exception: {}'.format(message))
-        self._log.error(traceback.format_exc())
+#       self._log.error('caught exception: {} / {}'.format(message, traceback.print_stack()))
         if loop.is_running() and not loop.is_closed():
             asyncio.create_task(self.shutdown(loop))
         else:
             self._log.info("loop already shut down.")
-        self._log.info("Shutting down...")
 
     # shutdown .....................................................................
     async def shutdown(self, signal=None):
