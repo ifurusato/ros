@@ -29,6 +29,7 @@ try:
 except ImportError:
     sys.exit("This script requires the rgbmatrix5x5 module\nInstall with: pip3 install --user rgbmatrix5x5")
 
+from lib.i2c_scanner import I2CScanner
 from lib.logger import Level, Logger
 from lib.feature import Feature
 from lib.enums import Color, Orientation
@@ -50,20 +51,31 @@ class RgbMatrix(Feature):
     This class provides access to a pair of Pimoroni 5x5 RGB LED Matrix displays,
     labeled port and starboard. It also includes several canned demonstrations,
     which can be used to indicate behaviours in progress.
+
+    The port side display requires cutting of the ADDR trace on the board to alter
+    its I2C address to 0x77, so that two boards can be used. The starboard display
+    is at the default address of 0x74 and hence is required, the port optional.
     '''
     def __init__(self, level):
         global enabled
         self._log = Logger("rgbmatrix", level)
-        self._rgbmatrix5x5_PORT = RGBMatrix5x5(address=0x77)
-        self._log.info('port rgbmatrix at 0x77.')
-        self._rgbmatrix5x5_PORT.set_brightness(0.8)
-        self._rgbmatrix5x5_PORT.set_clear_on_exit()
+        _i2c_scanner = I2CScanner(Level.WARN)
+        _addresses = _i2c_scanner.get_addresses()
+        self._rgbmatrix5x5_PORT = RGBMatrix5x5(address=0x77) if (0x77 in _addresses) else None
+#       self._rgbmatrix5x5_PORT = RGBMatrix5x5(address=0x77)
+        if self._rgbmatrix5x5_PORT:
+            self._log.info('port rgbmatrix at 0x77.')
+            self._rgbmatrix5x5_PORT.set_brightness(0.8)
+            self._rgbmatrix5x5_PORT.set_clear_on_exit()
+        else:
+            self._log.info('no port rgbmatrix found.')
         self._rgbmatrix5x5_STBD = RGBMatrix5x5(address=0x74)
         self._log.info('starboard rgbmatrix at 0x74.')
         self._rgbmatrix5x5_STBD.set_brightness(0.8)
         self._rgbmatrix5x5_STBD.set_clear_on_exit()
-        self._height = self._rgbmatrix5x5_PORT.height
-        self._width  = self._rgbmatrix5x5_PORT.width
+
+        self._height = self._rgbmatrix5x5_STBD.height
+        self._width  = self._rgbmatrix5x5_STBD.width
         self._log.info('rgbmatrix width,height: {},{}'.format(self._width, self._height))
         self._thread_PORT = None
         self._thread_STBD = None
@@ -107,9 +119,10 @@ class RgbMatrix(Feature):
         if not self._closed and not self._closing:
             if self._thread_PORT is None and self._thread_STBD is None:
                 enabled = True
-                self._thread_PORT = Thread(name='rgb-port', target=self._get_target(), args=[self, self._rgbmatrix5x5_PORT])
+                if self._rgbmatrix5x5_PORT:
+                    self._thread_PORT = Thread(name='rgb-port', target=self._get_target(), args=[self, self._rgbmatrix5x5_PORT])
+                    self._thread_PORT.start()
                 self._thread_STBD = Thread(name='rgb-stbd', target=self._get_target(), args=[self, self._rgbmatrix5x5_STBD])
-                self._thread_PORT.start()
                 self._thread_STBD.start()
                 self._log.debug('enabled.')
             else:
@@ -119,7 +132,8 @@ class RgbMatrix(Feature):
 
     # ..........................................................................
     def clear(self):
-        self._clear(self._rgbmatrix5x5_PORT)
+        if self._rgbmatrix5x5_PORT:
+            self._clear(self._rgbmatrix5x5_PORT)
         self._clear(self._rgbmatrix5x5_STBD)
 
     # ..........................................................................
@@ -132,7 +146,8 @@ class RgbMatrix(Feature):
         global enabled
         self._log.debug('disabling...')
         enabled = False
-        self._clear(self._rgbmatrix5x5_PORT)
+        if self._rgbmatrix5x5_PORT:
+            self._clear(self._rgbmatrix5x5_PORT)
         self._clear(self._rgbmatrix5x5_STBD)
         if self._thread_PORT != None:
             self._thread_PORT.join(timeout=1.0)
@@ -302,9 +317,9 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def show_color(self, color, orientation):
         self.set_solid_color(color)
-        if orientation is Orientation.PORT:
+        if orientation is Orientation.PORT or orientation is Orientation.BOTH and self._rgbmatrix5x5_PORT:
             self._set_color(self._rgbmatrix5x5_PORT, self._color)
-        else:
+        if orientation is Orientation.STBD or orientation is Orientation.BOTH:
             self._set_color(self._rgbmatrix5x5_STBD, self._color)
 
     # ..........................................................................
@@ -318,7 +333,7 @@ class RgbMatrix(Feature):
         r = int(rgb[0]*255.0)
         g = int(rgb[1]*255.0)
         b = int(rgb[2]*255.0)
-        if orientation is Orientation.PORT or orientation is Orientation.BOTH:
+        if orientation is Orientation.PORT or orientation is Orientation.BOTH and self._rgbmatrix5x5_PORT:
             self._rgbmatrix5x5_PORT.set_all(r, g, b)
             self._rgbmatrix5x5_PORT.show()
         if orientation is Orientation.STBD or orientation is Orientation.BOTH:
@@ -328,12 +343,12 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):
         '''
-        Display a specified static, solid color on only the port display.
+        Display a specified static, solid color on only the starboard display.
         '''
         global enabled
 #       self.set_color(self._color)
-#       self._set_color(self._rgbmatrix5x5_STBD, self._color)
-        self._set_color(self._rgbmatrix5x5_PORT, self._color)
+#       self._set_color(self._rgbmatrix5x5_PORT, self._color)
+        self._set_color(self._rgbmatrix5x5_STBD, self._color)
         self._log.info('starting solid color to {}...'.format(str.lower(self._color.name)))
         while enabled:
             time.sleep(0.2)
@@ -341,12 +356,12 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _solid(self, rgbmatrix5x5):
         '''
-        Display a specified static, solid color on only the port display.
+        Display a specified static, solid color on only the starboard display.
         '''
         global enabled
 #       self.set_color(self._color)
-#       self._set_color(self._rgbmatrix5x5_STBD, self._color)
-        self._set_color(self._rgbmatrix5x5_PORT, self._color)
+#       self._set_color(self._rgbmatrix5x5_PORT, self._color)
+        self._set_color(self._rgbmatrix5x5_STBD, self._color)
         self._log.info('starting solid color to {}...'.format(str.lower(self._color.name)))
         while enabled:
             time.sleep(0.2)
@@ -483,7 +498,8 @@ class RgbMatrix(Feature):
         '''
         Set the color of both RGB Matrix displays.
         '''
-        self._set_color(self._rgbmatrix5x5_PORT, color)
+        if self._rgbmatrix5x5_PORT:
+            self._set_color(self._rgbmatrix5x5_PORT, color)
         self._set_color(self._rgbmatrix5x5_STBD, color)
 
     # ..........................................................................

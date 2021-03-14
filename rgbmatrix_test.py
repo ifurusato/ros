@@ -39,7 +39,7 @@ def test_rgbmatrix():
 #       time.sleep(0.15)
 #   _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test complete.')
 
-    _types = [ DisplayType.BLINKY, DisplayType.RAINBOW, DisplayType.RANDOM ]
+    _types = [ DisplayType.RAINBOW, DisplayType.BLINKY, DisplayType.RANDOM ]
 
     for display_type in _types:
         _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : displaying {}...'.format(display_type.name))
