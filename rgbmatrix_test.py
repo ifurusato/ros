@@ -48,7 +48,7 @@ def test_rgbmatrix():
 #   SWORL   = 7
 #   SOLID   = 8
 #   _types = [ DisplayType.CPU ]
-    _types = [ DisplayType.BLINKY, DisplayType.RAINBOW, DisplayType.RANDOM ]
+    _types = [ DisplayType.SWORL, DisplayType.BLINKY, DisplayType.RAINBOW, DisplayType.RANDOM ]
 
     for display_type in _types:
         _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : displaying {}...'.format(display_type.name))

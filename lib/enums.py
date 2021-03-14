@@ -71,6 +71,7 @@ class Color(Enum):
     DARK_CYAN      = ( 20, 0.0, 128.0, 128.0)
     LIGHT_MAGENTA  = ( 21, 255.0, 128.0, 255.0)
     MAGENTA        = ( 22, 255.0, 0.0, 255.0)
+    FUCHSIA        = ( 22, 255.0, 0.0, 128.0)
     DARK_MAGENTA   = ( 23, 128.0, 0.0, 128.0)
     LIGHT_YELLOW   = ( 24, 255.0, 255.0, 128.0)
     PURPLE         = ( 25, 77.0, 26.0, 177.0)
@@ -204,6 +205,27 @@ class Cardinal(Enum):
         elif 112.5 <= degrees <= 157.5:
             return Cardinal.SOUTHEAST
 
+    @staticmethod
+    def get_color_for_direction(value):
+        if value is Cardinal.NORTH:
+            return Color.BLUE
+        elif value is Cardinal.NORTHEAST:
+            return Color.MAGENTA
+        elif value is Cardinal.EAST:
+            return Color.FUCHSIA
+        elif value is Cardinal.SOUTHEAST:
+            return Color.RED
+        elif value is Cardinal.SOUTH:
+            return Color.YELLOW
+        elif value is Cardinal.SOUTHWEST:
+            return Color.GREEN
+        elif value is Cardinal.WEST:
+            return Color.LIGHT_BLUE
+        elif value is Cardinal.NORTHWEST:
+            return Color.CYAN
+        else:
+            return Color.BLACK
+    
 
 # ..............................................................................
 class ActionState(Enum):

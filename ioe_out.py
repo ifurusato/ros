@@ -47,19 +47,19 @@ while True:
     value = round(ioe.input(pin),2)
     if value < last_value:
         if analog:
-            print(Fore.RED    + "{:d}\tbutton value: {:5.2f}v".format(count, value))
+            print(Fore.RED    + "{:d}\tbutton value: {:5.2f}v".format(count, value) + Style.RESET_ALL)
         else:
-            print(Fore.RED    + "{:d}\tbutton value: {}".format(count, value))
+            print(Fore.RED    + "{:d}\tbutton value: {}".format(count, value) + Style.RESET_ALL)
     elif value > last_value:
         if analog:
-            print(Fore.GREEN  + "{:d}\tbutton value: {:5.2f}v".format(count, value))
+            print(Fore.GREEN  + "{:d}\tbutton value: {:5.2f}v".format(count, value) + Style.RESET_ALL)
         else:
-            print(Fore.GREEN  + "{:d}\tbutton value: {}".format(count, value))
+            print(Fore.GREEN  + "{:d}\tbutton value: {}".format(count, value) + Style.RESET_ALL)
     else:
         if analog:
-            print(Fore.YELLOW + "{:d}\tbutton value: {:5.2f}v".format(count, value))
+            print(Fore.YELLOW + "{:d}\tbutton value: {:5.2f}v".format(count, value) + Style.RESET_ALL)
         else:
-            print(Fore.YELLOW + "{:d}\tbutton value: {}".format(count, value))
+            print(Fore.YELLOW + "{:d}\tbutton value: {}".format(count, value) + Style.RESET_ALL)
 
     last_value = value
     time.sleep(0.5)
