@@ -39,13 +39,22 @@ def test_rgbmatrix():
 #       time.sleep(0.15)
 #   _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : color test complete.')
 
-    _types = [ DisplayType.RAINBOW, DisplayType.BLINKY, DisplayType.RANDOM ]
+#   BLINKY  = 1
+#   CPU     = 2
+#   DARK    = 3
+#   RAINBOW = 4
+#   RANDOM  = 5
+#   SCAN    = 6
+#   SWORL   = 7
+#   SOLID   = 8
+#   _types = [ DisplayType.CPU ]
+    _types = [ DisplayType.BLINKY, DisplayType.RAINBOW, DisplayType.RANDOM ]
 
     for display_type in _types:
         _log.info('rgbmatrix_test    :' + Fore.CYAN + Style.BRIGHT + ' INFO  : displaying {}...'.format(display_type.name))
         _rgbmatrix.set_display_type(display_type)
         _rgbmatrix.enable()
-        time.sleep(2.0)
+        time.sleep(60.0 if len(_types) == 1 else 2.0)
         _rgbmatrix.disable()
         count = 0
         while not _rgbmatrix.is_disabled():
