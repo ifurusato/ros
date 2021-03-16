@@ -82,12 +82,12 @@ class Subscriber(object):
             # is acceptable so consume
             asyncio.create_task(self._consume_message(_message))
         # put back into queue in case anyone else is interested
-        if not _message.fulfilled:
+        if not _message.acknowledged:
             self._log.info(self._color + Style.DIM + 'returning unprocessed message {} to queue;'.format(_message) \
                     + Fore.WHITE + ' event: {}'.format(_message.event.description))
             self._message_bus.republish_message(_message)
         else: # nobody wanted it
-            self._log.info(self._color + Style.DIM + '🍏 message {} fulfilled, awaiting garbage collection;'.format(_message) \
+            self._log.info(self._color + Style.DIM + '🍏 message {} acknowledged, awaiting garbage collection;'.format(_message) \
                     + Fore.WHITE + ' event: {}'.format(_message.event.description))
 
     # ................................................................
@@ -133,7 +133,7 @@ class Subscriber(object):
         await event.wait()
         # unhelpful simulation of i/o work
         await asyncio.sleep(random.random())
-        message.expired == True
+        message.expire()
         self._log.debug(self._color + Style.DIM + 'done: acknowledged {}'.format(message))
 
     # ................................................................
@@ -147,7 +147,7 @@ class Subscriber(object):
         await asyncio.sleep(random.random())
         if random.randrange(1, 5) == 3:
             raise SaveFailed('Could not save {}'.format(message))
-        message.saved = True
+        message.save()
         self._log.info(self._color + Style.DIM + 'saved {} into database.'.format(message))
 
     # ................................................................
@@ -163,8 +163,8 @@ class Subscriber(object):
         await asyncio.sleep(random.random())
         if random.randrange(1, 5) == 3:
             raise RestartFailed('Could not restart {}'.format(message.hostname))
-        message.restart = True
-        self._log.info(self._color + Style.DIM + 'restarted host {}'.format(message.hostname))
+        message.restart()
+        self._log.info(self._color + Style.DIM + 'restarted host {}; restarted? {}'.format(message.hostname, message.restarted))
 
     # ................................................................
     def _handle_results(self, results, message):
@@ -196,13 +196,13 @@ class GarbageCollector(Subscriber):
     # ................................................................
     async def consume(self):
         '''
-        Consumer client that garbage collects (destroys) a fulfilled message.
+        Consumer client that garbage collects (destroys) an acknowledged message.
         '''
         _message = await self._message_bus.consume_message()
         _message.acknowledge(self.name)
         self._log.debug(self._color + '🗑️  consuming message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
 
-        if _message.fulfilled:
+        if _message.acknowledged:
             _elapsed_ms = int((dt.now() - _message.timestamp).total_seconds() * 1000.0)
             if _message.event == Event.SNIFF:
                 self._log.info(self._color + Style.BRIGHT + '🗑️  garbage collect SNIFF message \'{}\' '.format(_message.name) \
@@ -219,8 +219,8 @@ class GarbageCollector(Subscriber):
                         + '    ackd by: {}'.format(_message.acknowledgements))
             # now we exit to let it expire
         else:
-            # was not cleaned up nor fulfilled, so put back into queue
-            self._log.warning(self._color + Style.BRIGHT + '🧀 republishing unfulfilled message:' + Fore.WHITE \
+            # was not cleaned up nor acknowledged, so put back into queue
+            self._log.warning(self._color + Style.BRIGHT + '🧀 republishing unacknowledged message:' + Fore.WHITE \
                     + ' {}; event: {}'.format(_message, _message.event.description))
             self._message_bus.republish_message(_message)
 
