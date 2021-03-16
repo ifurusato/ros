@@ -66,21 +66,15 @@ class Subscriber(object):
         return event in self._events
 
     # ................................................................
-    async def consume(self, count):
+    async def consume(self):
         '''
-        Consumer client to simulate subscribing to a publisher.
-        This filters on event type, either consuming the message,
-        ignoring it (and putting it back on the bus), or, if this
-        is the cleanup task, destroying it.
-
-        :param count:   the number of subscribers.
+        Awaits a message on the message bus, then consumes it, filtering
+        on event type, processing the message then putting it back on the
+        bus to be further processed and eventually garbage collected.
         '''
         # 🍎 🍏 🍈 🍅 🍋 🍐 🍑 🥝 🥚 🥧 🧀
         _message = await self._message_bus.consume_message()
-        if not _message.expectation_set:
-            _message.expect(count-1) # we don't count cleanup task
-        else:
-            _message.acknowledge(self.name)
+        _message.acknowledge(self.name)
         self._log.debug(self._color + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
         if self.accept(_message.event):
             # this subscriber is interested so handle the message
@@ -121,9 +115,9 @@ class Subscriber(object):
         :param event:    the asyncio.Event to watch for message extention or cleaning up.
         '''
         while not event.is_set():
-            message.processed += 1
+            message.process()
             _elapsed_ms = int((dt.now() - message.timestamp).total_seconds() * 1000.0)
-            self._log.info(Fore.GREEN + Style.NORMAL + 'processing message: {} in {:d}ms'.format(message, _elapsed_ms))
+            self._log.info(Fore.GREEN + Style.BRIGHT + 'processing message: {} (event: {}) in {:d}ms'.format(message, message.event.description, _elapsed_ms))
             # want to sleep for less than the deadline amount
             await asyncio.sleep(2)
 
@@ -135,11 +129,10 @@ class Subscriber(object):
         :param message:  consumed message that is done being processed.
         :param event:    the asyncio.Event to watch for message extention or cleaning up.
         '''
-        # this will block the rest of the coro until `event.set` is called
+        # this will block until `event.set` is called
         await event.wait()
         # unhelpful simulation of i/o work
         await asyncio.sleep(random.random())
-#       message.acked == 0
         message.expired == True
         self._log.debug(self._color + Style.DIM + 'done: acknowledged {}'.format(message))
 
@@ -201,20 +194,12 @@ class GarbageCollector(Subscriber):
         self._log.info(self._color + 'ready.')
 
     # ................................................................
-    async def consume(self, count):
+    async def consume(self):
         '''
-        Consumer client to simulate subscribing to a publisher.
-        This filters on event type, either consuming the message,
-        ignoring it (and putting it back on the bus), or, if this
-        is the cleanup task, destroying it.
-
-        :param count:   the number of subscribers.
+        Consumer client that garbage collects (destroys) a fulfilled message.
         '''
         _message = await self._message_bus.consume_message()
-        if not _message.expectation_set:
-            _message.expect(count-1) # we don't count cleanup task
-        else:
-            _message.acknowledge(self.name)
+        _message.acknowledge(self.name)
         self._log.debug(self._color + '🗑️  consuming message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
 
         if _message.fulfilled:
@@ -222,14 +207,17 @@ class GarbageCollector(Subscriber):
             if _message.event == Event.SNIFF:
                 self._log.info(self._color + Style.BRIGHT + '🗑️  garbage collect SNIFF message \'{}\' '.format(_message.name) \
                         + Fore.WHITE + ' (event: {});'.format(_message.event.description) \
-                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms.'.format(_message.processed, _elapsed_ms))
+                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms;\n'.format(_message.processed, _elapsed_ms)
+                        + '    ackd by: {}'.format(_message.acknowledgements))
                 if _message.event == Event.SNIFF and _message.processed < 2:
-                    raise Exception('message {} (event: {}) processed by only {:d}; ackd by: {}'.format(_message.name, _message.event, _message.processed, _message.acknowledgements))
+                    raise Exception('message {} (event: {}) processed by only {:d}; ackd by: {}'.format(\
+                            _message.name, _message.event, _message.processed, _message.acknowledgements))
             else:
                 self._log.info(self._color + '🗑️  garbage collect message \'{}\' '.format(_message.name) + Fore.WHITE \
                         + ' (event: {});'.format(_message.event.description) \
-                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms.'.format(_message.processed, _elapsed_ms))
-            # otherwise we exit to let it expire
+                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms;\n'.format(_message.processed, _elapsed_ms)
+                        + '    ackd by: {}'.format(_message.acknowledgements))
+            # now we exit to let it expire
         else:
             # was not cleaned up nor fulfilled, so put back into queue
             self._log.warning(self._color + Style.BRIGHT + '🧀 republishing unfulfilled message:' + Fore.WHITE \

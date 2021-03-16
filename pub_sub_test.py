@@ -76,6 +76,7 @@ class Publisher(object):
         while True:
             _event = get_random_event()
             _message = self._message_factory.get_message(_event, _event.description)
+            _message.expect(self._message_bus.count - 1) # we don't count cleanup task
             # publish the message
             self._message_bus.publish_message(_message)
             self._log.info(Fore.WHITE + Style.BRIGHT + '{} PUBLISHED message: {} (event: {})'.format(self.name, _message, _event.description))
@@ -85,10 +86,10 @@ class Publisher(object):
 
 # ..........................................................................
 EVENT_TYPES = [ Event.STOP, \
-          Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
-          Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
-          Event.SNIFF, \
-          Event.FULL_AHEAD, Event.ROAM, Event.ASTERN ] # not handled
+#         Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
+#         Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
+#         Event.FULL_AHEAD, Event.ROAM, Event.ASTERN,
+          Event.SNIFF ] # not handled
 
 def get_random_event():
     '''
@@ -117,6 +118,7 @@ def main():
 
 #   _subscriber4 = GarbageCollector('4-clean', Fore.RED, _message_bus, Level.INFO)
 #   _message_bus.add_subscriber(_subscriber4)
+
     _message_bus.print_subscribers()
 
     try:

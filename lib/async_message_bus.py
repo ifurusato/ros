@@ -75,7 +75,7 @@ class MessageBus(object):
         while self._enabled:
             for subscriber in self._subscribers:
                 self._log.debug('publishing to subscriber {}...'.format(subscriber.name))
-                await subscriber.consume(self.count)
+                await subscriber.consume()
 
     # ..........................................................................
     def consume_message(self):

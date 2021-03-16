@@ -27,7 +27,6 @@ class Message:
     Uses attrs, see: https://www.attrs.org/en/stable/
     '''
     instance_name = attr.ib()
-    acked         = set() # list of subscriber's names who've acknowledged message
     message_id    = attr.ib(repr=False, default=str(uuid.uuid4()))
     timestamp     = attr.ib(repr=False, default=dt.now())
     hostname      = attr.ib(repr=False, init=False)
@@ -37,6 +36,7 @@ class Message:
     event         = attr.ib(repr=False, default=None)
     value         = attr.ib(repr=False, default=None)
     expired       = attr.ib(repr=False, default=False)
+    acked         = [] # list of subscriber's names who've acknowledged message
 
     def __attrs_post_init__(self):
         self.hostname = '{}.acme.com'.format(self.instance_name)
@@ -54,6 +54,10 @@ class Message:
         Returns True if the expectation has been set.
         '''
         return self.expectation >= 0
+
+    def process(self):
+        print(Fore.GREEN + '>>>>>> message process() event: {}'.format(self.event.description) + Style.RESET_ALL)
+        self.processed += 1
 
     def expect(self, count):
         '''
@@ -75,7 +79,7 @@ class Message:
         '''
         if not self.expectation_set:
             raise Exception('no expectation set ({}).'.format(self.instance_name))
-        self.acked.add(name)
+        self.acked.append(name)
 #       print('-- acknowledged {:d} times.'.format(self.acked) + Style.RESET_ALL)
 
     @property
