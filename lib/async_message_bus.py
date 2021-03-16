@@ -29,10 +29,11 @@ class MessageBus(object):
     '''
     An asyncio-based asynchronous message bus.
     '''
-    def __init__(self, loop, level):
+    def __init__(self, level):
         self._log = Logger("bus", level)
-        self._loop = loop
+        self._loop = asyncio.get_event_loop()
         self._queue = asyncio.Queue()
+        self._publishers  = []
         self._subscribers = []
         # may want to catch other signals too
         signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
@@ -57,15 +58,27 @@ class MessageBus(object):
         return self._queue.qsize()
 
     # ..........................................................................
+    def register_publisher(self, publisher):
+        self._publishers.append(publisher)
+        self._loop.create_task(publisher.publish())
+        self._log.info('registered publisher \'{}\'; {:d} publishers in list.'.format(subscriber.name, len(self._subscribers)))
+
+    # ..........................................................................
+    def print_publishers(self):
+        self._log.info('{:d} publishers in list:'.format(len(self._publishers)))
+        for publisher in self._publishers:
+            self._log.info('    publisher: {}'.format(publisher.name))
+
+    # ..........................................................................
+    def register_subscriber(self, subscriber):
+        self._subscribers.insert(0, subscriber)
+        self._log.info('registered subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
+
+    # ..........................................................................
     def print_subscribers(self):
         self._log.info('{:d} subscribers in list:'.format(len(self._subscribers)))
         for subscriber in self._subscribers:
             self._log.info('    subscriber: {}'.format(subscriber.name))
-
-    # ..........................................................................
-    def add_subscriber(self, subscriber):
-        self._subscribers.insert(0, subscriber)
-        self._log.info('added subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
 
     # ..........................................................................
     async def consume(self):
@@ -157,6 +170,11 @@ class MessageBus(object):
     def enable(self):
         if not self._closed:
             self._enabled = True
+            if not self._loop.is_running():
+                self._log.info(Fore.BLUE + 'creating task for subscribers...')
+                self._loop.create_task(self.consume())
+                self._log.info(Fore.BLUE + 'run forever...')
+                self._loop.run_forever()
             self._log.info('enabled.')
         else:
             self._log.warning('cannot enable: already closed.')
@@ -165,6 +183,14 @@ class MessageBus(object):
     def disable(self):
         if self._enabled:
             self._enabled = False
+            for publisher in self._publishers:
+                '''
+                NOTE: we are at this point incidentally tying publishing with
+                the enabled state of the publisher. This may not be desired.
+                '''
+                publisher.disable()
+            if self._loop.is_running():
+                self._loop.stop()
             self._log.info('disabled.')
         else:
             self._log.warning('already disabled.')

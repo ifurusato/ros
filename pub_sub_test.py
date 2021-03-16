@@ -48,6 +48,9 @@ class RestartFailed(Exception):
 
 # Publisher ....................................................................
 class Publisher(object):
+    '''
+    Eventually an abstract class.
+    '''
     def __init__(self, name, message_bus, message_factory, level=Level.INFO):
         '''
         Simulates a publisher of messages.
@@ -64,6 +67,8 @@ class Publisher(object):
         if message_factory is None:
             raise ValueError('null message factory argument.')
         self._message_factory = message_factory
+        self._enabled    = True # by default
+        self._closed     = False
         self._log.info(Fore.BLACK + 'ready.')
 
     # ..........................................................................
@@ -73,16 +78,46 @@ class Publisher(object):
 
     # ................................................................
     async def publish(self):
-        while True:
+        '''
+        Begins publication of messages to the MessageBus. The MessageBus itself
+        calls this function as part of its asynchronous loop; it shouldn't be
+        called by anyone except the MessageBus.
+        '''
+        while self._enabled:
             _event = get_random_event()
             _message = self._message_factory.get_message(_event, _event.description)
-            _message.expect(self._message_bus.count - 1) # we don't count cleanup task
+            _message.expect(self._message_bus.count) # we don't count cleanup task
             # publish the message
             self._message_bus.publish_message(_message)
             self._log.info(Fore.WHITE + Style.BRIGHT + '{} PUBLISHED message: {} (event: {})'.format(self.name, _message, _event.description))
             # simulate randomness of publishing messages
             await asyncio.sleep(random.random())
             self._log.debug(Fore.BLACK + Style.BRIGHT + 'after await sleep.')
+
+    # ..........................................................................
+    @property
+    def enabled(self):
+        return self._enabled
+
+    # ..........................................................................
+    def disable(self):
+        if self._enabled:
+            self._enabled = False
+            self._log.info('disabled.')
+        else:
+            self._log.warning('already disabled.')
+
+    # ..........................................................................
+    def close(self):
+        '''
+        Permanently close and disable the message bus.
+        '''
+        if not self._closed:
+            self.disable()
+            self._closed = True
+            self._log.info('closed.')
+        else:
+            self._log.debug('already closed.')
 
 # ..........................................................................
 EVENT_TYPES = [ Event.STOP, \
@@ -102,12 +137,14 @@ def main():
 
     _log = Logger("main", Level.INFO)
     _log.info(Fore.BLUE + '1. configuring test...')
-    _loop = asyncio.get_event_loop()
 
-    _message_bus = MessageBus(_loop, Level.INFO)
     _message_factory = MessageFactory(Level.INFO)
+
+    _message_bus = MessageBus(Level.INFO)
     _publisher1  = Publisher('A', _message_bus, _message_factory, Level.INFO)
+    _message_bus.register_publisher(_publisher1)
     _publisher2  = Publisher('B', _message_bus, _message_factory, Level.INFO)
+    _message_bus.register_publisher(_publisher2)
 
     _subscriber1 = Subscriber('1-stop', Fore.YELLOW, _message_bus, [ Event.STOP, Event.SNIFF ], Level.INFO) # reacts to STOP
     _message_bus.add_subscriber(_subscriber1)
@@ -119,18 +156,13 @@ def main():
 #   _subscriber4 = GarbageCollector('4-clean', Fore.RED, _message_bus, Level.INFO)
 #   _message_bus.add_subscriber(_subscriber4)
 
+    _message_bus.print_publishers()
     _message_bus.print_subscribers()
 
+    sys.exit(0)
+
     try:
-        _log.info(Fore.BLUE + '2. creating tasks for publishers...')
-        _loop.create_task(_publisher1.publish())
-        _loop.create_task(_publisher2.publish())
-
-        _log.info(Fore.BLUE + '3. creating task for subscribers...' + Style.RESET_ALL)
-        _loop.create_task(_message_bus.consume())
-
-        _log.info(Fore.BLUE + 'z. run forever...' + Style.RESET_ALL)
-        _loop.run_forever()
+        _message_bus.enable()
 
     except KeyboardInterrupt:
         _log.info("process interrupted")

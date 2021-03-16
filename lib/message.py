@@ -52,6 +52,10 @@ class Message(object):
     # expectation   ............................................................
 
     @property
+    def expectation(self):
+        return self._expectation
+
+    @property
     def expectation_set(self):
         '''
         Returns True if the expectation has been set.
