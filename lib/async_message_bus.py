@@ -9,9 +9,18 @@
 # created:  2021-03-10
 # modified: 2021-03-13
 #
-# An asyncio-based publish/subscribe-style message bus.
+# An asyncio-based publish/subscribe-style message bus guaranteeing exactly-once
+# delivery for each message. This is done by populating each message with the
+# list of subscribers.
 #
-# See: https://roguelynn.com/words/asyncio-true-concurrency/
+# Delivery guarantees:
+#
+#  * At-most-once delivery. This means that a message will never be delivered
+#    more than once but messages might be lost.
+#  * At-least-once delivery. This means that we'll never lose a message but a
+#    message might end up being delivered to a consumer more than once.
+#  * Exactly-once delivery. The holy grail of messaging. All messages will be
+#    delivered exactly one time.
 #
 
 import asyncio, signal, traceback
@@ -42,7 +51,7 @@ class MessageBus(object):
                 s, lambda s=s: asyncio.create_task(self.shutdown(s)))
         self._loop.set_exception_handler(self.handle_exception)
         _garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
-        self._subscribers.append(_garbage_collector)
+        self.register_subscriber(_garbage_collector)
         self._enabled    = True # by default
         self._closed     = False
         self._log.info('ready.')
@@ -52,38 +61,64 @@ class MessageBus(object):
     def queue(self):
         return self._queue
 
-    # ..........................................................................
     @property
     def queue_size(self):
         return self._queue.qsize()
 
     # ..........................................................................
     def register_publisher(self, publisher):
+        '''
+        Register a message publisher with the message bus.
+        '''
         self._publishers.append(publisher)
         self._loop.create_task(publisher.publish())
-        self._log.info('registered publisher \'{}\'; {:d} publishers in list.'.format(subscriber.name, len(self._subscribers)))
+        self._log.info('registered publisher \'{}\'; {:d} publishers in list.'.format(publisher.name, len(self._publishers)))
 
-    # ..........................................................................
     def print_publishers(self):
+        '''
+        Print the message publishers that have been registered with the message bus.
+        '''
         self._log.info('{:d} publishers in list:'.format(len(self._publishers)))
         for publisher in self._publishers:
             self._log.info('    publisher: {}'.format(publisher.name))
 
+    @property
+    def publishers(self):
+        return self._publishers
+
+    @property
+    def publisher_count(self):
+        return len(self._publishers)
+
     # ..........................................................................
     def register_subscriber(self, subscriber):
+        '''
+        Register a message subscriber with the message bus.
+        '''
         self._subscribers.insert(0, subscriber)
         self._log.info('registered subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
 
-    # ..........................................................................
     def print_subscribers(self):
+        '''
+        Print the message subscribers that have been registered with the message bus.
+        '''
         self._log.info('{:d} subscribers in list:'.format(len(self._subscribers)))
         for subscriber in self._subscribers:
             self._log.info('    subscriber: {}'.format(subscriber.name))
 
+    @property
+    def subscribers(self):
+        return self._subscribers
+
+    @property
+    def subscriber_count(self):
+        return len(self._subscribers)
+
     # ..........................................................................
     async def consume(self):
         '''
-        Start the subscribers' consume cycle.
+        Start the subscribers' consume cycle. This remains active until the
+        message bus is disabled.
         '''
         while self._enabled:
             for subscriber in self._subscribers:
@@ -114,7 +149,8 @@ class MessageBus(object):
     def republish_message(self, message):
         '''
         Asynchronously re-publishes the Message to the MessageBus, and therefore to any Subscribers.
-        This isn't any different than publishing but we might start treating it differently.
+        This isn't any different than publishing but we might start treating it differently, e.g.,
+        altering the message state.
 
         NOTE: calls to this function should be await'd.
         '''
@@ -124,15 +160,14 @@ class MessageBus(object):
         else:
             self._log.warning(Fore.BLACK + 'ignoring republication of message: {} (event: {});'.format(message.name, message.event))
 
-
     # exception handling .......................................................
 
     def handle_exception(self, loop, context):
         self._log.error('handle exception on loop: {}'.format(loop))
         # context["message"] will always be there; but context["exception"] may not
         message = context.get("exception", context["message"])
-        self._log.error('caught exception: {}'.format(message))
-#       self._log.error('caught exception: {} / {}'.format(message, traceback.print_stack()))
+#       self._log.error('caught exception: {}'.format(message))
+        self._log.error('caught exception: {} / {}'.format(message, traceback.print_stack()))
         if loop.is_running() and not loop.is_closed():
             asyncio.create_task(self.shutdown(loop))
         else:
@@ -156,10 +191,6 @@ class MessageBus(object):
         self._loop.stop()
         self._log.info(Fore.RED + "shutting down..." + Style.RESET_ALL)
         sys.exit(1) # really?
-
-    @property
-    def count(self):
-        return len(self._subscribers)
 
     # ..........................................................................
     @property

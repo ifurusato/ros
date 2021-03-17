@@ -74,7 +74,7 @@ class Subscriber(object):
         '''
         # 🍎 🍏 🍈 🍅 🍋 🍐 🍑 🥝 🥚 🥧 🧀
         _message = await self._message_bus.consume_message()
-        _message.acknowledge(self.name)
+        _message.acknowledge(self)
         self._log.debug(self._color + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
         if self.accept(_message.event):
             # this subscriber is interested so handle the message
@@ -199,7 +199,7 @@ class GarbageCollector(Subscriber):
         Consumer client that garbage collects (destroys) an acknowledged message.
         '''
         _message = await self._message_bus.consume_message()
-        _message.acknowledge(self.name)
+        _message.acknowledge(self)
         self._log.debug(self._color + '🗑️  consuming message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
 
         if _message.acknowledged:

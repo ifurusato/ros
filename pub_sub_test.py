@@ -10,18 +10,17 @@
 # modified: 2020-03-12
 #
 # Tasks that monitor other tasks using `asyncio`'s `Event` object - modified.
-# 
-# Notice! This requires:  attrs==19.1.0
-# 
+#
 # See:          https://roguelynn.com/words/asyncio-true-concurrency/
 # Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
 # See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
 # And another:  https://codepr.github.io/posts/asyncio-pubsub/
 #               https://gist.github.com/appeltel/fd3ddeeed6c330c7208502462639d2c9
 #               https://www.oreilly.com/library/view/using-asyncio-in/9781492075325/ch04.html
-# 
+#
 # unrelated:
 # Python Style Guide: https://www.python.org/dev/peps/pep-0008/
+#
 
 import asyncio, itertools, signal, string, uuid
 import random
@@ -38,14 +37,6 @@ from lib.message_factory import MessageFactory
 from lib.subscriber import Subscriber
 from lib.event import Event
 
-# SaveFailed exception .........................................................
-class SaveFailed(Exception):
-    pass
-
-# RestartFailed exception ......................................................
-class RestartFailed(Exception):
-    pass
-
 # Publisher ....................................................................
 class Publisher(object):
     '''
@@ -55,6 +46,7 @@ class Publisher(object):
         '''
         Simulates a publisher of messages.
 
+        :param name:             the unique name for the publisher
         :param message_bus:      the asynchronous message bus
         :param message_factory:  the factory for messages
         :param level:            the logging level
@@ -67,7 +59,7 @@ class Publisher(object):
         if message_factory is None:
             raise ValueError('null message factory argument.')
         self._message_factory = message_factory
-        self._enabled    = True # by default
+        self._enabled    = False # by default
         self._closed     = False
         self._log.info(Fore.BLACK + 'ready.')
 
@@ -79,14 +71,18 @@ class Publisher(object):
     # ................................................................
     async def publish(self):
         '''
-        Begins publication of messages to the MessageBus. The MessageBus itself
-        calls this function as part of its asynchronous loop; it shouldn't be
-        called by anyone except the MessageBus.
+        Begins publication of messages. The MessageBus itself calls this function
+        as part of its asynchronous loop; it shouldn't be called by anyone except
+        the MessageBus.
         '''
+        if self._enabled:
+            self._log.warning('publish cycle already started.')
+            return
+        self._enabled = True
         while self._enabled:
             _event = get_random_event()
             _message = self._message_factory.get_message(_event, _event.description)
-            _message.expect(self._message_bus.count) # we don't count cleanup task
+            _message.set_subscribers(self._message_bus.subscribers)
             # publish the message
             self._message_bus.publish_message(_message)
             self._log.info(Fore.WHITE + Style.BRIGHT + '{} PUBLISHED message: {} (event: {})'.format(self.name, _message, _event.description))
@@ -147,28 +143,25 @@ def main():
     _message_bus.register_publisher(_publisher2)
 
     _subscriber1 = Subscriber('1-stop', Fore.YELLOW, _message_bus, [ Event.STOP, Event.SNIFF ], Level.INFO) # reacts to STOP
-    _message_bus.add_subscriber(_subscriber1)
+    _message_bus.register_subscriber(_subscriber1)
     _subscriber2 = Subscriber('2-infrared', Fore.MAGENTA, _message_bus, [ Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD ], Level.INFO) # reacts to IR
-    _message_bus.add_subscriber(_subscriber2)
+    _message_bus.register_subscriber(_subscriber2)
     _subscriber3 = Subscriber('3-bumper', Fore.GREEN, _message_bus, [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ], Level.INFO) # reacts to bumpers
-    _message_bus.add_subscriber(_subscriber3)
-
-#   _subscriber4 = GarbageCollector('4-clean', Fore.RED, _message_bus, Level.INFO)
-#   _message_bus.add_subscriber(_subscriber4)
+    _message_bus.register_subscriber(_subscriber3)
 
     _message_bus.print_publishers()
     _message_bus.print_subscribers()
-
-    sys.exit(0)
+#   sys.exit(0)
 
     try:
         _message_bus.enable()
-
     except KeyboardInterrupt:
-        _log.info("process interrupted")
+        _log.info('publish-subscribe interrupted')
+    except Exception as e:
+        _log.error('error in publish-subscribe: {}'.format(e))
     finally:
-        _loop.close()
-        _log.info("successfully shutdown the message bus service.")
+        _message_bus.close()
+        _log.info('successfully shutdown the message bus service.')
 
 # ........................
 if __name__ == "__main__":

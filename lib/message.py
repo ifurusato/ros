@@ -9,6 +9,10 @@
 # created:  2021-03-10
 # modified: 2021-03-16
 #
+# NOTE: to guarantee exactly-once delivery each message must contain a list
+# of the identifiers for all current subscribers, with each subscriber 
+# acknowledgement removing it from that list.
+#
 
 import uuid
 from datetime import datetime as dt
@@ -17,6 +21,7 @@ init()
 
 from lib.logger import Logger, Level
 from lib.event import Event
+from lib.subscriber import Subscriber
 
 # ..............................................................................
 class Message(object):
@@ -26,12 +31,11 @@ class Message(object):
     def __init__(self, instance_name, event, value):
         self._timestamp     = dt.now()
         self._message_id    = uuid.uuid4()
-        self._expectation   = -1 
         self._processed     = 0
         self._saved         = False
         self._expired       = False
         self._restarted     = False
-        self.acked          = [] # list of subscriber's names who've acknowledged message
+        self._subscribers   = {} # list of subscriber's names who've acknowledged message
         self._instance_name = instance_name
         self._hostname      = '{}.acme.com'.format(self._instance_name)
         self._event         = event
@@ -48,26 +52,6 @@ class Message(object):
     @property
     def message_id(self):
         return self._message_id
-
-    # expectation   ............................................................
-
-    @property
-    def expectation(self):
-        return self._expectation
-
-    @property
-    def expectation_set(self):
-        '''
-        Returns True if the expectation has been set.
-        '''
-        return self._expectation >= 0
-
-    def expect(self, count):
-        '''
-        Set the number of times the message is expected to be consumed.
-        This is generally set to the number of subscribers.
-        '''
-        self._expectation = count
 
     # processed     ............................................................
 
@@ -109,24 +93,54 @@ class Message(object):
     # acked         ............................................................
 
     @property
+    def expectation_set(self):
+        '''
+        Returns True if the expectation has been set.
+        '''
+        return len(self._subscribers) > 0
+
+    @property
     def acknowledgements(self):
-        return self.acked
+        return self._subscribers
+
+    @property
+    def unacknowledged_count(self):
+        _count = 0
+        for subscriber in self._subscribers:
+            if not self._subscribers[subscriber]:
+                _count += 1
+        return _count
+
+    def set_subscribers(self, subscribers):
+        for subscriber in subscribers:
+            print(Fore.GREEN + 'subscriber {} ADDED to message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+            self._subscribers[subscriber] = False
 
     @property
     def acknowledged(self):
         '''
-        Returns True if the message has been acknowledged by all subscribers.
+        Returns True if the message has been acknowledged by all subscribers,
+        i.e., no subscriber flags remain set as False.
         '''
-        return len(self.acked) >= self.expectation
+        for subscriber in self._subscribers:
+            if not self._subscribers[subscriber]:
+                return False
+        return True
 
-    def acknowledge(self, name):
+    def acknowledge(self, subscriber):
         '''
         To be called by each subscriber, acknowledging receipt of the message.
         '''
-        if not self.expectation_set:
-            raise Exception('no expectation set ({}).'.format(self._instance_name))
-        self.acked.append(name)
-#       print('-- acknowledged {:d} times.'.format(self.acked) + Style.RESET_ALL)
+        if not isinstance(subscriber, Subscriber):
+            raise Exception('expected subscriber, not {}.'.format(type(subscriber)))
+        elif not self.expectation_set:
+            raise Exception('no subscriber expectations set ({}).'.format(self._instance_name))
+        if self._subscribers[subscriber]:
+            print(Fore.RED + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
+#           raise Exception('message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name))
+        else:
+            self._subscribers[subscriber] = True
+            print(Fore.BLUE + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
 
     # instance_name ............................................................
 
