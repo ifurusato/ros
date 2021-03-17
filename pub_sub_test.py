@@ -9,8 +9,6 @@
 # created:  2019-12-23
 # modified: 2020-03-12
 #
-# Tasks that monitor other tasks using `asyncio`'s `Event` object - modified.
-#
 # See:          https://roguelynn.com/words/asyncio-true-concurrency/
 # Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
 # See also:     https://cheat.readthedocs.io/en/latest/python/asyncio.html
@@ -40,7 +38,7 @@ from lib.event import Event
 # Publisher ....................................................................
 class Publisher(object):
     '''
-    Eventually an abstract class.
+    Eventually this will be an abstract class.
     '''
     def __init__(self, name, message_bus, message_factory, level=Level.INFO):
         '''
