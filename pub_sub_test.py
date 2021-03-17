@@ -7,7 +7,7 @@
 #
 # author:   Murray Altheim
 # created:  2019-12-23
-# modified: 2020-03-12
+# modified: 2021-03-17
 #
 # See:          https://roguelynn.com/words/asyncio-true-concurrency/
 # Source:       https://github.com/econchick/mayhem/blob/master/part-1/mayhem_10.py
@@ -20,111 +20,15 @@
 # Python Style Guide: https://www.python.org/dev/peps/pep-0008/
 #
 
-import asyncio, itertools, signal, string, uuid
-import random
-import sys, time
-from datetime import datetime as dt
-
 from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
-from lib.message import Message
 from lib.async_message_bus import MessageBus
 from lib.message_factory import MessageFactory
+from lib.publisher import Publisher
 from lib.subscriber import Subscriber
 from lib.event import Event
-
-# Publisher ....................................................................
-class Publisher(object):
-    '''
-    Eventually this will be an abstract class.
-    '''
-    def __init__(self, name, message_bus, message_factory, level=Level.INFO):
-        '''
-        Simulates a publisher of messages.
-
-        :param name:             the unique name for the publisher
-        :param message_bus:      the asynchronous message bus
-        :param message_factory:  the factory for messages
-        :param level:            the logging level
-        '''
-        self._log = Logger('pub-{}'.format(name), level)
-        self._name = name
-        if message_bus is None:
-            raise ValueError('null message bus argument.')
-        self._message_bus = message_bus
-        if message_factory is None:
-            raise ValueError('null message factory argument.')
-        self._message_factory = message_factory
-        self._enabled    = False # by default
-        self._closed     = False
-        self._log.info(Fore.BLACK + 'ready.')
-
-    # ..........................................................................
-    @property
-    def name(self):
-        return self._name
-
-    # ................................................................
-    async def publish(self):
-        '''
-        Begins publication of messages. The MessageBus itself calls this function
-        as part of its asynchronous loop; it shouldn't be called by anyone except
-        the MessageBus.
-        '''
-        if self._enabled:
-            self._log.warning('publish cycle already started.')
-            return
-        self._enabled = True
-        while self._enabled:
-            _event = get_random_event()
-            _message = self._message_factory.get_message(_event, _event.description)
-            _message.set_subscribers(self._message_bus.subscribers)
-            # publish the message
-            self._message_bus.publish_message(_message)
-            self._log.info(Fore.WHITE + Style.BRIGHT + '{} PUBLISHED message: {} (event: {})'.format(self.name, _message, _event.description))
-            # simulate randomness of publishing messages
-            await asyncio.sleep(random.random())
-            self._log.debug(Fore.BLACK + Style.BRIGHT + 'after await sleep.')
-
-    # ..........................................................................
-    @property
-    def enabled(self):
-        return self._enabled
-
-    # ..........................................................................
-    def disable(self):
-        if self._enabled:
-            self._enabled = False
-            self._log.info('disabled.')
-        else:
-            self._log.warning('already disabled.')
-
-    # ..........................................................................
-    def close(self):
-        '''
-        Permanently close and disable the message bus.
-        '''
-        if not self._closed:
-            self.disable()
-            self._closed = True
-            self._log.info('closed.')
-        else:
-            self._log.debug('already closed.')
-
-# ..........................................................................
-EVENT_TYPES = [ Event.STOP, \
-#         Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
-#         Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
-#         Event.FULL_AHEAD, Event.ROAM, Event.ASTERN,
-          Event.SNIFF ] # not handled
-
-def get_random_event():
-    '''
-    Returns one of the randomly-assigned event types.
-    '''
-    return EVENT_TYPES[random.randint(0, len(EVENT_TYPES)-1)]
 
 # main .........................................................................
 def main():
@@ -149,7 +53,6 @@ def main():
 
     _message_bus.print_publishers()
     _message_bus.print_subscribers()
-#   sys.exit(0)
 
     try:
         _message_bus.enable()
