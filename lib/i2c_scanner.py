@@ -13,6 +13,12 @@
 # see: https://www.raspberrypi.org/forums/viewtopic.php?t=114401
 # see: https://raspberrypi.stackexchange.com/questions/62612/is-there-anyway-to-scan-i2c-using-pure-python-libraries:q
 #
+# If you're getting a "Permission denied" message due to smbus, add the pi user to the i2c group using: 
+#
+#  % sudo adduser pi i2c
+#
+# then reboot.
+#
 
 import errno
 from lib.logger import Level, Logger
