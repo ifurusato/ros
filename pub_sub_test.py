@@ -34,7 +34,7 @@ from lib.event import Event
 def main():
 
     _log = Logger("main", Level.INFO)
-    _log.info(Fore.BLUE + '1. configuring test...')
+    _log.info(Fore.BLUE + 'configuring pub-sub test...')
 
     _message_factory = MessageFactory(Level.INFO)
 
