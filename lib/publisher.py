@@ -20,10 +20,10 @@ from lib.message import Message
 from lib.event import Event
 
 EVENT_TYPES = [ Event.STOP, \
-#         Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
-#         Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
-#         Event.FULL_AHEAD, Event.ROAM, Event.ASTERN,
-          Event.SNIFF ] # not handled
+          Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD, \
+          Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD, \
+          Event.FULL_AHEAD, Event.ROAM, Event.ASTERN, # not handled
+          Event.SNIFF ]
 
 # Publisher ....................................................................
 class Publisher(object):
