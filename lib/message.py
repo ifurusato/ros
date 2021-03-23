@@ -31,21 +31,29 @@ class Message(object):
     def __init__(self, instance_name, event, value):
         self._timestamp     = dt.now()
         self._message_id    = uuid.uuid4()
+        self._instance_name = instance_name
+        self._hostname      = '{}.acme.com'.format(self._instance_name)
+        self._event         = event
+        self._value         = value
         self._processed     = 0
         self._saved         = False
         self._expired       = False
         self._restarted     = False
         self._subscribers   = {} # list of subscriber's names who've acknowledged message
-        self._instance_name = instance_name
-        self._hostname      = '{}.acme.com'.format(self._instance_name)
-        self._event         = event
-        self._value         = value
 
     # timestamp     ............................................................
 
     @property
     def timestamp(self):
         return self._timestamp
+
+    # age      .................................................................
+
+    @property
+    def age(self):
+        _age_ms = (dt.now() - self._timestamp).total_seconds() * 1000.0
+#       print(Fore.GREEN + Style.BRIGHT + 'message age: {:5.2f}ms ({})'.format(_age_ms, self._event.description) + Style.RESET_ALL)
+        return int(_age_ms)
 
     # message_id    ............................................................
 
@@ -113,7 +121,7 @@ class Message(object):
 
     def set_subscribers(self, subscribers):
         for subscriber in subscribers:
-            print(Fore.GREEN + 'subscriber {} ADDED to message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+#           print(Fore.GREEN + 'subscriber {} ADDED to message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
             self._subscribers[subscriber] = False
 
     @property
@@ -140,7 +148,7 @@ class Message(object):
 #           raise Exception('message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name))
         else:
             self._subscribers[subscriber] = True
-            print(Fore.BLUE + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
+#           print(Fore.BLUE + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
 
     # instance_name ............................................................
 

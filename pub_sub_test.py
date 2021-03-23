@@ -19,7 +19,7 @@
 # unrelated:
 # Python Style Guide: https://www.python.org/dev/peps/pep-0008/
 #
-
+import sys, traceback
 from colorama import init, Fore, Style
 init()
 
@@ -27,6 +27,7 @@ from lib.logger import Logger, Level
 from lib.async_message_bus import MessageBus
 from lib.message_factory import MessageFactory
 from lib.publisher import Publisher
+from mock.publisher import IfsPublisher
 from lib.subscriber import Subscriber
 from lib.event import Event
 
@@ -36,13 +37,14 @@ def main():
     _log = Logger("main", Level.INFO)
     _log.info(Fore.BLUE + 'configuring pub-sub test...')
 
-    _message_factory = MessageFactory(Level.INFO)
-
     _message_bus = MessageBus(Level.INFO)
-    _publisher1  = Publisher('A', _message_bus, _message_factory, Level.INFO)
+    _message_factory = MessageFactory(_message_bus, Level.INFO)
+
+    _publisher1  = IfsPublisher('A', _message_bus, _message_factory)
+#   _publisher1  = Publisher('A', _message_bus, _message_factory)
     _message_bus.register_publisher(_publisher1)
-    _publisher2  = Publisher('B', _message_bus, _message_factory, Level.INFO)
-    _message_bus.register_publisher(_publisher2)
+#   _publisher2  = Publisher('B', _message_bus, _message_factory, Level.INFO)
+#   _message_bus.register_publisher(_publisher2)
 
     _subscriber1 = Subscriber('1-stop', Fore.YELLOW, _message_bus, [ Event.STOP, Event.SNIFF ], Level.INFO) # reacts to STOP
     _message_bus.register_subscriber(_subscriber1)
@@ -54,12 +56,15 @@ def main():
     _message_bus.print_publishers()
     _message_bus.print_subscribers()
 
+#   sys.exit(0)
+
     try:
         _message_bus.enable()
     except KeyboardInterrupt:
         _log.info('publish-subscribe interrupted')
     except Exception as e:
-        _log.error('error in publish-subscribe: {}'.format(e))
+#       _log.error('error in pub-sub: {}\n{}'.format(e, traceback.format_exc()))
+        _log.error('error in pub-sub: {} / {}'.format(e, traceback.print_stack()))
     finally:
         _message_bus.close()
         _log.info('successfully shutdown the message bus service.')

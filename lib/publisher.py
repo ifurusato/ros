@@ -40,6 +40,7 @@ class Publisher(object):
         :param level:            the logging level
         '''
         self._log = Logger('pub-{}'.format(name), level)
+        print(Fore.RED + 'NAME: {}  --------------------'.format(name) + Style.RESET_ALL)
         self._name = name
         if message_bus is None:
             raise ValueError('null message bus argument.')
@@ -70,7 +71,7 @@ class Publisher(object):
         while self._enabled:
             _event = self._get_random_event()
             _message = self._message_factory.get_message(_event, _event.description)
-            _message.set_subscribers(self._message_bus.subscribers)
+#           _message.set_subscribers(self._message_bus.subscribers)
             # publish the message
             self._message_bus.publish_message(_message)
             self._log.info(Fore.WHITE + Style.BRIGHT + '{} PUBLISHED message: {} (event: {})'.format(self.name, _message, _event.description))
@@ -89,6 +90,17 @@ class Publisher(object):
     @property
     def enabled(self):
         return self._enabled
+
+    # ..........................................................................
+    def enable(self):
+        if not self._closed:
+            if self._enabled:
+                self._log.warning('already enabled.')
+            else:
+                self._enabled = True
+                self._log.info('enabled.')
+        else:
+            self._log.warning('cannot enable: already closed.')
 
     # ..........................................................................
     def disable(self):

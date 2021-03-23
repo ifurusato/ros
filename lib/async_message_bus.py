@@ -40,10 +40,10 @@ class MessageBus(object):
     '''
     def __init__(self, level):
         self._log = Logger("bus", level)
-        self._loop = asyncio.get_event_loop()
-        self._queue = asyncio.Queue()
-        self._publishers  = []
-        self._subscribers = []
+        self._loop        = asyncio.get_event_loop()
+        self._queue        = asyncio.Queue()
+        self._publishers   = []
+        self._subscribers  = []
         # may want to catch other signals too
         signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
         for s in signals:
@@ -52,8 +52,12 @@ class MessageBus(object):
         self._loop.set_exception_handler(self.handle_exception)
         _garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
         self.register_subscriber(_garbage_collector)
-        self._enabled    = True # by default
-        self._closed     = False
+
+        self._max_age      = 5.0 # ms
+        self._enabled      = True # by default
+        self._closed       = False
+        self._log.info('creating subscriber task...')
+        self._loop.create_task(self.start_consuming())
         self._log.info('ready.')
 
     # ..........................................................................
@@ -96,6 +100,7 @@ class MessageBus(object):
         Register a message subscriber with the message bus.
         '''
         self._subscribers.insert(0, subscriber)
+        self._loop.create_task(subscriber.consume())
         self._log.info('registered subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
 
     def print_subscribers(self):
@@ -115,11 +120,16 @@ class MessageBus(object):
         return len(self._subscribers)
 
     # ..........................................................................
-    async def consume(self):
+    def is_expired(self, message):
+        return _message.age > self._max_age
+
+    # ..........................................................................
+    async def start_consuming(self):
         '''
         Start the subscribers' consume cycle. This remains active until the
         message bus is disabled.
         '''
+        self._log.info(Fore.YELLOW + 'begin {:d} subscribers\' consume cycle...'.format(len(self._subscribers)))
         while self._enabled:
             for subscriber in self._subscribers:
                 self._log.debug('publishing to subscriber {}...'.format(subscriber.name))
@@ -142,8 +152,9 @@ class MessageBus(object):
         NOTE: calls to this function should be await'd.
         '''
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info('publishing message: {} (event: {});'.format(message.name, message.event))
-        asyncio.create_task(self._queue.put(message))
+            self._log.info('publishing message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
+        _result = asyncio.create_task(self._queue.put(message))
+        self._log.info('result from published message: {}'.format(type(_result)))
 
     # ..........................................................................
     def republish_message(self, message):
@@ -155,7 +166,7 @@ class MessageBus(object):
         NOTE: calls to this function should be await'd.
         '''
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info(Fore.BLACK + 'republishing message: {} (event: {});'.format(message.name, message.event))
+            self._log.info(Fore.BLACK + 'republishing message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
             asyncio.create_task(self._queue.put(message))
         else:
             self._log.warning(Fore.BLACK + 'ignoring republication of message: {} (event: {});'.format(message.name, message.event))
@@ -202,9 +213,7 @@ class MessageBus(object):
         if not self._closed:
             self._enabled = True
             if not self._loop.is_running():
-                self._log.info(Fore.BLUE + 'creating task for subscribers...')
-                self._loop.create_task(self.consume())
-                self._log.info(Fore.BLUE + 'run forever...')
+                self._log.info(Fore.BLUE + 'starting asyncio task loop...')
                 self._loop.run_forever()
             self._log.info('enabled.')
         else:

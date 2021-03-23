@@ -75,19 +75,19 @@ class Subscriber(object):
         # 🍎 🍏 🍈 🍅 🍋 🍐 🍑 🥝 🥚 🥧 🧀
         _message = await self._message_bus.consume_message()
         _message.acknowledge(self)
-        self._log.debug(self._color + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+        self._log.info(self._color + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
         if self.accept(_message.event):
             # this subscriber is interested so handle the message
-            self._log.info(self._color + Style.BRIGHT + '🍎 consumed message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
+            self._log.info(self._color + Style.BRIGHT + '🍎 consumed message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
             # is acceptable so consume
             asyncio.create_task(self._consume_message(_message))
         # put back into queue in case anyone else is interested
         if not _message.acknowledged:
-            self._log.info(self._color + Style.DIM + 'returning unprocessed message {} to queue;'.format(_message) \
+            self._log.info(self._color + Style.DIM + 'returning unprocessed message {} to queue;'.format(_message.name) \
                     + Fore.WHITE + ' event: {}'.format(_message.event.description))
             self._message_bus.republish_message(_message)
         else: # nobody wanted it
-            self._log.info(self._color + Style.DIM + '🍏 message {} acknowledged, awaiting garbage collection;'.format(_message) \
+            self._log.info(self._color + Style.DIM + '🍏 message {} acknowledged, awaiting garbage collection;'.format(_message.name) \
                     + Fore.WHITE + ' event: {}'.format(_message.event.description))
 
     # ................................................................
@@ -116,8 +116,8 @@ class Subscriber(object):
         '''
         while not event.is_set():
             message.process()
-            _elapsed_ms = int((dt.now() - message.timestamp).total_seconds() * 1000.0)
-            self._log.info(Fore.GREEN + Style.BRIGHT + 'processing message: {} (event: {}) in {:d}ms'.format(message, message.event.description, _elapsed_ms))
+            _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
+            self._log.info(Fore.GREEN + Style.BRIGHT + 'processing message: {} (event: {}) in {:5.2f}ms'.format(message, message.event.description, _elapsed_ms))
             # want to sleep for less than the deadline amount
             await asyncio.sleep(2)
 
@@ -191,7 +191,15 @@ class GarbageCollector(Subscriber):
     '''
     def __init__(self, name, color, message_bus, level=Level.INFO):
         super().__init__(name, color, message_bus, None, level=Level.INFO)
+        self._max_age = 3.0 # ms
         self._log.info(self._color + 'ready.')
+
+    # ................................................................
+    def _get_acks(self, message):
+        _list = []
+        for subscriber in message.acknowledgements: 
+            _list.append('{} '.format(subscriber.name))
+        return ''.join(_list)
 
     # ................................................................
     async def consume(self):
@@ -200,28 +208,33 @@ class GarbageCollector(Subscriber):
         '''
         _message = await self._message_bus.consume_message()
         _message.acknowledge(self)
-        self._log.debug(self._color + '🗑️  consuming message:' + Fore.WHITE + ' {}; event: {}'.format(_message, _message.event.description))
-
-        if _message.acknowledged:
-            _elapsed_ms = int((dt.now() - _message.timestamp).total_seconds() * 1000.0)
+        self._log.debug(self._color + '🗑️  consuming message:' + Fore.WHITE + ' {}; event: {}; age: {:5.2f}ms'.format(_message.name, _message.event.description, _message.age))
+        if self._message_bus.is_expired(_message):
+            self._log.info(self._color + '🗑️  garbage collect outdated message \'{}\' '.format(_message.name) + Fore.WHITE \
+                    + ' (event: {});'.format(_message.event.description) \
+                    + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(_message.processed, _message.age)
+                    + '    ackd by: {}'.format(self._get_acks(_message)))
+            # now we exit to let it expire
+        elif _message.acknowledged:
+            _elapsed_ms = (dt.now() - _message.timestamp).total_seconds() * 1000.0
             if _message.event == Event.SNIFF:
                 self._log.info(self._color + Style.BRIGHT + '🗑️  garbage collect SNIFF message \'{}\' '.format(_message.name) \
                         + Fore.WHITE + ' (event: {});'.format(_message.event.description) \
-                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms;\n'.format(_message.processed, _elapsed_ms)
-                        + '    ackd by: {}'.format(_message.acknowledgements))
+                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(_message.processed, _elapsed_ms)
+                        + '    ackd by: {}'.format(self._get_acks(_message)))
                 if _message.event == Event.SNIFF and _message.processed < 2:
                     raise Exception('message {} (event: {}) processed by only {:d}; ackd by: {}'.format(\
-                            _message.name, _message.event, _message.processed, _message.acknowledgements))
+                            _message.name, _message.event, _message.processed, self._get_acks(_message)))
             else:
                 self._log.info(self._color + '🗑️  garbage collect message \'{}\' '.format(_message.name) + Fore.WHITE \
                         + ' (event: {});'.format(_message.event.description) \
-                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:d}ms;\n'.format(_message.processed, _elapsed_ms)
-                        + '    ackd by: {}'.format(_message.acknowledgements))
+                        + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(_message.processed, _message.age)
+                        + '    ackd by: {}'.format(self._get_acks(_message)))
             # now we exit to let it expire
         else:
             # was not cleaned up nor acknowledged, so put back into queue
             self._log.warning(self._color + Style.BRIGHT + '🧀 republishing unacknowledged message:' + Fore.WHITE \
-                    + ' {}; event: {}'.format(_message, _message.event.description))
+                    + ' {}; event: {}'.format(_message.name, _message.event.description))
             self._message_bus.republish_message(_message)
 
 #EOF
