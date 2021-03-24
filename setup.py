@@ -10,7 +10,9 @@
 # modified: 2021-02-18
 #
 # For some reason 'pimoroni-ioexpander' installs but continues to show up here
-# as uninstalled. A bug.
+# as uninstalled. A bug?
+#
+# You may also need to install various libraries via apt.
 #
 
 import importlib, sys 
@@ -23,18 +25,19 @@ libraries = [ \
     'pytest', \
     'pyyaml', \
     'colorama', \
+    'rpi.gpio', \
+    'pigpio', \
+    'gpiozero', \
+    'board', \
+    'adafruit-extended-bus', \
     'readchar', \
     'pymessagebus==1.*', \
-    'board', \
     'ht0740', \
-    'RPi.GPIO', \
-    'pigpio', \
     'pimoroni-ioexpander', \
-    'adafruit-extended-bus', \
     'adafruit-circuitpython-bno08x', \
     'pyquaternion', \
+    'matrix11x7', \
     'rgbmatrix5x5', \
-    'gpiozero', \
     ]
 
 for name in libraries:

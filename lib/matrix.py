@@ -20,7 +20,18 @@ except ImportError:
     sys.exit("This script requires the matrix11x7 module\nInstall with: pip3 install --user matrix11x7")
 
 # ..............................................................................
-class Matrix():
+class Matrices(object):
+    '''
+    Handles a port and starboard pair of 11x7 Matrix displays, accounting
+    via an I2C scan on their availability.
+    '''
+    def __init__(self, level):
+        self._log = Logger("matrices", level)
+
+        self._log.info('ready.')
+
+# ..............................................................................
+class Matrix(object):
     '''
     This class provides access to a Pimoroni 11x7 LED Matrix display, whose
     LEDs are all white. This is located at the default 0x75 address.
@@ -45,10 +56,9 @@ class Matrix():
     # ..........................................................................
     def text(self, message, is_small_font, is_scrolling):
         '''
-        Display the message. If 'is_small_font' use a smaller font;
-        if 'is_scrolling' is true, scroll the display. If scrolling
-        is true this will continue to scroll until disable() is
-        called.
+        Display the message using a Thread. If 'is_small_font' use a smaller
+        font; if 'is_scrolling' is true, scroll the display. If scrolling is
+        true this will continue to scroll until disable() is called.
         '''
         if self._thread is None:
             self._thread = Thread(name='matrix', target=Matrix._text, args=[self, message, is_small_font, is_scrolling])
@@ -64,7 +74,7 @@ class Matrix():
     # ..........................................................................
     def _text(self, message, is_small_font, is_scrolling):
         '''
-       Displays the message on the matrix display.
+        Displays the message on the matrix display.
         '''
         self._is_enabled = True
         _scroll = 0
@@ -103,13 +113,32 @@ class Matrix():
         '''
         Turn on all of the LEDs at maximum brightness.
         '''
+        self._matrix(self._matrix11x7.height)
+#       self._matrix11x7.width
+#       self._matrix11x7.height
+
+    # ..........................................................................
+    def gradient(self, brightness):
+        '''
+        Turn on one or more rows of the LEDs at maximum brightness.
+        The argument is between 1 and 7.
+        '''
+        _brightness = min(self._matrix11x7.height, brightness)
+        self._matrix(_brightness)
+
+    # ..........................................................................
+    def _matrix(self, height):
+        '''
+        Turn on all of the LEDs at maximum brightness.
+        '''
         if self._thread is not None:
             self._log.info('cannot continue: text thread is currently running.')
             return
         self._is_enabled = True
         self._matrix11x7.set_brightness(1.0)
         for x in range(0, self._matrix11x7.width):
-            for y in range(0, self._matrix11x7.height):
+#           for y in range(0, self._matrix11x7.height):
+            for y in range(0, height):
                 v = 0.7
                 self._matrix11x7.pixel(x, y, v)
         self._matrix11x7.show()
@@ -129,7 +158,8 @@ class Matrix():
     # ..........................................................................
     def disable(self):
         '''
-        Disable any actions currently looping.
+        Disable any actions currently looping. This does not disable the
+        display itself.
         '''
         self._is_enabled = False
         if self._thread != None:
