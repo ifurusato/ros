@@ -45,9 +45,9 @@ class Video():
     '''
     Provides a video-to-file and optional video-to-stream (web) functionality,
     with options for dynamically altering the camera settings to account for
-    light levels based on a LTR-559 lux sensor (at 0x23), as well as automatic
-    and manual controls for camera lighting using either one or two Pimoroni
-    Matrix 11x7 displays (at 0x75 and 0x77).
+    light levels based on a Pimoroni LTR-559 lux sensor (at 0x23), as well as 
+    automatic and manual controls for camera lighting using either one or two 
+    Pimoroni Matrix 11x7 displays (white LEDs, at 0x75 and 0x77).
 
     The camera image is annotated with a title and timestamp. The output filename
     is timestamped and written to a './videos' directory in H.264 video format.
