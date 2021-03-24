@@ -20,7 +20,6 @@ init()
 # ..............
 
 from lib.logger import Logger, Level
-#from lib.message_factory import MessageFactory
 from lib.message import Message
 from lib.event import Event
 
@@ -41,7 +40,7 @@ class MessageFactory(object):
         _host_id = "".join(random.choices(self._choices, k=4))
         _name = 'id-{}'.format(_host_id)
         _message = Message(instance_name=_name, event=event, value=value)
-        if self._message_bus:
+        if self._message_bus != None:
             _message.set_subscribers(self._message_bus.subscribers)
         return _message
 
