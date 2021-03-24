@@ -49,12 +49,12 @@ def main():
     _log.info(Fore.YELLOW + Style.BRIGHT + ' INFO  : Press Ctrl+C to exit.')
 
     try:
-        _i2c_scanner = I2CScanner(Level.WARN)
-        _addresses = _i2c_scanner.get_addresses()
-        hexAddresses = _i2c_scanner.getHexAddresses()
-        _addrDict = dict(list(map(lambda x, y:(x, y), _addresses, hexAddresses)))
+        _i2c_scanner   = I2CScanner(Level.WARN)
+        _addresses     = _i2c_scanner.get_int_addresses()
+        _hex_addresses = _i2c_scanner.getHexAddresses()
+        _addrDict = dict(list(map(lambda x, y:(x, y), _addresses, _hex_addresses)))
         for i in range(len(_addresses)):
-            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]))
+            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(_hex_addresses[i]))
 
         vl53l1x_available = (0x29 in _addresses)
         ultraborg_available = (0x36 in _addresses)

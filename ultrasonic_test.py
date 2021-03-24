@@ -48,12 +48,12 @@ def main():
     _log = Logger("uscanner", Level.INFO)
     try:
         _scanner = I2CScanner(Level.WARN)
-        _addresses = _scanner.get_addresses()
-        hexAddresses = _scanner.getHexAddresses()
-        _addrDict = dict(list(map(lambda x, y:(x,y), _addresses, hexAddresses)))
-        for i in range(len(_addresses)):
-            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(hexAddresses[i]) + Style.RESET_ALL)
-        ultraborg_available = ( 0x36 in _addresses )
+        _int_addresses = _scanner.get_int_addresses()
+        _hex_addresses = _scanner.get_hex_addresses()
+        _addrDict = dict(list(map(lambda x, y:(x,y), _int_addresses, _hex_addresses)))
+        for i in range(len(_int_addresses)):
+            _log.debug(Fore.BLACK + Style.DIM + 'found device at address: {}'.format(_hex_addresses[i]) + Style.RESET_ALL)
+        ultraborg_available = ( 0x36 in _int_addresses )
     
         if ultraborg_available:
             _log.info('starting ultrasonic scan...')

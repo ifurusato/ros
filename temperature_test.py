@@ -41,7 +41,7 @@ def test_temperature():
         # scan I2C bus
         _log.info('scanning I²C address bus...')
         scanner = I2CScanner(_log.level)
-        _addresses = scanner.get_addresses()
+        _addresses = scanner.get_int_addresses()
 
         # load configuration
         _loader = ConfigLoader(Level.INFO)

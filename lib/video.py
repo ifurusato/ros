@@ -7,14 +7,14 @@
 #
 # author:   Murray Altheim
 # created:  2019-12-23
-# modified: 2020-03-12
+# modified: 2021-03-24
 #
 # Once running, access the video stream from:    http://pi-address:8001/
 #
 # source: https://picamera.readthedocs.io/en/release-1.13/recipes2.html#web-streaming
 #
 
-import os, sys, time, tzlocal, threading, traceback, io, socket, socketserver, itertools, logging, ffmpeg, picamera
+import os, sys, time, threading, traceback, io, socket, socketserver, itertools, logging, picamera
 from pathlib import Path
 from picamera import Color
 from datetime import datetime as dt
@@ -22,153 +22,40 @@ from threading import Condition
 from http import server
 from colorama import init, Fore, Style
 init()
+try:
+    import tzlocal
+except ImportError:
+    sys.exit("This script requires the tzlocal module\nInstall with: pip3 install --user tzlocal")
+try:
+    import ffmpeg
+except ImportError:
+    sys.exit("This script requires the ffmpeg module\nInstall with: pip3 install --user ffmpeg")
 
+from lib.i2c_scanner import I2CScanner
 from lib.enums import Orientation
 from lib.logger import Level, Logger
 from lib.matrix import Matrix
-
-VIDEO_WIDTH  = 640
-VIDEO_HEIGHT = 480
-
-# ..............................................................................
-class OutputSplitter(object):
-    '''
-        An output (as far as picamera is concerned), is just a filename or an object
-        which implements a write() method (and optionally the flush() and close() methods)
-    '''
-    def __init__(self, filename):
-        self.frame = None
-        self.buffer = io.BytesIO()
-        self._log = Logger('output', Level.INFO)
-        self.output_file = io.open(filename, 'wb')
-        self._filename = filename
-        self._log.info(Fore.MAGENTA + 'output file: {}'.format(filename))
-        self._condition = Condition()
-        self._log.info('ready.')
-
-    def get_filename(self):
-        return self._filename
-
-    def write(self, buf):
-        if buf.startswith(b'\xff\xd8'):
-            # new frame, copy existing buffer's content and notify all clients it's available
-            self.buffer.truncate()
-            with self._condition:
-                self.frame = self.buffer.getvalue()
-                self._condition.notify_all()
-            self.buffer.seek(0)
-        if not self.output_file.closed:
-            self.output_file.write(buf)
-        return self.buffer.write(buf)
-
-    def flush(self):
-        self._log.debug('flush')
-        if not self.output_file.closed:
-            self.output_file.flush()
-        if not self.buffer.closed:
-            self.buffer.flush()
-
-    def close(self):
-        self._log.info('close')
-        if not self.output_file.closed:
-            self.output_file.close()
-        if not self.buffer.closed:
-            self.buffer.close()
-
-
-# ..............................................................................
-class StreamingHandler(server.BaseHTTPRequestHandler):
-
-    def __init__(self, socket, tup, server):
-        super().__init__(socket, tup, server)
-
-    # ..........................................................................
-    def get_page(self):
-        global video_width, video_height
-        return """<!DOCTYPE html>
-<html>
-<head>
-<title>KR01 eyeball</title>
-<style>
-  body {{ margin: 1em }}
-</style>
-</head>
-<body bgcolor='black'>
-<img src="stream.mjpg" width="{width_value}" height="{height_value}" />
-</body>
-</html>
-""".format(width_value=video_width, height_value=video_height)
-
-    # ..........................................................................
-    def do_GET(self):
-        global output
-        _output = output
-        if self.path == '/':
-            self.send_response(301)
-            self.send_header('Location', '/index.html')
-            self.end_headers()
-        elif self.path == '/index.html':
-            content = self.get_page().encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', len(content))
-            self.end_headers()
-            self.wfile.write(content)
-        elif self.path == '/stream.mjpg':
-            self.send_response(200)
-            self.send_header('Age', 0)
-            self.send_header('Cache-Control', 'no-cache, private')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-            self.end_headers()
-            try:
-                while True:
-                    with _output._condition:
-                        _output._condition.wait()
-                        frame = _output.frame
-                    self.wfile.write(b'--FRAME\r\n')
-                    self.send_header('Content-Type', 'image/jpeg')
-                    self.send_header('Content-Length', len(frame))
-                    self.end_headers()
-                    self.wfile.write(frame)
-                    self.wfile.write(b'\r\n')
-            except Exception as e:
-                logging.warning('removed streaming client %s: %s', self.client_address, str(e))
-        else:
-            self.send_error(404)
-            self.end_headers()
-
-# ..............................................................................
-class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
-    allow_reuse_address = True
-    daemon_threads = True
-
-    def __init__(self, address, streaming_handler, f_is_enabled):
-        super().__init__(address, streaming_handler)
-        self._log = Logger('server', Level.INFO)
-        self._enabled_flag = f_is_enabled
-        self._log.info('ready.')
-
-    # ..........................................................................
-    def serve_forever(self):
-        '''
-            Handle one request at a time until the enabled flag is False.
-        '''
-        while self._enabled_flag():
-            self._log.info('serve_forever handling request...')
-            self.handle_request()
-        self._log.info('exited serve_forever loop.')
+from lib.lux import Lux
 
 # ..............................................................................
 class Video():
-    def __init__(self, config, lux, matrix11x7_available, level):
+    '''
+    Provides a video-to-file and optional video-to-stream (web) functionality,
+    with options for dynamically altering the camera settings to account for
+    light levels based on a Pimoroni LTR-559 lux sensor (at 0x23), as well as 
+    automatic and manual controls for camera lighting using either one or two 
+    Pimoroni Matrix 11x7 displays (white LEDs, at 0x75 and 0x77).
+
+    The camera image is annotated with a title and timestamp. The output filename
+    is timestamped and written to a './videos' directory in H.264 video format.
+    '''
+    def __init__(self, config, level):
         super().__init__()
         global video_width, video_height, annotation_title
         self._log = Logger('video', level)
         if config is None:
             raise ValueError("no configuration provided.")
         self._config = config
-        self._lux = lux
         _config = self._config['ros'].get('video')
         self._enable_streaming = _config.get('enable_streaming')
         self._port        = _config.get('port')
@@ -196,16 +83,32 @@ class Video():
         self._filename = None
         self._thread   = None
         self._killer   = None
-       
-        # lighting configuration
-        if matrix11x7_available and self._ctrl_lights:
-            self._port_light = Matrix(Orientation.PORT, Level.INFO)
-            self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
-            self._log.info('camera lighting available.')
+
+        # scan I2c bus for devices
+        _i2c_scanner = I2CScanner(Level.DEBUG)
+        if _i2c_scanner.has_address([0x23]):
+            self._lux = Lux(Level.INFO)
+            self._log.info('LTR-559 lux sensor found: camera adjustment active.')
         else:
-            self._port_light = None
-            self._stbd_light = None
-            self._log.info('no camera lighting available.')
+            self._lux = None
+            self._log.warning('no LTR-559 lux sensor found: camera adjustment inactive.')
+
+        # lighting configuration
+        self._port_light = None
+        self._stbd_light = None
+        if self._ctrl_lights:
+            if _i2c_scanner.has_address([0x77]): # port
+                self._port_light = Matrix(Orientation.PORT, Level.INFO)
+                self._log.info('port-side camera lighting available.')
+            else:
+                self._log.warning('no port-side camera lighting available.')
+            if _i2c_scanner.has_address([0x75]): # starboard
+                self._stbd_light = Matrix(Orientation.STBD, Level.INFO)
+                self._log.info('starboard-side camera lighting available.')
+            else:
+                self._log.warning('no starboard-side camera lighting available.')
+        else:
+            self._log.info('lighting control is disabled.')
 
         if self._enable_streaming:
             self._log.info('ready: streaming on port {:d}'.format(self._port))
@@ -368,12 +271,15 @@ class Video():
 
     # ..........................................................................
     def set_lights(self, on):
-        if self._port_light and self._stbd_light:
+        if self._port_light:
             if on:
                 self._port_light.light()
-                self._stbd_light.light()
             else:
                 self._port_light.clear()
+        if self._stbd_light:
+            if on:
+                self._stbd_light.light()
+            else:
                 self._stbd_light.clear()
 
     # ..........................................................................
@@ -466,6 +372,136 @@ class Video():
             self._server.shutdown()
             self._log.info('server shut down.')
         self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video closed.')
+
+# ..............................................................................
+class OutputSplitter(object):
+    '''
+        An output (as far as picamera is concerned), is just a filename or an object
+        which implements a write() method (and optionally the flush() and close() methods)
+    '''
+    def __init__(self, filename):
+        self.frame = None
+        self.buffer = io.BytesIO()
+        self._log = Logger('output', Level.INFO)
+        self.output_file = io.open(filename, 'wb')
+        self._filename = filename
+        self._log.info(Fore.MAGENTA + 'output file: {}'.format(filename))
+        self._condition = Condition()
+        self._log.info('ready.')
+
+    def get_filename(self):
+        return self._filename
+
+    def write(self, buf):
+        if buf.startswith(b'\xff\xd8'):
+            # new frame, copy existing buffer's content and notify all clients it's available
+            self.buffer.truncate()
+            with self._condition:
+                self.frame = self.buffer.getvalue()
+                self._condition.notify_all()
+            self.buffer.seek(0)
+        if not self.output_file.closed:
+            self.output_file.write(buf)
+        return self.buffer.write(buf)
+
+    def flush(self):
+        self._log.debug('flush')
+        if not self.output_file.closed:
+            self.output_file.flush()
+        if not self.buffer.closed:
+            self.buffer.flush()
+
+    def close(self):
+        self._log.info('close')
+        if not self.output_file.closed:
+            self.output_file.close()
+        if not self.buffer.closed:
+            self.buffer.close()
+
+
+# ..............................................................................
+class StreamingHandler(server.BaseHTTPRequestHandler):
+
+    def __init__(self, socket, tup, server):
+        super().__init__(socket, tup, server)
+
+    # ..........................................................................
+    def get_page(self):
+        global video_width, video_height
+        return """<!DOCTYPE html>
+<html>
+<head>
+<title>KR01 eyeball</title>
+<style>
+  body {{ margin: 1em }}
+</style>
+</head>
+<body bgcolor='black'>
+<img src="stream.mjpg" width="{width_value}" height="{height_value}" />
+</body>
+</html>
+""".format(width_value=video_width, height_value=video_height)
+
+    # ..........................................................................
+    def do_GET(self):
+        global output
+        _output = output
+        if self.path == '/':
+            self.send_response(301)
+            self.send_header('Location', '/index.html')
+            self.end_headers()
+        elif self.path == '/index.html':
+            content = self.get_page().encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Content-Length', len(content))
+            self.end_headers()
+            self.wfile.write(content)
+        elif self.path == '/stream.mjpg':
+            self.send_response(200)
+            self.send_header('Age', 0)
+            self.send_header('Cache-Control', 'no-cache, private')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+            self.end_headers()
+            try:
+                while True:
+                    with _output._condition:
+                        _output._condition.wait()
+                        frame = _output.frame
+                    self.wfile.write(b'--FRAME\r\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', len(frame))
+                    self.end_headers()
+                    self.wfile.write(frame)
+                    self.wfile.write(b'\r\n')
+            except Exception as e:
+                logging.warning('removed streaming client %s: %s', self.client_address, str(e))
+        else:
+            self.send_error(404)
+            self.end_headers()
+
+# ..............................................................................
+class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(self, address, streaming_handler, f_is_enabled):
+        super().__init__(address, streaming_handler)
+        self._log = Logger('server', Level.INFO)
+        self._enabled_flag = f_is_enabled
+        self._log.info('ready.')
+
+    # ..........................................................................
+    def serve_forever(self):
+        '''
+            Handle one request at a time until the enabled flag is False.
+        '''
+        while self._enabled_flag():
+            self._log.info('serve_forever handling request...')
+            self._log.info(Fore.YELLOW + 'type Ctrl-C to exit.')
+            self.handle_request()
+        self._log.info('exited serve_forever loop.')
 
 
 #EOF
