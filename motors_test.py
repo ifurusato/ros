@@ -137,10 +137,10 @@ def test_motors():
 
     try:
 
-        action_A = False
+        action_A = True # if not using buttons at all set to True
         action_B = True
 
-        while action_B or INFINITE or ( _port_motor.steps < _step_limit and _stbd_motor.steps < _step_limit ):
+        while INFINITE or action_B or ( _port_motor.steps < _step_limit and _stbd_motor.steps < _step_limit ):
             if action_A:
                 action_A = False # trigger once
                 while action_B:
