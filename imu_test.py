@@ -115,7 +115,7 @@ def test_imu():
     _log = Logger("imu-test", Level.INFO)
 
     _i2c_scanner = I2CScanner(Level.WARN)
-    _addresses = _i2c_scanner.get_addresses()
+    _addresses = _i2c_scanner.get_int_addresses()
 
     _rgbmatrix = RgbMatrix(Level.INFO) if (0x74 in _addresses) else None
     if _rgbmatrix:

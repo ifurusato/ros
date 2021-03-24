@@ -60,7 +60,7 @@ class RgbMatrix(Feature):
         global enabled
         self._log = Logger("rgbmatrix", level)
         _i2c_scanner = I2CScanner(Level.WARN)
-        _addresses = _i2c_scanner.get_addresses()
+        _addresses = _i2c_scanner.get_int_addresses()
         self._rgbmatrix5x5_PORT = RGBMatrix5x5(address=0x77) if (0x77 in _addresses) else None
 #       self._rgbmatrix5x5_PORT = RGBMatrix5x5(address=0x77)
         if self._rgbmatrix5x5_PORT:

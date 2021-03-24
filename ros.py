@@ -127,9 +127,9 @@ class ROS(AbstractTask):
         # scan I2C bus
         self._log.info('scanning I²C address bus...')
         scanner = I2CScanner(self._log.level)
-        self._addresses = scanner.get_addresses()
-        hexAddresses = scanner.getHexAddresses()
-        self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, hexAddresses)))
+        self._addresses = scanner.get_int_addresses()
+        _hex_addresses = scanner.get_hex_addresses()
+        self._addrDict = dict(list(map(lambda x, y:(x,y), self._addresses, _hex_addresses)))
 #       for i in range(len(self._addresses)):
         for _address in self._addresses:
             _device_name = self.get_device_for_address(_address)
