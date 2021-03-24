@@ -37,9 +37,6 @@ from lib.logger import Level, Logger
 from lib.matrix import Matrix
 from lib.lux import Lux
 
-VIDEO_WIDTH  = 640
-VIDEO_HEIGHT = 480
-
 # ..............................................................................
 class Video():
     '''
