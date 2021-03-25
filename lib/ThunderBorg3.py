@@ -299,7 +299,7 @@ Prepare the I2C driver for talking to the ThunderBorg
 If tryOtherBus is True, this function will attempt to use the other bus if the ThunderBorg devices can not be found on the current busNumber
     This is only really useful for early Raspberry Pi models!
         """
-        self.Print('Loading ThunderBorg on bus %d, address 0x{:02X}'.format(self.busNumber, self.i2cAddress))
+        self.Print('Loading ThunderBorg on bus {:d}, address 0x{:02X}'.format(self.busNumber, self.i2cAddress))
 
         # Open the bus
         self.i2cRead = io.open("/dev/i2c-" + str(self.busNumber), "rb", buffering = 0)

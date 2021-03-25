@@ -73,19 +73,24 @@ class BatteryCheck(Feature):
         _loop_delay_sec             = _battery_config.get('loop_delay_sec')
         self._loop_delay_sec_div_10 = _loop_delay_sec / 10
         self._log.info('battery check loop delay: {:>5.2f} sec'.format(_loop_delay_sec))
-        self._log.info('setting 5v regulator threshold to {:>5.2f}v with A on channel {}, B on channel {}; raw battery threshold to {:>5.2f}v on channel {}'.format(\
-                self._five_volt_threshold, self._five_volt_a_channel, self._five_volt_b_channel, self._raw_battery_threshold, self._battery_channel))
+        self._log.info('setting 5v regulator threshold to {:>5.2f}v'.format(self._five_volt_threshold))
+        self._log.info("channel A from '{}'; channel B from '{}'; raw battery threshold to {:>5.2f}v from '{}'".format(\
+                self._five_volt_a_channel, self._five_volt_b_channel, self._raw_battery_threshold, self._battery_channel))
         self._clock = clock
         # configure ThunderBorg
-        TB = ThunderBorg.ThunderBorg(Level.INFO)
-        TB.Init()
-        if not TB.foundChip:
-            boards = ThunderBorg.ScanForThunderBorg()
-            if len(boards) == 0:
-                raise Exception('no thunderborg found, check you are attached.')
-            else:
-                raise Exception('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
-        self._tb = TB
+        try:
+            TB = ThunderBorg.ThunderBorg(Level.INFO)
+            TB.Init()
+            if not TB.foundChip:
+                boards = ThunderBorg.ScanForThunderBorg()
+                if len(boards) == 0:
+                    raise Exception('no thunderborg found, check you are attached.')
+                else:
+                    raise Exception('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
+            self._tb = TB
+        except Exception as e:
+            self._tb = None
+            self._log.error('unable to configure ThunderBorg: {}\n{}'.format(e, traceback.format_exc()))
 
         self._queue = queue
         self._queue.add_consumer(self)
@@ -157,21 +162,24 @@ class BatteryCheck(Feature):
 
         Returns the read value.
         '''
-        _tb_voltage = self._tb.GetBatteryReading()
-        if _tb_voltage is None:
-            _color = Color.MAGENTA # error color
+        if self._tb:
+            _tb_voltage = self._tb.GetBatteryReading()
+            if _tb_voltage is None:
+                _color = Color.MAGENTA # error color
+            else:
+                _color = BatteryCheck._get_color_for_voltage(_tb_voltage)
+                if _color is Color.RED or _color is Color.ORANGE:
+                    self._log.info(Fore.RED    + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.AMBER or _color is Color.YELLOW:
+                    self._log.info(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.GREEN or _color is Color.TURQUOISE:
+                    self._log.info(Fore.GREEN  + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+                elif _color is Color.CYAN:
+                    self._log.info(Fore.CYAN   + 'main battery: {:>5.2f}V'.format(_tb_voltage))
+            self._tb.SetLed1( _color.red, _color.green, _color.blue )
+            return _tb_voltage
         else:
-            _color = BatteryCheck._get_color_for_voltage(_tb_voltage)
-            if _color is Color.RED or _color is Color.ORANGE:
-                self._log.info(Fore.RED    + 'main battery: {:>5.2f}V'.format(_tb_voltage))
-            elif _color is Color.AMBER or _color is Color.YELLOW:
-                self._log.info(Fore.YELLOW + 'main battery: {:>5.2f}V'.format(_tb_voltage))
-            elif _color is Color.GREEN or _color is Color.TURQUOISE:
-                self._log.info(Fore.GREEN  + 'main battery: {:>5.2f}V'.format(_tb_voltage))
-            elif _color is Color.CYAN:
-                self._log.info(Fore.CYAN   + 'main battery: {:>5.2f}V'.format(_tb_voltage))
-        self._tb.SetLed1( _color.red, _color.green, _color.blue )
-        return _tb_voltage
+            return None
 
     # ..............................................................................
     @staticmethod
@@ -252,7 +260,8 @@ class BatteryCheck(Feature):
         if not self._closed:
             self._enabled = True
             # disable ThunderBorg RGB LED mode so we can set it
-            self._tb.SetLedShowBattery(False)
+            if self._tb:
+                self._tb.SetLedShowBattery(False)
             self._clock.add_consumer(self)
             self._log.info('enabled.')
         else:
@@ -262,8 +271,9 @@ class BatteryCheck(Feature):
     def disable(self):
         if self._enabled:
             self._enabled = False
-            self._tb.SetLed1( Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue )
-            self._tb.SetLedShowBattery(True)
+            if self._tb:
+                self._tb.SetLed1( Color.BLACK.red, Color.BLACK.green, Color.BLACK.blue )
+                self._tb.SetLedShowBattery(True)
             self._log.info('disabled.')
         else:
             self._log.warning('already disabled.')
