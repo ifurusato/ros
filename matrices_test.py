@@ -31,16 +31,10 @@ def test_matrix():
         
         _matrices = Matrices(Level.INFO)
 
-        _matrices.text('Y', 'N')
-        time.sleep(2)
+        _matrices.text('HE', 'LP')
+        time.sleep(3)
 
         _matrices.clear()
-#       if _port_light:
-#           _port_light.disable()
-#           _port_light.clear()
-#       if _stbd_light:
-#           _stbd_light.disable()
-#           _stbd_light.clear()
         time.sleep(1)
 
         _log.info('matrix on...')   
@@ -51,11 +45,21 @@ def test_matrix():
         _matrices.clear()
         time.sleep(1)
 
-        _log.info('starting matrix blink_on...')   
-        _matrices.blink(True, 0.00)
+        _log.info('starting matrix vertical wipe...')   
+        _matrices.vertical_wipe(True, 0.00)
         time.sleep(0.0)
-        _matrices.blink(False, 0.00)
+        _matrices.vertical_wipe(False, 0.00)
         _matrices.clear()
+        time.sleep(1)
+
+        _log.info('starting matrix horizontal wipe...')   
+        _matrices.horizontal_wipe(True, 0.00)
+        time.sleep(0.0)
+        _matrices.horizontal_wipe(False, 0.00)
+        _matrices.clear()
+
+        time.sleep(1)
+
 
 
     except KeyboardInterrupt:

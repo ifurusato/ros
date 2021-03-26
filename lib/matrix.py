@@ -7,6 +7,7 @@
 #
 
 import sys, time
+import importlib.util
 from threading import Thread
 from colorama import init, Fore, Style
 init()
@@ -16,25 +17,24 @@ from lib.i2c_scanner import I2CScanner
 from lib.enums import Orientation
 #from matrix11x7 import Matrix11x7
 
-IMPORTED = False
-
-def import_matrix11x7():
-    global IMPORTED
-    if not IMPORTED:
-        try:
-            print('importing Matrix11x7...')
-            from matrix11x7 import Matrix11x7
-            from matrix11x7.fonts import font3x5
-            IMPORTED = True
-            print('imported Matrix11x7.')
-        except ImportError:
-            sys.exit("This script requires the matrix11x7 module\nInstall with: pip3 install --user matrix11x7")
+try:
+    print('importing Matrix11x7...')
+    from matrix11x7 import Matrix11x7
+    from matrix11x7.fonts import font3x5
+    _MATRIX11x7_IMPORTED = True
+    print('imported Matrix11x7.')
+except ImportError:
+    print("This script requires the matrix11x7 module\nInstall with: pip3 install --user matrix11x7")
+    _MATRIX11x7_IMPORTED = False
 
 # ..............................................................................
 class Matrices(object):
     '''
     Handles a port and starboard pair of 11x7 Matrix displays, accounting
     via an I2C scan on their availability.
+
+    We go to a little trouble to permit zero, one or two matrix displays
+    to be installed.
     '''
     def __init__(self, level):
         self._log = Logger("matrices", level)
@@ -59,15 +59,17 @@ class Matrices(object):
         self._log.info('ready.')
 
     # ..........................................................................
-    def text(self, port_text, stbd_text):
+    def text(self, stbd_text, port_text, small_font=False):
         '''
         Display one or two characters (with no scrolling) on either or both
-        displays. Call clear() or call with space characters to clear.
+        displays. Call clear() to clear. The order of the arguments permits
+        four characters to be displayed across the two displays, allowing
+        four-letter words (the best kind).
         '''
         if self._port_matrix and port_text:
-            self._port_matrix.text(port_text, False, False)
+            self._port_matrix._text(port_text, small_font, False)
         if self._stbd_matrix and stbd_text:
-            self._stbd_matrix.text(stbd_text, False, False)
+            self._stbd_matrix._text(stbd_text, small_font, False)
 
     # ..........................................................................
     def get_matrix(self, orientation):
@@ -114,15 +116,35 @@ class Matrices(object):
             self._stbd_matrix.gradient(-1, cols)
 
     # ..........................................................................
-    def blink(self, enable, delay_secs):
+    def horizontal_wipe(self, enable, delay_secs):
         '''
-        Sequentially enables or disables the rows as a horizontally-changing gradient.
+        Sequentially enables or disables the rows as a vertically-changing
+        gradient, i.e., a horizontal movement.
 
         :param enable:       if true, enables (lightens) the displays; if false, disables (darkens)
         :param delay_secs:   the inter-row delay time in seconds
         '''
-        self._log.debug('matrix blink {}...'.format('on' if enable else 'off'))   
-        r = [ 1, 8, 1 ] if enable else [7, 0, -1 ]
+        self._log.debug('matrix horizontal wipe {}...'.format('on' if enable else 'off'))   
+        r = [ 1, 12, 1 ] if enable else [10, 0, -1]
+        for i in range(r[0], r[1], r[2]):
+            self._log.debug('matrix at {:d}'.format(i))   
+            if self._port_matrix:
+                self._port_matrix.gradient(-1, i)
+            if self._stbd_matrix:
+                self._stbd_matrix.gradient(-1, i)
+            time.sleep(delay_secs)
+
+    # ..........................................................................
+    def vertical_wipe(self, enable, delay_secs):
+        '''
+        Sequentially enables or disables the rows as a horizontally-changing
+        gradient, i.e., a vertical movement.
+
+        :param enable:       if true, enables (lightens) the displays; if false, disables (darkens)
+        :param delay_secs:   the inter-row delay time in seconds
+        '''
+        self._log.debug('matrix vertical wipe {}...'.format('on' if enable else 'off'))   
+        r = [1, 8, 1] if enable else [7, 0, -1]
         for i in range(r[0], r[1], r[2]):
             self._log.debug('matrix at {:d}'.format(i))   
             if self._port_matrix:
@@ -155,15 +177,16 @@ class Matrix(object):
     '''
     def __init__(self, orientation, level):
         self._log = Logger("matrix", level)
-        if orientation is Orientation.PORT:
-            import_matrix11x7()
-            self._matrix11x7 = Matrix11x7(i2c_address=0x77)
-        elif orientation is Orientation.STBD:
-            import_matrix11x7()
-            self._matrix11x7 = Matrix11x7(i2c_address=0x75) # default
+        if _MATRIX11x7_IMPORTED:
+            if orientation is Orientation.PORT:
+                self._matrix11x7 = Matrix11x7(i2c_address=0x77)
+            elif orientation is Orientation.STBD:
+                self._matrix11x7 = Matrix11x7(i2c_address=0x75) # default
+            else:
+                raise Exception('unexpected value for orientation.')
+            self._matrix11x7.set_brightness(0.4)
         else:
-            raise Exception('unexpected value for orientation.')
-        self._matrix11x7.set_brightness(0.4)
+            self._matrix11x7 = None
         self._enabled = False # used only for Threaded processes
         self._screens = 0
         self._thread = None
@@ -176,7 +199,10 @@ class Matrix(object):
         font; if 'is_scrolling' is true, scroll the display. If scrolling is
         true this will continue to scroll until disable() is called.
         '''
-        if self._thread is None:
+        if not self._matrix11x7:
+            self._log.debug('no matrix 11x7 display available.')
+            return
+        elif self._thread is None:
             self._thread = Thread(name='matrix', target=Matrix._text, args=[self, message, is_small_font, is_scrolling])
             self._thread.start()
         else:
@@ -229,6 +255,9 @@ class Matrix(object):
         '''
         Turn on all of the LEDs at maximum brightness.
         '''
+        if not self._matrix11x7:
+            self._log.debug('no matrix 11x7 display available.')
+            return
         self._matrix(self._matrix11x7.height, self._matrix11x7.width)
 #       self._matrix11x7.width
 #       self._matrix11x7.height
@@ -243,6 +272,9 @@ class Matrix(object):
         :param rows:     determines how many rows to light (1-7)
         :param cols:     determines how many columns to light (1-11)
         '''
+        if not self._matrix11x7:
+            self._log.debug('no matrix 11x7 display available.')
+            return
         _rows = min(self._matrix11x7.height, rows) if rows > 0 else self._matrix11x7.height
         _cols = min(self._matrix11x7.width, cols) if cols > 0 else self._matrix11x7.width
         self._matrix(_rows, _cols)
@@ -253,7 +285,10 @@ class Matrix(object):
         Turn on the specified number of LED rows (1-7) and columns (1-11)
         at maximum brightness.
         '''
-        if self._thread is not None:
+        if not self._matrix11x7:
+            self._log.debug('no matrix 11x7 display available.')
+            return
+        elif self._thread is not None:
             self._log.warning('cannot continue: text thread is currently running.')
             return
         self._log.debug('matrix display ({},{})'.format(rows, cols))
@@ -284,6 +319,9 @@ class Matrix(object):
         '''
         Turn off all LEDs.
         '''
+        if not self._matrix11x7:
+            self._log.debug('no matrix 11x7 display available.')
+            return
         self._blank()
         self._matrix11x7.show()
 
