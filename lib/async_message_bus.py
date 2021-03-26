@@ -121,7 +121,7 @@ class MessageBus(object):
 
     # ..........................................................................
     def is_expired(self, message):
-        return _message.age > self._max_age
+        return message.age > self._max_age
 
     # ..........................................................................
     async def start_consuming(self):
@@ -176,9 +176,11 @@ class MessageBus(object):
     def handle_exception(self, loop, context):
         self._log.error('handle exception on loop: {}'.format(loop))
         # context["message"] will always be there; but context["exception"] may not
-        message = context.get("exception", context["message"])
-#       self._log.error('caught exception: {}'.format(message))
-        self._log.error('caught exception: {} / {}'.format(message, traceback.print_stack()))
+        _message = context.get("exception", context["message"])
+        if _message:
+            self._log.error('caught exception: {} / {}'.format(_message, traceback.print_stack()))
+        else:
+            self._log.error('caught exception: {}'.format(type(_message)))
         if loop.is_running() and not loop.is_closed():
             asyncio.create_task(self.shutdown(loop))
         else:
