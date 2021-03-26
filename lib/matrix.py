@@ -14,14 +14,19 @@ init()
 from lib.logger import Level, Logger
 from lib.i2c_scanner import I2CScanner
 from lib.enums import Orientation
+#from matrix11x7 import Matrix11x7
 
 IMPORTED = False
+
 def import_matrix11x7():
+    global IMPORTED
     if not IMPORTED:
         try:
+            print('importing Matrix11x7...')
             from matrix11x7 import Matrix11x7
             from matrix11x7.fonts import font3x5
             IMPORTED = True
+            print('imported Matrix11x7.')
         except ImportError:
             sys.exit("This script requires the matrix11x7 module\nInstall with: pip3 install --user matrix11x7")
 
@@ -52,6 +57,17 @@ class Matrices(object):
             self._enabled = False
             self._log.warning('no matrix displays available.')
         self._log.info('ready.')
+
+    # ..........................................................................
+    def text(self, port_text, stbd_text):
+        '''
+        Display one or two characters (with no scrolling) on either or both
+        displays. Call clear() or call with space characters to clear.
+        '''
+        if self._port_matrix and port_text:
+            self._port_matrix.text(port_text, False, False)
+        if self._stbd_matrix and stbd_text:
+            self._stbd_matrix.text(stbd_text, False, False)
 
     # ..........................................................................
     def get_matrix(self, orientation):
@@ -108,7 +124,7 @@ class Matrices(object):
         self._log.debug('matrix blink {}...'.format('on' if enable else 'off'))   
         r = [ 1, 8, 1 ] if enable else [7, 0, -1 ]
         for i in range(r[0], r[1], r[2]):
-            self._log.info('matrix at {:d}'.format(i))   
+            self._log.debug('matrix at {:d}'.format(i))   
             if self._port_matrix:
                 self._port_matrix.gradient(i, -1)
             if self._stbd_matrix:
@@ -213,7 +229,7 @@ class Matrix(object):
         '''
         Turn on all of the LEDs at maximum brightness.
         '''
-        self._matrix(self._matrix11x7.height)
+        self._matrix(self._matrix11x7.height, self._matrix11x7.width)
 #       self._matrix11x7.width
 #       self._matrix11x7.height
 
@@ -240,9 +256,10 @@ class Matrix(object):
         if self._thread is not None:
             self._log.warning('cannot continue: text thread is currently running.')
             return
-        self._log.info('matrix display ({},{})',format(rows, cols))
+        self._log.debug('matrix display ({},{})'.format(rows, cols))
         self._enabled = True
         self._matrix11x7.set_brightness(1.0)
+        self._blank()
         for x in range(0, cols):
 #       for x in range(0, self._matrix11x7.width):
 #           for y in range(0, self._matrix11x7.height):
@@ -252,15 +269,22 @@ class Matrix(object):
         self._matrix11x7.show()
 
     # ..........................................................................
-    def clear(self):
+    def _blank(self):
         '''
-        Turn off all LEDs.
+        Turn off all LEDs but don't show the change.
         '''
         self._matrix11x7.set_brightness(0.5)
         for x in range(0, self._matrix11x7.width):
             for y in range(0, self._matrix11x7.height):
                 v = 0.7
                 self._matrix11x7.pixel(x, y, 0.0)
+
+    # ..........................................................................
+    def clear(self):
+        '''
+        Turn off all LEDs.
+        '''
+        self._blank()
         self._matrix11x7.show()
 
     # ..........................................................................

@@ -29,21 +29,19 @@ def test_matrix():
 
         _log.info(Fore.CYAN + 'start matrices test...')   
         
-        _matrices = Matrices(Level.DEBUG)
+        _matrices = Matrices(Level.INFO)
 
-#       if _port_light:
-#           _port_light.text('Y', False, False)
-#       if _stbd_light:
-#           _stbd_light.text('N', False, False)
-#       time.sleep(2)
+        _matrices.text('Y', 'N')
+        time.sleep(2)
 
+        _matrices.clear()
 #       if _port_light:
 #           _port_light.disable()
 #           _port_light.clear()
 #       if _stbd_light:
 #           _stbd_light.disable()
 #           _stbd_light.clear()
-#       time.sleep(1)
+        time.sleep(1)
 
         _log.info('matrix on...')   
         _matrices.on()
@@ -54,9 +52,9 @@ def test_matrix():
         time.sleep(1)
 
         _log.info('starting matrix blink_on...')   
-        _matrices.blink(True, 0.5)
-        time.sleep(1)
-        _matrices.blink(False, 0.5)
+        _matrices.blink(True, 0.00)
+        time.sleep(0.0)
+        _matrices.blink(False, 0.00)
         _matrices.clear()
 
 
