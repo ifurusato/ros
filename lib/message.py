@@ -39,6 +39,7 @@ class Message(object):
         self._saved         = False
         self._expired       = False
         self._restarted     = False
+        self._gc            = False
         self._subscribers   = {} # list of subscriber's names who've acknowledged message
 
     # timestamp     ............................................................
@@ -68,7 +69,6 @@ class Message(object):
         return self._processed
 
     def process(self):
-        print(Fore.GREEN + '>>>>>> message process() event: {}'.format(self.event.description) + Style.RESET_ALL)
         self._processed += 1
 
     # saved         ............................................................
@@ -97,6 +97,15 @@ class Message(object):
 
     def restart(self):
         self._restarted = True
+
+    # restarted       ..........................................................
+
+    @property
+    def gcd(self):
+        return self._gc
+
+    def gc(self):
+        self._gc = True
 
     # acked         ............................................................
 

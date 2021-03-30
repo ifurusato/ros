@@ -47,7 +47,6 @@ class IfsPublisher(Publisher):
 #       self._message_bus = MockMessageBus(self, Level.INFO)
         self.exit_on_complete = exit_on_complete
         self._enabled  = False
-        self._verbose  = True
         self._suppress = False
         self._closed   = False
         self._counter  = itertools.count()
@@ -69,7 +68,7 @@ class IfsPublisher(Publisher):
         Enable or disable capturing characters. Upon starting the loop the
         suppress flag is set False, but can be enabled or disabled as
         necessary without halting the thread.
- 
+
         Future feature: not currently functional.
         '''
         self._suppress = mode
@@ -95,13 +94,21 @@ class IfsPublisher(Publisher):
             self._log.info('[{:03d}]'.format(_count))
             ch  = readchar.readchar()
             och = ord(ch)
-            if och == 91 or och == 113 or och == 127: # 'q' or delete
+            if och == 13: # CR to print NLs
+                self._log.info('[:03d]'.format(_count))
+                print(Logger._repeat('\n',24))
+                continue
+            elif och == 113: # 'q'
                 self.disable()
-            elif och == 104: # 'h' for help
+                continue
+            elif och == 47 or och == 63: # '/' or '?' for help
                 self.print_keymap()
-            elif och == 109: # 'j' to toggle messages sent to IFS
-                self._verbose = not self._verbose
-                self._log.info(Fore.YELLOW + 'setting verbose mode to: {}'.format(self._verbose))
+                continue
+            elif och == 118: # 'v' toggle verbose
+                self._message_bus.verbose = not self._message_bus.verbose
+                self._log.info('setting verbosity to: ' + Fore.YELLOW + '{}'.format(self._message_bus.verbose))
+                continue
+            # otherwise handle as event
             _event = self.get_event_for_char(och)
             if _event is not None:
                 self._log.info('[{:03d}] "{}" ({}) pressed; publishing message for event: {}'.format(_count, ch, och, _event))
@@ -110,7 +117,7 @@ class IfsPublisher(Publisher):
                 if self.exit_on_complete and self.all_triggered:
                     self._log.info('[{:03d}] COMPLETE.'.format(_count))
                     self.disable()
-                elif self._verbose:
+                elif self._message_bus.verbose:
                     self.waiting_for_message()
             else:
                 self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
@@ -258,17 +265,17 @@ class IfsPublisher(Publisher):
 #        1         2         3         4         5         6         7         8         9         C         1         2
 #23456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
         self._log.info('''key map:
-           
-    o-------------------------------------------------o                                                    ---o--------o
-    |    Q    |                             |    T    |                                                       |   DEL  |
-    |  QUIT   |                             |  NOOP   |                                                       |  QUIT  |
-    o--------------------------------------------------------------------------o---------o                 ---o--------o
-         |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |
-         | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |  HELP   |         |         |
-         o-------------------------------------------------------------------------------o------------------------o
-              |    X    |    C    |    V    |                                       |    M    |    <    |    >    |
-              | BM_PORT | BM_CNTR | BM_STBD |                                       | TOG_MSG | DN_VELO | UP_VELO |
-              o-----------------------------o                                       o-----------------------------o
+                                                                                                          -------------o
+   o---------------------------------------------------------------------------------------------------o     |   DEL   |
+   |    Q    |    W    |    E    |    R    |    T    |    Y    |    U    |    I    |    O    |    P    |     | SHUTDWN |
+   |  QUIT   |         |         |  SNIFF  |  NOOP   |         |         |         |         |         |  -------------o
+   o--------------------------------------------------------------------------o------------------------o
+        |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |    L    |
+        | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |         |         |         |         |
+        o-------------------------------------------------------------------------------o------------------------o
+             |    Z    |    X    |    C    |    V    |    B    |    N    |    M    |    <    |    >    |    ?    |
+             | BM_PORT | BM_CNTR | BM_STBD | VERBOSE |         |         |         | DN_VELO | UP_VELO |  HELP   |
+             o---------------------------------------------------------------------------------------------------o
 
         ''')
         self._log.info('note:\t' + Fore.YELLOW + 'will exit after receiving 3 events on each sensor.')
@@ -285,55 +292,61 @@ class IfsPublisher(Publisher):
             56   46    2E    .      decrease motors speed (both)
 
            141   97    61    a *    port side IR
-           142   98    62    b      
-           143   99    63    c *    cntr BMP
+           142   98    62    b
+           143   99    63    c *    stbd BMP
            144   100   64    d *    cntr IR
            145   101   65    e
            146   102   66    f *    stbd IR
            147   103   67    g *    stbd side IR
-           150   104   68    h      
+           150   104   68    h
            151   105   69    i
            152   106   6A    j
            153   107   6B    k
-           154   108   6C    l     
-           155   109   6D    m      toggle IFS messaging
-           156   110   6E    n  
+           154   108   6C    l
+           155   109   6D    m
+           156   110   6E    n
            157   111   6F    o
            160   112   70    p
            161   113   71    q
-           162   114   72    r
+           162   114   72    r *    sniff
            163   115   73    s *    port IR
            164   116   74    t *    noop (test message)
            165   117   75    u
-           166   118   76    v *    stbd BMP
+           166   118   76    v      verbose
            167   119   77    w
-           170   120   78    x *    port BMP
+           170   120   78    x *    cntr BMP
            171   121   79    y
-           172   122   7A    z
+           172   122   7A    z *    port BMP
 
         '''
         if och   == 44:  # ,
-            return Event.DECREASE_SPEED 
+            return Event.DECREASE_SPEED
         elif och   == 46:  # .
-            return Event.INCREASE_SPEED 
+            return Event.INCREASE_SPEED
         elif och   == 97:  # a
-            return Event.INFRARED_PORT_SIDE 
+            return Event.INFRARED_PORT_SIDE
         elif och == 99:  # c
-            return Event.BUMPER_CNTR           
+            return Event.BUMPER_STBD
         elif och == 100: # d
-            return Event.INFRARED_CNTR    
+            return Event.INFRARED_CNTR
         elif och == 102: # f
-            return Event.INFRARED_STBD   
+            return Event.INFRARED_STBD
         elif och == 103: # g
-            return Event.INFRARED_STBD_SIDE 
+            return Event.INFRARED_STBD_SIDE
+        elif och == 114: # r
+            return Event.SNIFF
         elif och == 115: # s
-            return Event.INFRARED_PORT     
+            return Event.INFRARED_PORT
         elif och == 116: # s
-            return Event.NOOP     
-        elif och == 118: # v
-            return Event.BUMPER_STBD          
+            return Event.NOOP
+#       elif och == 118: # v
+#           return Event.xxxx
         elif och == 120: # x
-            return Event.BUMPER_PORT            
+            return Event.BUMPER_CNTR
+        elif och == 122: # z
+            return Event.BUMPER_PORT
+        elif och == 127: # del
+            return Event.SHUTDOWN
         else:
             return None
 

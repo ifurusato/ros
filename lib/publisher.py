@@ -40,7 +40,6 @@ class Publisher(object):
         :param level:            the logging level
         '''
         self._log = Logger('pub-{}'.format(name), level)
-        print(Fore.RED + 'NAME: {}  --------------------'.format(name) + Style.RESET_ALL)
         self._name = name
         if message_bus is None:
             raise ValueError('null message bus argument.')

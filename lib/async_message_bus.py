@@ -50,10 +50,11 @@ class MessageBus(object):
             self._loop.add_signal_handler(
                 s, lambda s=s: asyncio.create_task(self.shutdown(s)))
         self._loop.set_exception_handler(self.handle_exception)
-        _garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
-        self.register_subscriber(_garbage_collector)
+        self._garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
+        self.register_subscriber(self._garbage_collector)
 
         self._max_age      = 5.0 # ms
+        self._verbose      = True
         self._enabled      = True # by default
         self._closed       = False
         self._log.info('creating subscriber task...')
@@ -68,6 +69,15 @@ class MessageBus(object):
     @property
     def queue_size(self):
         return self._queue.qsize()
+
+    # ..........................................................................
+    @property
+    def verbose(self):
+        return self._verbose
+
+    @verbose.setter
+    def verbose(self, verbose):
+        self._verbose = verbose
 
     # ..........................................................................
     def register_publisher(self, publisher):
@@ -171,16 +181,22 @@ class MessageBus(object):
         else:
             self._log.warning(Fore.BLACK + 'ignoring republication of message: {} (event: {});'.format(message.name, message.event))
 
-    # exception handling .......................................................
+    # ..........................................................................
+    def garbage_collect(self, message):
+        '''
+        Explicitly garbage collect the message, returning True if gc'd.
+        '''
+        return self._garbage_collector.collect(message)
 
+    # exception handling .......................................................
     def handle_exception(self, loop, context):
         self._log.error('handle exception on loop: {}'.format(loop))
         # context["message"] will always be there; but context["exception"] may not
-        _message = context.get("exception", context["message"])
-        if _message:
-            self._log.error('caught exception: {} / {}'.format(_message, traceback.print_stack()))
+        _exception = context.get('exception', context['message'])
+        if _exception != None:
+            self._log.error('caught {}: {}'.format(type(_exception), _exception))
         else:
-            self._log.error('caught exception: {}'.format(type(_message)))
+            self._log.error('caught exception: {}'.format(context.get('message')))
         if loop.is_running() and not loop.is_closed():
             asyncio.create_task(self.shutdown(loop))
         else:
