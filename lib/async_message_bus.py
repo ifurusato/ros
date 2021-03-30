@@ -230,23 +230,27 @@ class MessageBus(object):
     def enable(self):
         if not self._closed:
             self._enabled = True
+            self._log.info('enabled.')
             if not self._loop.is_running():
                 self._log.info(Fore.BLUE + 'starting asyncio task loop...')
                 self._loop.run_forever()
-            self._log.info('enabled.')
+            self._log.info('exited forever loop.')
         else:
             self._log.warning('cannot enable: already closed.')
 
     # ..........................................................................
     def disable(self):
+        '''
+        NOTE: we are at this point incidentally tying publishing with
+        the enabled state of the publisher, and subscribing with the
+        enabled state of the subscriber. This may not be desired.
+        '''
         if self._enabled:
             self._enabled = False
             for publisher in self._publishers:
-                '''
-                NOTE: we are at this point incidentally tying publishing with
-                the enabled state of the publisher. This may not be desired.
-                '''
                 publisher.disable()
+            for subscriber in self._subscribers:
+                subscriber.disable()
             if self._loop.is_running():
                 self._loop.stop()
             self._log.info('disabled.')

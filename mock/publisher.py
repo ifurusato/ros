@@ -100,6 +100,8 @@ class IfsPublisher(Publisher):
                 continue
             elif och == 113: # 'q'
                 self.disable()
+                self._message_bus.disable()
+                self._log.info(Fore.YELLOW + 'type Ctrl-C to exit.')
                 continue
             elif och == 47 or och == 63: # '/' or '?' for help
                 self.print_keymap()

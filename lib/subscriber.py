@@ -44,6 +44,7 @@ class Subscriber(object):
         self._color       = color
         self._message_bus = message_bus
         self._events      = events # list of acceptable event types
+        self._enabled     = True # by default
         self._is_cleanup_task = events is None
         self._log.info(self._color + 'ready.')
 
@@ -188,6 +189,43 @@ class Subscriber(object):
                 self._log.error('failed to save: {}'.format(message.hostname))
             elif isinstance(result, Exception):
                 self._log.error('handling general error: {}'.format(result))
+
+    # ..........................................................................
+    @property
+    def enabled(self):
+        return self._enabled
+
+    # ..........................................................................
+    def enable(self):
+        if not self._closed:
+            if self._enabled:
+                self._log.warning('already enabled.')
+            else:
+                self._enabled = True
+                self._log.info('enabled.')
+        else:
+            self._log.warning('cannot enable: already closed.')
+
+    # ..........................................................................
+    def disable(self):
+        if self._enabled:
+            self._enabled = False
+            self._log.info('disabled.')
+        else:
+            self._log.warning('already disabled.')
+
+    # ..........................................................................
+    def close(self):
+        '''
+        Permanently close and disable the message bus.
+        '''
+        if not self._closed:
+            self.disable()
+            self._closed = True
+            self._log.info('closed.')
+        else:
+            self._log.debug('already closed.')
+
 
 # GarbageCollector .............................................................
 class GarbageCollector(Subscriber):
