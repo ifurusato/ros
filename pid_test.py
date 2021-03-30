@@ -19,8 +19,6 @@ from lib.motors import Motors
 from lib.enums import Orientation
 from lib.rotary_ctrl import RotaryControl
 from lib.ioe_pot import Potentiometer
-#from lib.status import Status
-#from lib.pot import Potentiometer 
 from lib.pid_ctrl import PIDController
 
 # ..............................................................................
