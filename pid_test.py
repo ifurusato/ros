@@ -5,7 +5,12 @@
 # of the Robot Operating System project, released under the MIT License. Please
 # see the LICENSE file included as part of this package.
 #
+# author:   Murray Altheim
+# created:  2019-12-23
+# modified: 2020-03-12
+#
 # A quick test of the simple_pid library.
+#
 
 import sys, time, traceback
 import numpy
