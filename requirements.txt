@@ -77,7 +77,7 @@ pycrypto==2.6.1
 pycups==1.9.73
 pyftdi==0.52.9
 pygame==1.9.4.post1
-Pygments==2.3.1
+Pygments==2.7.4
 PyGObject==3.30.4
 pyinotify==0.9.6
 PyJWT==1.7.0
