@@ -122,7 +122,8 @@ ros:
         tof_range: 'performance'                 # ToF range: performance, long, medium or short
         reverse_movement: True                   # reverses the servo movement in case hardware is backwards
         double_sweep: False                      # if True sweeps in both directions
-        servo_number: 1                          # use this servo
+#       servo_number: 1                          # use this servo
+        servo_number: -1                         # don't use a servo
     wall_follower:
         port_angle: -90.0                        # port-facing scan angle
         starboard_angle: 90.0                    # starboard-facing scan angle

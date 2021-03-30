@@ -14,8 +14,12 @@
 #
 # You may also need to install various libraries via apt.
 #
+# sudo apt install i2c-tools
+# sudo apt install evtest tslib libts-bin					
+# sudo apt install pigpio
+#
 
-import importlib, sys 
+import importlib, sys
 import subprocess as sp
 
 from lib.confirm import confirm
@@ -26,7 +30,6 @@ libraries = [ \
     'pyyaml', \
     'colorama', \
     'rpi.gpio', \
-    'pigpio', \
     'gpiozero', \
     'board', \
     'adafruit-extended-bus', \

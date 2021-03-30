@@ -10,9 +10,14 @@
 # modified: 2020-03-31
 #
 
+import sys
 from enum import Enum
 
-import VL53L1X
+try:
+    import VL53L1X
+except ImportError:
+    sys.exit("This script requires the vl53l1x module\nInstall with: pip3 install --user vl53l1x")
+
 from lib.logger import Level, Logger
 
 UPDATE_TIME_MICROS = 66000
