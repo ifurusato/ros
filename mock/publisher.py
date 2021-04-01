@@ -30,7 +30,6 @@ from lib.rate import Rate
 from lib.event import Event
 from lib.message_factory import MessageFactory
 from lib.logger import Logger, Level
-from mock.message_bus import MockMessageBus
 from lib.publisher import Publisher
 
 # ...............................................................
@@ -44,7 +43,6 @@ class IfsPublisher(Publisher):
         self._log = Logger("ifs-pub", level)
         self._message_bus = message_bus
         self._message_factory = message_factory
-#       self._message_bus = MockMessageBus(self, Level.INFO)
         self.exit_on_complete = exit_on_complete
         self._enabled  = False
         self._suppress = False

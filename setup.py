@@ -32,15 +32,15 @@ libraries = [ \
     'rpi.gpio', \
     'gpiozero', \
     'board', \
-    'adafruit-extended-bus', \
     'readchar', \
-    'pymessagebus==1.*', \
-    'ht0740', \
-    'pimoroni-ioexpander', \
-    'adafruit-circuitpython-bno08x', \
     'pyquaternion', \
-    'matrix11x7', \
-    'rgbmatrix5x5', \
+#   'adafruit-extended-bus', \
+#   'pymessagebus==1.*', \
+#   'ht0740', \
+#   'pimoroni-ioexpander', \
+#   'adafruit-circuitpython-bno08x', \
+#   'matrix11x7', \
+#   'rgbmatrix5x5', \
     ]
 
 for name in libraries:
