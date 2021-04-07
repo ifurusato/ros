@@ -47,9 +47,9 @@ class MotorConfigurer():
                 import lib.ThunderBorg3 as ThunderBorg
                 self._log.info('successfully imported ThunderBorg.')
             else:
-                self._log.info('importing MockThunderBorg...')
-                import lib.MockThunderBorg3 as ThunderBorg
-                self._log.info('successfully imported MockThunderBorg.')
+                self._log.info('importing mock ThunderBorg...')
+                import mock.thunderborg as ThunderBorg
+                self._log.info('successfully imported mock ThunderBorg.')
 
             TB = ThunderBorg.ThunderBorg(Level.INFO)  # create a new ThunderBorg object
             TB.Init()                       # set the board up (checks the board is connected)
@@ -94,7 +94,7 @@ class MotorConfigurer():
         except OSError as e:
             if enable_mock:
                 self._log.info('using mock ThunderBorg.')
-                import lib.MockThunderBorg3 as ThunderBorg
+                import mock.thunderborg as ThunderBorg
             else:
                 self._log.error('unable to import ThunderBorg: {}'.format(e))
                 traceback.print_exc(file=sys.stdout)
@@ -102,7 +102,7 @@ class MotorConfigurer():
         except Exception as e:
             if enable_mock:
                 self._log.info('using mock ThunderBorg.')
-                import lib.MockThunderBorg3 as ThunderBorg
+                import mock.thunderborg as ThunderBorg
             else:
                 self._log.error('unable to import ThunderBorg: {}'.format(e))
                 traceback.print_exc(file=sys.stdout)

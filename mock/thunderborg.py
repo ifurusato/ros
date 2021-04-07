@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: latin-1
 """
-This module is designed to communicate with the ThunderBorg
+This module is a mock designed to communicate with a nonexistent ThunderBorg.
 
 Use by creating an instance of the class, call the Init function, then command as desired, e.g.
 import ThunderBorg

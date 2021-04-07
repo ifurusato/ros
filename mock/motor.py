@@ -27,7 +27,7 @@ from lib.decoder import Decoder
 from lib.velocity import Velocity
 
 # ..............................................................................
-class MockMotor(object):
+class Motor(object):
     '''
     Mocks power control over a motor using a Hall Effect encoder
     to determine the robot's velocity and distance traveled.
@@ -35,20 +35,20 @@ class MockMotor(object):
     This uses the ros:motors: section of the configuration.
 
     :param config:      application configuration
-    :param clock:       used to provide the velocity calculator with a steady
-                        clock; if None velocity will always return zero
+    :param ticker:      used to provide the velocity calculator with a steady
+                        tick; if None velocity will always return zero
     :param tb:          reference to the ThunderBorg motor controller
     :param pi:          reference to the Raspberry Pi
     :param orientation: motor orientation
     :param level:       log level
     '''
-    def __init__(self, config, clock, tb, pi, orientation, level=Level.INFO):
+    def __init__(self, config, ticker, tb, pi, orientation, level=Level.INFO):
         global TB
 #       super(Motor, self).__init__()
         if config is None:
             raise ValueError('null configuration argument.')
-        if clock is None:
-            raise ValueError('null clock argument.')
+        if ticker is None:
+            raise ValueError('null ticker argument.')
         if tb is None:
             raise ValueError('null thunderborg argument.')
         self._tb = tb
@@ -68,8 +68,7 @@ class MockMotor(object):
         else:
             self._orientation = orientation
         # velocity calculation .............................
-#       if clock:
-        self._velocity = Velocity(config, clock, self, Level.WARN)
+        self._velocity = Velocity(config, ticker, self, Level.WARN)
 #       else:
 #           self._velocity = None
         # NOW we can create the logger

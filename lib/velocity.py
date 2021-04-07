@@ -95,13 +95,15 @@ class Velocity(object):
          from encoders) to obtain maximum velocity as upper limit
       b. figure out how many steps per second the upper limit represents
     '''
-    def __init__(self, config, clock, motor, level=Level.INFO):
+    def __init__(self, config, ticker, motor, level=Level.INFO):
         if config is None:
             raise ValueError('null configuration argument.')
-        if clock is None:
-            raise ValueError('null clock argument.')
-        self._clock = clock
-        self._freq_hz = clock.freq_hz
+        if ticker is None:
+            raise ValueError('null ticker argument.')
+        self._ticker = ticker
+        self._ticker.add_callback(self.tick)
+
+        self._freq_hz = ticker.freq_hz
         self._period_ms = 1000.0 / self._freq_hz
         if motor is None:
             raise ValueError('null motor argument.')
@@ -142,12 +144,13 @@ class Velocity(object):
 #       self.add(message)
 
     # ..........................................................................
-    def handle(self, message):
+#   def handle(self, message):
+    def tick(self):
         '''
         This receives a TICK message every 50ms (i.e., at 20Hz), calculating
         velocity based on the tick/step count of the motor encoder.
         '''
-        if self._enabled and ( message.event is Event.CLOCK_TICK or message.event is Event.CLOCK_TOCK ):
+        if self._enabled:
             if self._motor.enabled: # then calculate velocity from motor encoder's step count
                 _time_diff_ms = 0.0
                 _steps = self._motor.steps

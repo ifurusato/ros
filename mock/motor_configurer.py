@@ -15,24 +15,26 @@ from fractions import Fraction
 
 from lib.enums import Orientation
 from lib.logger import Logger, Level
+from mock.motors import Motors
+from mock.pigpio import MockPi
 
 # ..............................................................................
-class MockMotorConfigurer():
+class MotorConfigurer():
     '''
     Configures a mock ThunderBorg motor controller for a pair of mock motors. 
 
     :param config:       the application configuration
-    :param clock:        the 'system' clock providing timing for velocity calculation
+    :param ticker:       the clock providing a timing pulse
+    :param message_bus:  the message bus handling event-laden messages
     :param enable_mock:  if set True a failure to instantiate the ThunderBorg will instead use a mock
     :param level:        the logging level
     '''
-    def __init__(self, config, clock, enable_mock=False, level=Level.INFO):
+    def __init__(self, config, ticker, message_bus, enable_mock=True, level=Level.INFO):
         self._log = Logger("mock-motor-conf", level)
         if config is None:
             raise ValueError('null configuration argument.')
-        if clock is None:
-            raise ValueError('null clock argument.')
         self._config = config
+        self._message_bus = message_bus
 
         self._log.debug('getting battery reading...')
         # get battery voltage to determine max motor power (moved earlier in config)
@@ -48,8 +50,8 @@ class MockMotorConfigurer():
         # Import the ThunderBorg library, then configure and return the Motors.
         self._log.info('configure thunderborg & motors...')
         try:
-            import lib.MockThunderBorg3 as ThunderBorg
-            self._log.info('successfully imported MockThunderBorg.')
+            import mock.thunderborg as ThunderBorg
+            self._log.info('successfully imported mock ThunderBorg.')
             TB = ThunderBorg.ThunderBorg(Level.INFO)  # create a new ThunderBorg object
 #           TB.Init()                       # set the board up (checks the board is connected)
             self._log.info(Fore.YELLOW + 'successfully instantiated mock ThunderBorg.')
@@ -57,7 +59,7 @@ class MockMotorConfigurer():
         except OSError as e:
             if enable_mock:
                 self._log.info('using mock ThunderBorg.')
-                import lib.MockThunderBorg3 as ThunderBorg
+                import mock.thunderborg as ThunderBorg
             else:
                 self._log.error('unable to import ThunderBorg: {}'.format(e))
                 traceback.print_exc(file=sys.stdout)
@@ -65,7 +67,7 @@ class MockMotorConfigurer():
         except Exception as e:
             if enable_mock:
                 self._log.info('using mock ThunderBorg.')
-                import lib.MockThunderBorg3 as ThunderBorg
+                import mock.thunderborg as ThunderBorg
             else:
                 self._log.error('unable to import ThunderBorg: {}'.format(e))
                 traceback.print_exc(file=sys.stdout)
@@ -73,11 +75,15 @@ class MockMotorConfigurer():
 #               sys.exit(1)
 
         # now import motors
-        from mock.motors import MockMotors
         try:
+
             self._log.info('getting raspberry pi...')
+            _pi = MockPi()
+
             self._log.info('configuring motors...')
-            self._motors = MockMotors(self._config, clock, TB, Level.INFO)
+#           self._motors = MockMotors(self._config, clock, TB, Level.INFO)
+#           _subscriber4 = Motors('4-motors', Fore.BLUE, _message_bus, Level.INFO)
+            self._motors = Motors(self._config, ticker, TB, _pi, self._message_bus, level=Level.INFO)
             self._motors.get_motor(Orientation.PORT).set_max_power_ratio(self._max_power_ratio)
             self._motors.get_motor(Orientation.STBD).set_max_power_ratio(self._max_power_ratio)
         except OSError as oe:

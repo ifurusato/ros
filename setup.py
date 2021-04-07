@@ -29,11 +29,11 @@ libraries = [ \
     'pytest', \
     'pyyaml', \
     'colorama', \
-    'rpi.gpio', \
     'gpiozero', \
     'board', \
     'readchar', \
     'pyquaternion', \
+#   'rpi.gpio', \
 #   'adafruit-extended-bus', \
 #   'pymessagebus==1.*', \
 #   'ht0740', \

@@ -23,19 +23,34 @@ import sys, traceback
 from colorama import init, Fore, Style
 init()
 
+from lib.config_loader import ConfigLoader
 from lib.logger import Logger, Level
 from lib.async_message_bus import MessageBus
 from lib.message_factory import MessageFactory
 from lib.publisher import Publisher
-from mock.publisher import IfsPublisher
 from lib.subscriber import Subscriber
+from lib.clock import Clock
+from lib.ticker import Ticker
 from lib.event import Event
+
+from mock.publisher import IfsPublisher
+
+from mock.motor_configurer import MotorConfigurer
+from mock.motors import Motors
 
 # main .........................................................................
 def main():
 
     _log = Logger("main", Level.INFO)
     _log.info(Fore.BLUE + 'configuring pub-sub test...')
+
+    # read YAML configuration
+    _loader = ConfigLoader(Level.INFO)
+    filename = 'config.yaml'
+    _config = _loader.configure(filename)
+
+    _loop_freq_hz = 10
+    _ticker = Ticker(_loop_freq_hz, Level.INFO)
 
     _message_bus = MessageBus(Level.INFO)
     _message_factory = MessageFactory(_message_bus, Level.INFO)
@@ -53,6 +68,13 @@ def main():
     _subscriber3 = Subscriber('3-bumper', Fore.GREEN, _message_bus, [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ], Level.INFO) # reacts to bumpers
     _message_bus.register_subscriber(_subscriber3)
 
+    # add motor controller
+
+    _motor_configurer = MotorConfigurer(_config, _ticker, _message_bus, enable_mock=True, level=Level.INFO)
+    _subscriber4 = _motor_configurer.get_motors()
+#   _subscriber4 = Motors('4-motors', Fore.BLUE, _message_bus, Level.INFO)
+    _message_bus.register_subscriber(_subscriber4)
+
     _message_bus.print_publishers()
     _message_bus.print_subscribers()
 
@@ -63,7 +85,6 @@ def main():
     except KeyboardInterrupt:
         _log.info('publish-subscribe interrupted')
     except Exception as e:
-#       _log.error('error in pub-sub: {}\n{}'.format(e, traceback.format_exc()))
         _log.error('error in pub-sub: {} / {}'.format(e, traceback.print_stack()))
     finally:
         _message_bus.close()

@@ -10,51 +10,47 @@
 # modified: 2021-02-16
 #
 
-import sys, time, traceback
-from threading import Thread
-from fractions import Fraction
+import asyncio
+import random
+from datetime import datetime as dt
 from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
-from lib.event import Event
 from lib.enums import Orientation
-from mock.motor import MockMotor
-from mock.pigpio import MockPigpio
+from lib.event import Event
+from lib.subscriber import Subscriber
+from mock.motor import Motor
 
 # ..............................................................................
-class MockMotors():
+class Motors(Subscriber):
     '''
     A mocked dual motor controller with encoders.
+
+    :param name:         the subscriber name (for logging)
+    :param ticker:       the clock providing a timing pulse to calculate velocity
+    :param tb:           the ThunderBorg motor controller
+    :param message_bus:  the message bus
+    :param events:       the list of events used as a filter, None to set as cleanup task
+    :param level:        the logging level 
     '''
-    def __init__(self, config, clock, tb, level):
-        super().__init__()
-        self._log = Logger('mock-motors', level)
+    def __init__(self, config, ticker, tb, pi, message_bus, level=Level.INFO):
+        super().__init__('motors', Fore.BLUE, message_bus, [ Event.DECREASE_SPEED, Event.INCREASE_SPEED, Event.HALT, Event.STOP, Event.BRAKE ], level)
+#       self._log = Logger('motors', level)
         self._log.info('initialising motors...')
         if config is None:
             raise Exception('no config argument provided.')
-        if clock is None:
-            raise Exception('no clock argument provided.')
-        if tb is None:
-            tb = self._configure_thunderborg_motors(level)
-            if tb is None:
-                raise Exception('unable to configure thunderborg.')
-        self._clock = clock
-        self._tb = tb
-        self._set_max_power_ratio()
+        self._config = config
         # config pigpio's pi and name its callback thread (ex-API)
-        _pigpio = MockPigpio()
-        self._pi = _pigpio.pi()
-        self._pi._notify.name = 'pi.callback'
-        self._log.info('pigpio version {}'.format(self._pi.get_pigpio_version()))
-        self._port_motor = MockMotor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
-        self._port_motor.set_max_power_ratio(self._max_power_ratio)
-        self._stbd_motor = MockMotor(config, self._clock, self._tb, self._pi, Orientation.STBD, level)
-        self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
+
+        _tb = tb
+        _pi = pi
+        self._port_motor = Motor(self._config, ticker, _tb, _pi, Orientation.PORT, level)
+        self._stbd_motor = Motor(self._config, ticker, _tb, _pi, Orientation.STBD, level)
+
         self._closed  = False
         self._enabled = False # used to be enabled by default
         # a dictionary of motor # to last set value
-        self._msgIndex = 0
         self._last_set_power = { 0:0, 1:0 }
         self._log.info('motors ready.')
 
@@ -63,211 +59,121 @@ class MockMotors():
         return 'Motors'
 
     # ..........................................................................
-    def _configure_thunderborg_motors(self, level):
-        '''
-        Import the ThunderBorg library, then configure the Motors.
-        '''
-        self._log.info('configure thunderborg & motors...')
-        global pi
-        try:
-            self._log.info('importing thunderborg...')
-            import lib.ThunderBorg3 as ThunderBorg
-            self._log.info('successfully imported thunderborg.')
-            TB = ThunderBorg.ThunderBorg(level)  # create a new ThunderBorg object
-            TB.Init()                       # set the board up (checks the board is connected)
-            self._log.info('successfully instantiated thunderborg.')
-
-            if not TB.foundChip:
-                boards = ThunderBorg.ScanForThunderBorg()
-                if len(boards) == 0:
-                    self._log.error('no thunderborg found, check you are attached.')
-                else:
-                    self._log.error('no ThunderBorg at address {:02x}, but we did find boards:'.format(TB.i2cAddress))
-                    for board in boards:
-                        self._log.info('board {:02x} {:d}'.format(board, board))
-                    self._log.error('if you need to change the I²C address change the setup line so it is correct, e.g. TB.i2cAddress = {:0x}'.format(boards[0]))
-                sys.exit(1)
-            TB.SetLedShowBattery(True)
-            return TB
-
-        except Exception as e:
-            self._log.error('unable to import thunderborg: {}'.format(e))
-            traceback.print_exc(file=sys.stdout)
-            sys.exit(1)
-
-    # ..........................................................................
-    def set_led_show_battery(self, enable):
-        self._tb.SetLedShowBattery(enable)
-
-    # ..........................................................................
-    def set_led_color(self, color):
-        self._tb.SetLed1(color.red/255.0, color.green/255.0, color.blue/255.0)
-
-    # ..........................................................................
-    def _set_max_power_ratio(self):
-        pass
-        # initialise ThunderBorg ...........................
-        self._log.info('getting battery reading...')
-        # get battery voltage to determine max motor power
-        # could be: Makita 12V or 18V power tool battery, or 12-20V line supply
-        voltage_in = self._tb.GetBatteryReading()
-        if voltage_in is None:
-            raise OSError('cannot continue: cannot read battery voltage.')
-        self._log.info('voltage in:  {:>5.2f}V'.format(voltage_in))
-#       voltage_in = 20.5
-        # maximum motor voltage
-        voltage_out = 9.0
-        self._log.info('voltage out: {:>5.2f}V'.format(voltage_out))
-        if voltage_in < voltage_out:
-            raise OSError('cannot continue: battery voltage too low ({:>5.2f}V).'.format(voltage_in))
-        # Setup the power limits
-        if voltage_out > voltage_in:
-            self._max_power_ratio = 1.0
-        else:
-            self._max_power_ratio = voltage_out / float(voltage_in)
-        # convert float to ratio format
-        self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V;'.format( voltage_in, voltage_out) + Fore.CYAN + Style.BRIGHT \
-                + ' maximum power ratio: {}'.format(str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
-
-    # ..........................................................................
     def get_motor(self, orientation):
         if orientation is Orientation.PORT:
             return self._port_motor
         else:
             return self._stbd_motor
 
-    # ..........................................................................
-    def is_in_motion(self):
+    # ................................................................
+    async def consume(self):
         '''
-        Returns true if either motor is moving.
+        Awaits a message on the message bus, then consumes it, filtering
+        on event type, processing the message then putting it back on the
+        bus to be further processed and eventually garbage collected.
         '''
-        return self._port_motor.is_in_motion() or self._stbd_motor.is_in_motion()
+        # 🍎 🍏 🍈 🍅 🍋 🍐 🍑 🥝 🥚 🥧 🧀
+        _message = await self._message_bus.consume_message()
+        _message.acknowledge(self)
+        if self._message_bus.verbose:
+            self._log.info(self._color + Style.DIM + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
+        if self.accept(_message.event):
+            # this subscriber is interested so handle the message
+            if self._message_bus.verbose:
+                self._log.info(self._color + Style.BRIGHT + 'consumed message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
+            # is acceptable so consume
+            asyncio.create_task(self._consume_message(_message))
+        # put back into queue in case anyone else is interested
+        if not _message.acknowledged:
+            if self._message_bus.verbose:
+                self._log.info(self._color + Style.DIM + 'returning unacknowledged message {} to queue;'.format(_message.name) \
+                        + Fore.WHITE + ' event: {}'.format(_message.event.description))
+            self._message_bus.republish_message(_message)
+        else: # nobody wanted it
+            if self._message_bus.verbose:
+                self._log.info(self._color + Style.DIM + 'message {} acknowledged, awaiting garbage collection;'.format(_message.name) \
+                        + Fore.WHITE + ' event: {}'.format(_message.event.description))
+            # so we explicitly gc the message
+            if not self._message_bus.garbage_collect(_message):
+                self._log.info(self._color + Style.DIM + 'message {} was not gc\'d so we republish...'.format(_message.name))
+                self._message_bus.republish_message(_message)
 
-    # ..........................................................................
-    def get_steps(self):
+    # ................................................................
+    async def _consume_message(self, message):
         '''
-        Returns the port and starboard motor step count.
-        '''
-        return [ self._port_motor.get_steps() , self._stbd_motor.get_steps() ]
+        Kick off various tasks to process/consume the message.
 
-    # ..........................................................................
-    def get_current_power_level(self, orientation):
+        :param message: the message to consume.
         '''
-        Returns the last set power of the specified motor.
-        '''
-        if orientation is Orientation.PORT:
-            return self._port_motor.get_current_power_level()
-        else:
-            return self._stbd_motor.get_current_power_level()
+        if self._message_bus.verbose:
+            self._log.info(self._color + 'consuming message:' + Fore.WHITE + ' {}; event: {}'.format(message.name, message.event.description))
+        _event = asyncio.Event()
+        asyncio.create_task(self._process_message(message, _event))
+        asyncio.create_task(self._cleanup_message(message, _event))
+        results = await asyncio.gather(self._save(message), self._restart_host(message), return_exceptions=True)
+        self._handle_results(results, message)
+        _event.set()
 
-    # ..........................................................................
-    def interrupt(self):
+    # ................................................................
+    async def _process_message(self, message, event):
         '''
-        Interrupt any motor loops by setting the _interrupt flag.
-        '''
-        self._port_motor.interrupt()
-        self._stbd_motor.interrupt()
+        Process the message, i.e., do something with it to change the state of the robot.
 
-    # ..........................................................................
-    def halt(self):
+        :param message:  the message to process, with its contained Event type.
+        :param event:    the asyncio.Event to watch for message extention or cleaning up,
+                         notably not the robot Event.
         '''
-        Quickly (but not immediately) stops both motors.
-        '''
-        self._log.info('halting...')
-        if self.is_stopped():
-            _tp = Thread(name='halt-port', target=self.processStop, args=(Event.HALT, Orientation.PORT))
-            _ts = Thread(name='hapt-stbd', target=self.processStop, args=(Event.HALT, Orientation.STBD))
-            _tp.start()
-            _ts.start()
-        else:
-            self._log.debug('already stopped.')
-        self._log.info('halted.')
-        return True
+        while not event.is_set():
+            message.process()
+            _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
+            if self._message_bus.verbose:
+                self._log.info(self._color + Style.BRIGHT + 'processing message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
 
-    # ..........................................................................
-    def brake(self):
-        '''
-        Slowly coasts both motors to a stop.
-        '''
-        self._log.info('braking...')
-        if self.is_stopped():
-            _tp = Thread(name='brake-port', target=self.processStop, args=(Event.BRAKE, Orientation.PORT))
-            _ts = Thread(name='brake-stbd', target=self.processStop, args=(Event.BRAKE, Orientation.STBD))
-            _tp.start()
-            _ts.start()
-        else:
-            self._log.warning('already stopped.')
-        self._log.info('braked.')
-        return True
+            # switch on event type...
+            _event = message.event
+            if _event == Event.STOP:
+                self._log.info(self._color + Style.BRIGHT + 'event: STOP in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.HALT:
+                self._log.info(self._color + Style.BRIGHT + 'event: HALT in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.BRAKE:
+                self._log.info(self._color + Style.BRIGHT + 'event: BRAKE in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.INCREASE_SPEED:
+                self._log.info(self._color + Style.BRIGHT + 'event: INCREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.DECREASE_SPEED:
+                self._log.info(self._color + Style.BRIGHT + 'event: DECREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.AHEAD:
+                self._log.info(self._color + Style.BRIGHT + 'event: AHEAD in {:5.2f}ms'.format(_elapsed_ms))
+            elif _event == Event.ASTERN:
+                self._log.info(self._color + Style.BRIGHT + 'event: ASTERN in {:5.2f}ms'.format(_elapsed_ms))
+            else:
+                self._log.info(self._color + Style.BRIGHT + 'ignored message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
 
-    # ..........................................................................
-    def stop(self):
-        '''
-        Stops both motors immediately, with no slewing.
-        '''
-        self._log.info('stopping...')
-        if not self.is_stopped():
-            self._port_motor.stop()
-            self._stbd_motor.stop()
-            self._log.info('stopped.')
-        else:
-            self._log.warning('already stopped.')
-        return True
+            # want to sleep for less than the deadline amount
+            await asyncio.sleep(2)
 
-    # ..........................................................................
-    def is_stopped(self):
-        return self._port_motor.is_stopped() and self._stbd_motor.is_stopped()
+    # ................................................................
+    async def _cleanup_message(self, message, event):
+        '''
+        Cleanup tasks related to completing work on a message.
 
-    # ..........................................................................
-    def processStop(self, event, orientation):
+        :param message:  consumed message that is done being processed.
+        :param event:    the asyncio.Event to watch for message extention or cleaning up.
         '''
-        Synchronised process control over various kinds of stopping.
-        '''
-        if orientation is Orientation.PORT:
-            if event is Event.HALT:
-                self._log.info('halting port motor...')
-                self._port_motor.halt()
-            elif event is Event.BRAKE:
-                self._log.info('braking port motor...')
-                self._port_motor.brake()
-            else: # is stop
-                self._log.info('stopping port motor...')
-                self._port_motor.stop()
-        else:
-            if event is Event.HALT:
-                self._log.info('halting starboard motor...')
-                self._stbd_motor.halt()
-            elif event is Event.BRAKE:
-                self._log.info('braking starboard motor...')
-                self._stbd_motor.brake()
-            else: # is stop
-                self._log.info('stopping starboard motor...')
-                self._stbd_motor.stop()
-        self.print_current_power_levels()
+        # this will block until `event.set` is called
+        await event.wait()
+        # unhelpful simulation of i/o work
+        await asyncio.sleep(random.random())
+        message.expire()
+        if self._message_bus.verbose:
+            self._log.info(self._color + Style.DIM + 'cleanup done: acknowledged {}'.format(message.name))
 
-    # ..........................................................................
-    def get_current_power_levels(self):
-        '''
-        Returns the last set power values.
-        '''
-        _port_power = self._port_motor.get_current_power_level()
-        _stbd_power = self._stbd_motor.get_current_power_level()
-        return [ _port_power, _stbd_power ]
 
-    # ..........................................................................
-    def print_current_power_levels(self):
-        '''
-        Prints the last set power values.
-        '''
-        self._msgIndex += 1
-        self._log.info('{}:\tcurrent power:\t{:6.1f}\t{:6.1f}'.format(self._msgIndex, self._last_set_power[0], self._last_set_power[1]))
 
     # ..........................................................................
     def enable(self):
         '''
-        Enables the motors, clock and velocity calculator. This issues
-        a warning if already enabled, but no harm is done in calling
-        it repeatedly.
+        Enables the motors. This issues a warning if already enabled, but no
+        harm is done in calling it repeatedly.
         '''
         if self._enabled:
             self._log.warning('already enabled.')
@@ -275,7 +181,6 @@ class MockMotors():
             self._port_motor.enable()
         if not self._stbd_motor.enabled:
             self._stbd_motor.enable()
-        self._clock.enable()
         self._enabled = True
         self._log.info('enabled.')
 

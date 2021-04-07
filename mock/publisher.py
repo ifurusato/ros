@@ -94,7 +94,7 @@ class IfsPublisher(Publisher):
             och = ord(ch)
             if och == 13: # CR to print NLs
                 self._log.info('[:03d]'.format(_count))
-                print(Logger._repeat('\n',24))
+                print(Logger._repeat('\n',48))
                 continue
             elif och == 113: # 'q'
                 self.disable()
@@ -269,15 +269,22 @@ class IfsPublisher(Publisher):
    o---------------------------------------------------------------------------------------------------o     |   DEL   |
    |    Q    |    W    |    E    |    R    |    T    |    Y    |    U    |    I    |    O    |    P    |     | SHUTDWN |
    |  QUIT   |         |         |  SNIFF  |  NOOP   |         |         |         |         |         |  -------------o
-   o--------------------------------------------------------------------------o------------------------o
-        |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |    L    |
-        | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |         |         |         |         |
-        o-------------------------------------------------------------------------------o------------------------o
+   o--------------------------------------------------------------------------o------------------------o  -------------o
+        |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |    L    |          |   RET   |
+        | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |  HALT   |         |         |         |          |  CLEAR  |
+        o-------------------------------------------------------------------------------o------------------------------o
              |    Z    |    X    |    C    |    V    |    B    |    N    |    M    |    <    |    >    |    ?    |
-             | BM_PORT | BM_CNTR | BM_STBD | VERBOSE |         |         |         | DN_VELO | UP_VELO |  HELP   |
+             | BM_PORT | BM_CNTR | BM_STBD | VERBOSE |  BRAKE  |  STOP   |         | DN_VELO | UP_VELO |  HELP   |
              o---------------------------------------------------------------------------------------------------o
 
         ''')
+#           if _event == Event.STOP:               N    110
+#           elif _event == Event.HALT:             H    104
+#           elif _event == Event.BRAKE:            B    98
+#           elif _event == Event.INCREASE_SPEED:   >
+#           elif _event == Event.DECREASE_SPEED:   <
+#           elif _event == Event.AHEAD:
+#           elif _event == Event.ASTERN:
         self._log.info('note:\t' + Fore.YELLOW + 'will exit after receiving 3 events on each sensor.')
         print('')
 
@@ -292,19 +299,19 @@ class IfsPublisher(Publisher):
             56   46    2E    .      decrease motors speed (both)
 
            141   97    61    a *    port side IR
-           142   98    62    b
+           142   98    62    b *    brake
            143   99    63    c *    stbd BMP
            144   100   64    d *    cntr IR
            145   101   65    e
            146   102   66    f *    stbd IR
            147   103   67    g *    stbd side IR
-           150   104   68    h
+           150   104   68    h *    halt
            151   105   69    i
            152   106   6A    j
            153   107   6B    k
            154   108   6C    l
            155   109   6D    m
-           156   110   6E    n
+           156   110   6E    n *    stop
            157   111   6F    o
            160   112   70    p
            161   113   71    q
