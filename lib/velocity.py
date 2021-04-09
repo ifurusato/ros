@@ -94,17 +94,19 @@ class Velocity(object):
       a. measure unloaded wheel speed at maximum power (in steps per second,
          from encoders) to obtain maximum velocity as upper limit
       b. figure out how many steps per second the upper limit represents
+
     '''
     def __init__(self, config, ticker, motor, level=Level.INFO):
         if config is None:
             raise ValueError('null configuration argument.')
+        # establish tick frequency
         if ticker is None:
             raise ValueError('null ticker argument.')
         self._ticker = ticker
         self._ticker.add_callback(self.tick)
-
         self._freq_hz = ticker.freq_hz
         self._period_ms = 1000.0 / self._freq_hz
+        # connect with motor 
         if motor is None:
             raise ValueError('null motor argument.')
         self._motor = motor
@@ -179,7 +181,7 @@ class Velocity(object):
         else:
             self._velocity = 0.0 # or None?
 #       return self._velocity
-        return message
+#       return message
 
     # ..............................................................................
     def __call__(self):
@@ -199,7 +201,7 @@ class Velocity(object):
     def enable(self):
         if not self._closed:
             self._enabled = True
-            self._clock.message_bus.add_handler(Message, self.handle)
+#           self._clock.message_bus.add_handler(Message, self.tick)
             self._log.info('enabled.')
         else:
             self._log.warning('cannot enable: already closed.')

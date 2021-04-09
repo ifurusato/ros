@@ -35,7 +35,8 @@ class Motors(Subscriber):
     :param level:        the logging level 
     '''
     def __init__(self, config, ticker, tb, pi, message_bus, level=Level.INFO):
-        super().__init__('motors', Fore.BLUE, message_bus, [ Event.DECREASE_SPEED, Event.INCREASE_SPEED, Event.HALT, Event.STOP, Event.BRAKE ], level)
+        super().__init__('motors', Fore.BLUE, message_bus, level)
+        self.events = [ Event.DECREASE_SPEED, Event.INCREASE_SPEED, Event.HALT, Event.STOP, Event.BRAKE ]
 #       self._log = Logger('motors', level)
         self._log.info('initialising motors...')
         if config is None:
@@ -55,8 +56,9 @@ class Motors(Subscriber):
         self._log.info('motors ready.')
 
     # ..........................................................................
+    @property
     def name(self):
-        return 'Motors'
+        return 'motors'
 
     # ..........................................................................
     def get_motor(self, orientation):
@@ -66,56 +68,7 @@ class Motors(Subscriber):
             return self._stbd_motor
 
     # ................................................................
-    async def consume(self):
-        '''
-        Awaits a message on the message bus, then consumes it, filtering
-        on event type, processing the message then putting it back on the
-        bus to be further processed and eventually garbage collected.
-        '''
-        # 🍎 🍏 🍈 🍅 🍋 🍐 🍑 🥝 🥚 🥧 🧀
-        _message = await self._message_bus.consume_message()
-        _message.acknowledge(self)
-        if self._message_bus.verbose:
-            self._log.info(self._color + Style.DIM + 'consume message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
-        if self.accept(_message.event):
-            # this subscriber is interested so handle the message
-            if self._message_bus.verbose:
-                self._log.info(self._color + Style.BRIGHT + 'consumed message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
-            # is acceptable so consume
-            asyncio.create_task(self._consume_message(_message))
-        # put back into queue in case anyone else is interested
-        if not _message.acknowledged:
-            if self._message_bus.verbose:
-                self._log.info(self._color + Style.DIM + 'returning unacknowledged message {} to queue;'.format(_message.name) \
-                        + Fore.WHITE + ' event: {}'.format(_message.event.description))
-            self._message_bus.republish_message(_message)
-        else: # nobody wanted it
-            if self._message_bus.verbose:
-                self._log.info(self._color + Style.DIM + 'message {} acknowledged, awaiting garbage collection;'.format(_message.name) \
-                        + Fore.WHITE + ' event: {}'.format(_message.event.description))
-            # so we explicitly gc the message
-            if not self._message_bus.garbage_collect(_message):
-                self._log.info(self._color + Style.DIM + 'message {} was not gc\'d so we republish...'.format(_message.name))
-                self._message_bus.republish_message(_message)
-
-    # ................................................................
-    async def _consume_message(self, message):
-        '''
-        Kick off various tasks to process/consume the message.
-
-        :param message: the message to consume.
-        '''
-        if self._message_bus.verbose:
-            self._log.info(self._color + 'consuming message:' + Fore.WHITE + ' {}; event: {}'.format(message.name, message.event.description))
-        _event = asyncio.Event()
-        asyncio.create_task(self._process_message(message, _event))
-        asyncio.create_task(self._cleanup_message(message, _event))
-        results = await asyncio.gather(self._save(message), self._restart_host(message), return_exceptions=True)
-        self._handle_results(results, message)
-        _event.set()
-
-    # ................................................................
-    async def _process_message(self, message, event):
+    async def process_message(self, message, event):
         '''
         Process the message, i.e., do something with it to change the state of the robot.
 
@@ -128,7 +81,6 @@ class Motors(Subscriber):
             _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
             if self._message_bus.verbose:
                 self._log.info(self._color + Style.BRIGHT + 'processing message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
-
             # switch on event type...
             _event = message.event
             if _event == Event.STOP:
@@ -152,7 +104,7 @@ class Motors(Subscriber):
             await asyncio.sleep(2)
 
     # ................................................................
-    async def _cleanup_message(self, message, event):
+    async def cleanup_message(self, message, event):
         '''
         Cleanup tasks related to completing work on a message.
 

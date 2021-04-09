@@ -44,19 +44,19 @@ class Motors():
     '''
     A dual motor controller with encoders.
     '''
-    def __init__(self, config, clock, tb, level):
+    def __init__(self, config, ticker, tb, level):
         super().__init__()
         self._log = Logger('motors', level)
         self._log.info('initialising motors...')
         if config is None:
             raise Exception('no config argument provided.')
-        if clock is None:
-            raise Exception('no clock argument provided.')
+        if ticker is None:
+            raise Exception('no ticker argument provided.')
+        self._ticker = ticker
         if tb is None:
             tb = self._configure_thunderborg_motors(level)
             if tb is None:
                 raise Exception('unable to configure thunderborg.')
-        self._clock = clock
         self._tb = tb
         self._set_max_power_ratio()
         # config pigpio's pi and name its callback thread (ex-API)
@@ -74,9 +74,9 @@ class Motors():
             self._log.error('error importing and/or configuring Motor: {}'.format(e))
             traceback.print_exc(file=sys.stdout)
             sys.exit(1)
-        self._port_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.PORT, level)
+        self._port_motor = Motor(config, self._ticker, self._tb, self._pi, Orientation.PORT, level)
         self._port_motor.set_max_power_ratio(self._max_power_ratio)
-        self._stbd_motor = Motor(config, self._clock, self._tb, self._pi, Orientation.STBD, level)
+        self._stbd_motor = Motor(config, self._ticker, self._tb, self._pi, Orientation.STBD, level)
         self._stbd_motor.set_max_power_ratio(self._max_power_ratio)
         self._closed  = False
         self._enabled = False # used to be enabled by default
@@ -292,7 +292,7 @@ class Motors():
     # ..........................................................................
     def enable(self):
         '''
-        Enables the motors, clock and velocity calculator. This issues
+        Enables the motors, ticker and velocity calculator. This issues
         a warning if already enabled, but no harm is done in calling
         it repeatedly.
         '''
@@ -302,7 +302,7 @@ class Motors():
             self._port_motor.enable()
         if not self._stbd_motor.enabled:
             self._stbd_motor.enable()
-        self._clock.enable()
+        self._ticker.enable()
         self._enabled = True
         self._log.info('enabled.')
 

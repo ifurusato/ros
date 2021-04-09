@@ -17,9 +17,7 @@ from threading import Thread
 from colorama import init, Fore, Style
 init()
 
-from lib.message import Message
 from lib.logger import Logger, Level
-from lib.event import Event
 from lib.rate import Rate
 
 # ...............................................................

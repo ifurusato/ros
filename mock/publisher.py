@@ -82,9 +82,7 @@ class IfsPublisher(Publisher):
             self._log.warning('publish cycle already started.')
             return
         self._enabled = True
-        self._log.info('start loop:\t' + Fore.YELLOW + 'type the \"' + Fore.RED + 'Delete' + Fore.YELLOW \
-                + '\" or \"' + Fore.RED + 'q' + Fore.YELLOW + '\" key to exit sensor loop, the \"' \
-                + Fore.RED + 'h' + Fore.YELLOW + '\" key for help.')
+        self._log.info('start loop:\t' + Fore.YELLOW + 'type the \"q\" key to exit sensor loop, the \"?\" key for help.')
         print('\n')
         while self._enabled:
             # see if any sensor (key) has been activated
@@ -268,7 +266,7 @@ class IfsPublisher(Publisher):
                                                                                                           -------------o
    o---------------------------------------------------------------------------------------------------o     |   DEL   |
    |    Q    |    W    |    E    |    R    |    T    |    Y    |    U    |    I    |    O    |    P    |     | SHUTDWN |
-   |  QUIT   |         |         |  SNIFF  |  NOOP   |         |         |         |         |         |  -------------o
+   |  QUIT   |         |  SNIFF  |  ROAM   |  NOOP   |         |         |         |         |         |  -------------o
    o--------------------------------------------------------------------------o------------------------o  -------------o
         |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |    L    |          |   RET   |
         | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |  HALT   |         |         |         |          |  CLEAR  |
@@ -278,11 +276,6 @@ class IfsPublisher(Publisher):
              o---------------------------------------------------------------------------------------------------o
 
         ''')
-#           if _event == Event.STOP:               N    110
-#           elif _event == Event.HALT:             H    104
-#           elif _event == Event.BRAKE:            B    98
-#           elif _event == Event.INCREASE_SPEED:   >
-#           elif _event == Event.DECREASE_SPEED:   <
 #           elif _event == Event.AHEAD:
 #           elif _event == Event.ASTERN:
         self._log.info('note:\t' + Fore.YELLOW + 'will exit after receiving 3 events on each sensor.')
@@ -302,7 +295,7 @@ class IfsPublisher(Publisher):
            142   98    62    b *    brake
            143   99    63    c *    stbd BMP
            144   100   64    d *    cntr IR
-           145   101   65    e
+           145   101   65    e *    sniff
            146   102   66    f *    stbd IR
            147   103   67    g *    stbd side IR
            150   104   68    h *    halt
@@ -332,16 +325,24 @@ class IfsPublisher(Publisher):
             return Event.INCREASE_SPEED
         elif och   == 97:  # a
             return Event.INFRARED_PORT_SIDE
+        elif och == 98:  # b
+            return Event.BRAKE
         elif och == 99:  # c
             return Event.BUMPER_STBD
         elif och == 100: # d
             return Event.INFRARED_CNTR
+        elif och == 101: # e
+            return Event.SNIFF
         elif och == 102: # f
             return Event.INFRARED_STBD
         elif och == 103: # g
             return Event.INFRARED_STBD_SIDE
+        elif och == 104: # h
+            return Event.HALT
+        elif och == 110: # n
+            return Event.STOP
         elif och == 114: # r
-            return Event.SNIFF
+            return Event.ROAM
         elif och == 115: # s
             return Event.INFRARED_PORT
         elif och == 116: # s

@@ -139,7 +139,7 @@ class MessageBus(object):
         Start the subscribers' consume cycle. This remains active until the
         message bus is disabled.
         '''
-        self._log.info(Fore.YELLOW + 'begin {:d} subscribers\' consume cycle...'.format(len(self._subscribers)))
+        self._log.info('begin {:d} subscribers\' consume cycle...'.format(len(self._subscribers)))
         while self._enabled:
             for subscriber in self._subscribers:
                 self._log.debug('publishing to subscriber {}...'.format(subscriber.name))
@@ -232,7 +232,7 @@ class MessageBus(object):
             self._enabled = True
             self._log.info('enabled.')
             if not self._loop.is_running():
-                self._log.info(Fore.BLUE + 'starting asyncio task loop...')
+                self._log.info('starting asyncio task loop...')
                 self._loop.run_forever()
             self._log.info('exited forever loop.')
         else:

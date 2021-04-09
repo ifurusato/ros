@@ -105,6 +105,8 @@ class Message(object):
         return self._gc
 
     def gc(self):
+        if self._gc:
+            raise Exception('already garbage collected.')
         self._gc = True
 
     # acked         ............................................................
@@ -134,7 +136,7 @@ class Message(object):
             self._subscribers[subscriber] = False
 
     @property
-    def acknowledged(self):
+    def fully_acknowledged(self):
         '''
         Returns True if the message has been acknowledged by all subscribers,
         i.e., no subscriber flags remain set as False.
@@ -143,6 +145,17 @@ class Message(object):
             if not self._subscribers[subscriber]:
                 return False
         return True
+
+    def acknowledged_by(self, subscriber):
+        '''
+        Returns True if the message has been acknowledged by the specified subscriber.
+        '''
+        for subscr in self._subscribers:
+            if subscr == subscriber and self._subscribers[subscriber] == True:
+#               print(Fore.GREEN + 'acknowledged_by subscriber {} ADDED to message {}; return True.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+                return True
+#       print(Fore.RED + 'acknowledged_by subscriber {} ADDED to message {}; return False.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+        return False
 
     def acknowledge(self, subscriber):
         '''
@@ -153,11 +166,11 @@ class Message(object):
         elif not self.expectation_set:
             raise Exception('no subscriber expectations set ({}).'.format(self._instance_name))
         if self._subscribers[subscriber]:
-            print(Fore.RED + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
+            print(Style.DIM + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
 #           raise Exception('message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name))
         else:
+#           print(Style.DIM + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
             self._subscribers[subscriber] = True
-#           print(Fore.BLUE + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
 
     # instance_name ............................................................
 
