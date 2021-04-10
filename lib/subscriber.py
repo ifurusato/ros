@@ -74,14 +74,14 @@ class Subscriber(object):
         A filter that returns True if the message has not yet been seen by
         this subscriber and its event is acceptable.
         '''
-        _acceptable = not message.acknowledged_by(self) and message.event in self.events
-        if _acceptable:
-            self._log.info(self._color + 'ACCEPTABLE() for message: {}; event: {};'.format(message.name, message.event.description) \
+        if not message.acknowledged_by(self) and message.event in self.events:
+            self._log.debug(self._color + 'message ACCEPTABLE: {}; event: {};'.format(message.name, message.event.description) \
                     + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self.events))
+            return True
         else:
-            self._log.info(self._color + 'NOT ACCEPTABLE() for message: {}; event: {};'.format(message.name, message.event.description) \
+            self._log.debug(self._color + 'message NOT ACCEPTABLE: {}; event: {};'.format(message.name, message.event.description) \
                     + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self.events))
-        return _acceptable
+            return False
 
     # ................................................................
     @final
@@ -285,29 +285,33 @@ class GarbageCollector(Subscriber):
         '''
         Explicitly garbage collects the message, returning True if it was
         collected, False if it was neither expired nor fully-acknowledged.
+
+        NOTE: Most of this function is simply log messages - it could be
+        significantly simplified if we don't want to display any messages.
         '''
         if self._message_bus.is_expired(message) and message.fully_acknowledged:
             if self._message_bus.verbose:
-                self._log.info(self._color + '🗑️  GARBAGE COLLECT expired, fully acknowledged message \'{}\' '.format(message.name) + Fore.WHITE \
-                        + ' (event: {});'.format(message.event.description) \
+                self._log.info(self._color + Style.NORMAL + 'garbage collecting expired, fully-acknowledged message:' + Fore.WHITE \
+                        + ' {}; event: {};'.format(_message.name, _message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
+            message.gc() # mark as garbage collected
             return True
         elif self._message_bus.is_expired(message):
             if self._message_bus.verbose:
-                self._log.info(self._color + '🗑️  GARBAGE COLLECT expired message \'{}\' '.format(message.name) + Fore.WHITE \
-                        + ' (event: {});'.format(message.event.description) \
+                self._log.info(self._color + Style.NORMAL + 'garbage collecting expired message:' + Fore.WHITE \
+                        + ' {}; event: {}'.format(_message.name, _message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
+            message.gc() # mark as garbage collected
             return True
         elif message.fully_acknowledged:
             if self._message_bus.verbose:
-                self._log.info(self._color + '🗑️  GARBAGE COLLECT acknowledged message \'{}\' '.format(message.name) + Fore.WHITE \
-                        + ' (event: {});'.format(message.event.description) \
+                self._log.info(self._color + Style.NORMAL + 'garbage collecting fully-acknowledged message:' + Fore.WHITE \
+                        + ' {}; event: {}'.format(_message.name, _message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
-            # garbage collected (by not being republished)
-            message.gc()
+            message.gc() # mark as garbage collected
             return True
         else:
             # not garbage collected
