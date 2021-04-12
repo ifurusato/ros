@@ -68,6 +68,15 @@ class Subscriber(object):
         '''
         self._events = events
 
+    def print_events(self):
+        if self._events:
+            _events = []
+            for event in self._events:
+                _events.append('{} '.format(event.name))
+            return ''.join(_events)
+        else:
+            return '(no filter)'
+
     # ..........................................................................
     def acceptable(self, message):
         '''
@@ -124,10 +133,14 @@ class Subscriber(object):
     # ................................................................
     async def _consume_message(self, message):
         '''
-        Kick off various tasks to process/consume the message.
+        Kick off various tasks to process/consume the message. This creates
+        tasks for process_message() followed by cleanup_message(). If the
+        latter is overridden it should also called by the subclass method.
 
         :param message: the message to consume.
         '''
+        if message.gcd:
+            raise Exception('cannot _consume: message has been garbage collected.')
         if self._message_bus.verbose:
             self._log.info(self._color + 'consuming message:' + Fore.WHITE + ' {}; event: {}'.format(message.name, message.event.description))
         _event = asyncio.Event()
@@ -292,7 +305,7 @@ class GarbageCollector(Subscriber):
         if self._message_bus.is_expired(message) and message.fully_acknowledged:
             if self._message_bus.verbose:
                 self._log.info(self._color + Style.NORMAL + 'garbage collecting expired, fully-acknowledged message:' + Fore.WHITE \
-                        + ' {}; event: {};'.format(_message.name, _message.event.description) \
+                        + ' {}; event: {};'.format(message.name, message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
             message.gc() # mark as garbage collected
@@ -300,7 +313,7 @@ class GarbageCollector(Subscriber):
         elif self._message_bus.is_expired(message):
             if self._message_bus.verbose:
                 self._log.info(self._color + Style.NORMAL + 'garbage collecting expired message:' + Fore.WHITE \
-                        + ' {}; event: {}'.format(_message.name, _message.event.description) \
+                        + ' {}; event: {}'.format(message.name, message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
             message.gc() # mark as garbage collected
@@ -308,7 +321,7 @@ class GarbageCollector(Subscriber):
         elif message.fully_acknowledged:
             if self._message_bus.verbose:
                 self._log.info(self._color + Style.NORMAL + 'garbage collecting fully-acknowledged message:' + Fore.WHITE \
-                        + ' {}; event: {}'.format(_message.name, _message.event.description) \
+                        + ' {}; event: {}'.format(message.name, message.event.description) \
                         + Fore.WHITE + Style.NORMAL + ' processed by {:d}; was alive for {:5.2f}ms;\n'.format(message.processed, message.age)
                         + '    ackd by: {}'.format(self._get_acks(message)))
             message.gc() # mark as garbage collected

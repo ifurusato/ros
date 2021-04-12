@@ -44,10 +44,14 @@ class Motors(Subscriber):
         self._config = config
         # config pigpio's pi and name its callback thread (ex-API)
 
+        if tb is None:
+            raise Exception('no tb argument provided.')
         _tb = tb
-        _pi = pi
-        self._port_motor = Motor(self._config, ticker, _tb, _pi, Orientation.PORT, level)
-        self._stbd_motor = Motor(self._config, ticker, _tb, _pi, Orientation.STBD, level)
+        if pi is None:
+            raise Exception('no pi argument provided.')
+        self._pi = pi
+        self._port_motor = Motor(self._config, ticker, _tb, self._pi, Orientation.PORT, level)
+        self._stbd_motor = Motor(self._config, ticker, _tb, self._pi, Orientation.STBD, level)
 
         self._closed  = False
         self._enabled = False # used to be enabled by default
@@ -67,6 +71,90 @@ class Motors(Subscriber):
         else:
             return self._stbd_motor
 
+    # ..........................................................................
+    def change_speed(self, orientation, change):
+        if orientation is Orientation.PORT:
+            _port_power = self._port_motor.get_current_power_level()
+            _updated_port_power = _port_power + change
+            self._port_motor.set_motor_power(_updated_port_power)
+            _port_power = self._port_motor.get_current_power_level()
+            self._log.info(Fore.RED + Style.NORMAL + 'port motor power: {:5.2f} + {:5.2f} -▶ {:<5.2f}'.format(_port_power, change, _updated_port_power))
+        else:
+            _stbd_power = self._stbd_motor.get_current_power_level()
+            _updated_stbd_power = _stbd_power + change
+            self._stbd_motor.set_motor_power(_updated_stbd_power)
+            _stbd_power = self._stbd_motor.get_current_power_level()
+            self._log.info(Fore.GREEN + Style.NORMAL + 'stbd motor power: {:5.2f} + {:5.2f} -▶ {:<5.2f}'.format(_stbd_power, change, _updated_stbd_power))
+
+    # ..........................................................................
+    def halt(self):
+        '''
+        Quickly (but not immediately) stops both motors.
+        '''
+        self._log.info('halting...')
+        if not self.is_stopped():
+            self._port_motor.stop()
+            self._stbd_motor.stop()
+#           _tp = Thread(name='halt-port', target=self.processStop, args=(Event.HALT, Orientation.PORT))
+#           _ts = Thread(name='hapt-stbd', target=self.processStop, args=(Event.HALT, Orientation.STBD))
+#           _tp.start()
+#           _ts.start()
+            self._log.info('halted.')
+        else:
+            self._log.debug('already halted.')
+        return True
+
+    # ..........................................................................
+    def brake(self):
+        '''
+        Slowly coasts both motors to a stop.
+        '''
+        self._log.info('braking...')
+        if not self.is_stopped():
+            self._port_motor.stop()
+            self._stbd_motor.stop()
+#           _tp = Thread(name='brake-port', target=self.processStop, args=(Event.BRAKE, Orientation.PORT))
+#           _ts = Thread(name='brake-stbd', target=self.processStop, args=(Event.BRAKE, Orientation.STBD))
+#           _tp.start()
+#           _ts.start()
+            self._log.info('braked.')
+        else:
+            self._log.warning('already braked.')
+        return True
+
+    # ..........................................................................
+    def stop(self):
+        '''
+        Stops both motors immediately, with no slewing.
+        '''
+        self._log.info('stopping...')
+        if not self.is_stopped():
+            self._port_motor.stop()
+            self._stbd_motor.stop()
+            self._log.info('stopped.')
+        else:
+            self._log.warning('already stopped.')
+        return True
+
+    # ..........................................................................
+    def is_stopped(self):
+        return self._port_motor.is_stopped() and self._stbd_motor.is_stopped()
+
+    # ..........................................................................
+    def is_in_motion(self):
+        '''
+        Returns true if either motor is moving.
+        '''
+        return self._port_motor.is_in_motion() or self._stbd_motor.is_in_motion()
+
+#   # ................................................................
+#   def print_events(self):
+#       return super().print_events()
+#       _events = []
+#       for event in self.events:
+#           _events.append('{} '.format(event.name))
+#       return ''.join(_events)
+
     # ................................................................
     async def process_message(self, message, event):
         '''
@@ -76,7 +164,12 @@ class Motors(Subscriber):
         :param event:    the asyncio.Event to watch for message extention or cleaning up,
                          notably not the robot Event.
         '''
-        while not event.is_set():
+#       while not event.is_set():
+        while not event.is_set() and not message.gcd:
+            if message.gcd:
+                self._log.warning('exiting process loop: message {} has been garbage collected.'.format(message.name))
+#               raise Exception('cannot process: message has been garbage collected.')
+                return
             message.process()
             _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
             if self._message_bus.verbose:
@@ -85,41 +178,45 @@ class Motors(Subscriber):
             _event = message.event
             if _event == Event.STOP:
                 self._log.info(self._color + Style.BRIGHT + 'event: STOP in {:5.2f}ms'.format(_elapsed_ms))
+                self.stop()
             elif _event == Event.HALT:
                 self._log.info(self._color + Style.BRIGHT + 'event: HALT in {:5.2f}ms'.format(_elapsed_ms))
+                self.halt()
             elif _event == Event.BRAKE:
                 self._log.info(self._color + Style.BRIGHT + 'event: BRAKE in {:5.2f}ms'.format(_elapsed_ms))
+                self.brake()
             elif _event == Event.INCREASE_SPEED:
                 self._log.info(self._color + Style.BRIGHT + 'event: INCREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+                self.change_speed(Orientation.PORT, +0.01)
+                self.change_speed(Orientation.STBD, +0.01)
             elif _event == Event.DECREASE_SPEED:
                 self._log.info(self._color + Style.BRIGHT + 'event: DECREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+                self.change_speed(Orientation.PORT, -0.01)
+                self.change_speed(Orientation.STBD, -0.01)
             elif _event == Event.AHEAD:
                 self._log.info(self._color + Style.BRIGHT + 'event: AHEAD in {:5.2f}ms'.format(_elapsed_ms))
             elif _event == Event.ASTERN:
                 self._log.info(self._color + Style.BRIGHT + 'event: ASTERN in {:5.2f}ms'.format(_elapsed_ms))
             else:
                 self._log.info(self._color + Style.BRIGHT + 'ignored message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
-
             # want to sleep for less than the deadline amount
             await asyncio.sleep(2)
 
     # ................................................................
-    async def cleanup_message(self, message, event):
-        '''
-        Cleanup tasks related to completing work on a message.
+#   async def cleanup_message(self, message, event):
+#       '''
+#       Cleanup tasks related to completing work on a message.
 
-        :param message:  consumed message that is done being processed.
-        :param event:    the asyncio.Event to watch for message extention or cleaning up.
-        '''
-        # this will block until `event.set` is called
-        await event.wait()
-        # unhelpful simulation of i/o work
-        await asyncio.sleep(random.random())
-        message.expire()
-        if self._message_bus.verbose:
-            self._log.info(self._color + Style.DIM + 'cleanup done: acknowledged {}'.format(message.name))
-
-
+#       :param message:  consumed message that is done being processed.
+#       :param event:    the asyncio.Event to watch for message extention or cleaning up.
+#       '''
+#       # this will block until `event.set` is called
+#       await event.wait()
+#       # unhelpful simulation of i/o work
+#       await asyncio.sleep(random.random())
+#       message.expire()
+#       if self._message_bus.verbose:
+#           self._log.info(self._color + Style.DIM + 'cleanup done: acknowledged {}'.format(message.name))
 
     # ..........................................................................
     def enable(self):

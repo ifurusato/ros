@@ -29,7 +29,7 @@ from lib.velocity import Velocity
 # ..............................................................................
 class Motor(object):
     '''
-    Mocks power control over a motor using a Hall Effect encoder
+    Mocks control over a motor that uses a Hall Effect encoder
     to determine the robot's velocity and distance traveled.
 
     This uses the ros:motors: section of the configuration.
@@ -298,10 +298,11 @@ class Motor(object):
 #           return
         _current_power = self.get_current_power_level()
 #       _current_actual_power = _current_power * ( 1.0 / self._max_power_ratio )
-        if abs(_current_power - power_level) > 0.3 and _current_power > 0.0 and power_level < 0:
+        _max = 1.0 # was 0.3?
+        if abs(_current_power - power_level) > _max and _current_power > 0.0 and power_level < 0:
             self._log.error('cannot perform positive-negative power jump: {:>5.2f} to {:>5.2f}.'.format(_current_power, power_level))
             return
-        elif abs(_current_power - power_level) > 0.3 and _current_power < 0.0 and power_level > 0:
+        elif abs(_current_power - power_level) > _max and _current_power < 0.0 and power_level > 0:
             self._log.error('cannot perform negative-positive power jump: {:>5.2f} to {:>5.2f}.'.format(_current_power, power_level))
             return
 
@@ -309,7 +310,7 @@ class Motor(object):
         _driving_power = float(power_level * self._max_power_ratio)
         self._max_power = max(power_level, self._max_power)
         self._max_driving_power = max(abs(_driving_power), self._max_driving_power)
-        self._log.debug(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL \
+        self._log.info(Fore.MAGENTA + Style.BRIGHT + 'power argument: {:>5.2f}'.format(power_level) + Style.NORMAL \
                 + '\tcurrent power: {:>5.2f}; driving power: {:>5.2f}.'.format(_current_power, _driving_power))
         if self._orientation is Orientation.PORT:
             self._tb.SetMotor1(_driving_power)

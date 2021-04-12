@@ -46,6 +46,8 @@ class MotorConfigurer():
         # convert float to ratio format
         self._log.info('battery level: {:>5.2f}V; motor voltage: {:>5.2f}V; maximum power ratio: {}'.format(voltage_in, voltage_out, \
                 str(Fraction(self._max_power_ratio).limit_denominator(max_denominator=20)).replace('/',':')))
+        # actually, for the mock just set it to 1:1
+        self._max_power_ratio = 1.0
 
         # Import the ThunderBorg library, then configure and return the Motors.
         self._log.info('configure thunderborg & motors...')
@@ -77,7 +79,7 @@ class MotorConfigurer():
         # now import motors
         try:
 
-            self._log.info('getting raspberry pi...')
+            self._log.info('getting mock raspberry pi...')
             _pi = MockPi()
 
             self._log.info('configuring motors...')

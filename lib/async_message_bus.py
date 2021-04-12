@@ -119,7 +119,7 @@ class MessageBus(object):
         '''
         self._log.info('{:d} subscribers in list:'.format(len(self._subscribers)))
         for subscriber in self._subscribers:
-            self._log.info('    subscriber: {}'.format(subscriber.name))
+            self._log.info('  subscriber: \'{}\' listening for: {}'.format(subscriber.name, subscriber.print_events()))
 
     @property
     def subscribers(self):
@@ -162,7 +162,7 @@ class MessageBus(object):
         NOTE: calls to this function should be await'd.
         '''
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info('publishing message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
+            self._log.info(Style.BRIGHT + 'publishing message: {}'.format(message.name) + Style.NORMAL + ' (event: {}; age: {:d}ms);'.format(message.event, message.age))
         _result = asyncio.create_task(self._queue.put(message))
         self._log.info('result from published message: {}'.format(type(_result)))
 

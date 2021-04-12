@@ -207,6 +207,8 @@ printFunction           Function reference to call when printing text, if None "
         super().__init__()
         self._log = Logger('thunderborg', level)
         self._log.info('ready.')
+        self._motor1_power = 0.0
+        self._motor2_power = 0.0
 
     def RawWrite(self, command, data):
         """
@@ -354,25 +356,8 @@ SetMotor2(0.75)  -> motor 2 moving forward at 75% power
 SetMotor2(-0.5)  -> motor 2 moving reverse at 50% power
 SetMotor2(1)     -> motor 2 moving forward at 100% power
         """
-        if power < 0:
-            # Reverse
-            command = COMMAND_SET_B_REV
-            pwm = -int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-        else:
-            # Forward / stopped
-            command = COMMAND_SET_B_FWD
-            pwm = int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-
-        try:
-            self.RawWrite(command, [pwm])
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.Print('Failed sending motor 2 drive level!')
+        print('SetMotor2() power: {:5.2f}'.format(power))
+        self._motor2_power = power
 
 
     def GetMotor2(self):
@@ -386,23 +371,7 @@ e.g.
 -0.5  -> motor 2 moving reverse at 50% power
 1     -> motor 2 moving forward at 100% power
         """
-        try:
-            i2cRecv = self.RawRead(COMMAND_GET_B, I2C_MAX_LEN)
-        except KeyboardInterrupt:
-            raise
-        except:
-#           self.Print('Failed reading motor 2 drive level!')
-            self._log.debug('failed reading motor 2 drive level.')
-            return None
-
-        power = float(i2cRecv[2]) / float(PWM_MAX)
-
-        if i2cRecv[1] == COMMAND_VALUE_FWD:
-            return power
-        elif i2cRecv[1] == COMMAND_VALUE_REV:
-            return -power
-        else:
-            return
+        return self._motor2_power
 
 
     def SetMotor1(self, power):
@@ -416,25 +385,8 @@ SetMotor1(0.75)  -> motor 1 moving forward at 75% power
 SetMotor1(-0.5)  -> motor 1 moving reverse at 50% power
 SetMotor1(1)     -> motor 1 moving forward at 100% power
         """
-        if power < 0:
-            # Reverse
-            command = COMMAND_SET_A_REV
-            pwm = -int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-        else:
-            # Forward / stopped
-            command = COMMAND_SET_A_FWD
-            pwm = int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-
-        try:
-            self.RawWrite(command, [pwm])
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.Print('Failed sending motor 1 drive level!')
+        print('SetMotor1() power: {:5.2f}'.format(power))
+        self._motor1_power = power
 
 
     def GetMotor1(self):
@@ -448,23 +400,7 @@ e.g.
 -0.5  -> motor 1 moving reverse at 50% power
 1     -> motor 1 moving forward at 100% power
         """
-        try:
-            i2cRecv = self.RawRead(COMMAND_GET_A, I2C_MAX_LEN)
-        except KeyboardInterrupt:
-            raise
-        except:
-#           self.Print('Failed reading motor 1 drive level!')
-            self._log.debug('failed reading motor 1 drive level.')
-            return None
-
-        power = float(i2cRecv[2]) / float(PWM_MAX)
-
-        if i2cRecv[1] == COMMAND_VALUE_FWD:
-            return power
-        elif i2cRecv[1] == COMMAND_VALUE_REV:
-            return -power
-        else:
-            return
+        return self._motor1_power
 
 
     def SetMotors(self, power):
@@ -478,25 +414,8 @@ SetMotors(0.75)  -> all motors are moving forward at 75% power
 SetMotors(-0.5)  -> all motors are moving reverse at 50% power
 SetMotors(1)     -> all motors are moving forward at 100% power
         """
-        if power < 0:
-            # Reverse
-            command = COMMAND_SET_ALL_REV
-            pwm = -int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-        else:
-            # Forward / stopped
-            command = COMMAND_SET_ALL_FWD
-            pwm = int(PWM_MAX * power)
-            if pwm > PWM_MAX:
-                pwm = PWM_MAX
-
-        try:
-            self.RawWrite(command, [pwm])
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.Print('Failed sending all motors drive level!')
+        self.SetMotor1(power)
+        self.SetMotor2(power)
 
 
     def MotorsOff(self):
@@ -505,12 +424,8 @@ MotorsOff()
 
 Sets all motors to stopped, useful when ending a program
         """
-        try:
-            self.RawWrite(COMMAND_ALL_OFF, [0])
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.Print('Failed sending motors off command!')
+        self.SetMotor1(0.0)
+        self.SetMotor2(0.0)
 
 
     def SetLed1(self, r, g, b):
