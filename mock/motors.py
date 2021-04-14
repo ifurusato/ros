@@ -171,36 +171,41 @@ class Motors(Subscriber):
 #               raise Exception('cannot process: message has been garbage collected.')
                 return
             message.process()
-            _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
             if self._message_bus.verbose:
-                self._log.info(self._color + Style.BRIGHT + 'processing message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
+                _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
+                self.print_message_info('processing message:', message, _elapsed_ms)
             # switch on event type...
             _event = message.event
             if _event == Event.STOP:
-                self._log.info(self._color + Style.BRIGHT + 'event: STOP in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: STOP')
                 self.stop()
             elif _event == Event.HALT:
-                self._log.info(self._color + Style.BRIGHT + 'event: HALT in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: HALT')
                 self.halt()
             elif _event == Event.BRAKE:
-                self._log.info(self._color + Style.BRIGHT + 'event: BRAKE in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: BRAKE')
                 self.brake()
             elif _event == Event.INCREASE_SPEED:
-                self._log.info(self._color + Style.BRIGHT + 'event: INCREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: INCREASE_SPEED')
                 self.change_speed(Orientation.PORT, +0.01)
                 self.change_speed(Orientation.STBD, +0.01)
             elif _event == Event.DECREASE_SPEED:
-                self._log.info(self._color + Style.BRIGHT + 'event: DECREASE_SPEED in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: DECREASE_SPEED')
                 self.change_speed(Orientation.PORT, -0.01)
                 self.change_speed(Orientation.STBD, -0.01)
             elif _event == Event.AHEAD:
-                self._log.info(self._color + Style.BRIGHT + 'event: AHEAD in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: AHEAD')
             elif _event == Event.ASTERN:
-                self._log.info(self._color + Style.BRIGHT + 'event: ASTERN in {:5.2f}ms'.format(_elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'event: ASTERN')
             else:
-                self._log.info(self._color + Style.BRIGHT + 'ignored message: {} (event: {}) in {:5.2f}ms'.format(message.name, message.event.description, _elapsed_ms))
+                self._log.info(self._color + Style.BRIGHT + 'ignored message: {} (event: {})'.format(message.name, message.event.description))
+
             # want to sleep for less than the deadline amount
             await asyncio.sleep(2)
+
+            if self._message_bus.verbose:
+                _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
+                self.print_message_info('processing complete:', message, _elapsed_ms)
 
     # ................................................................
 #   async def cleanup_message(self, message, event):

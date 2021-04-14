@@ -14,31 +14,36 @@
 # acknowledgement removing it from that list.
 #
 
-import uuid
+import string, uuid, random
 from datetime import datetime as dt
 from colorama import init, Fore, Style
 init()
 
 from lib.logger import Logger, Level
 from lib.event import Event
-from lib.subscriber import Subscriber
+#from lib.subscriber import Subscriber
+
+ID_CHARACTERS = string.ascii_uppercase + string.digits
 
 # ..............................................................................
 class Message(object):
     '''
     Don't create one of these directly: use the MessageFactory class.
     '''
-    def __init__(self, instance_name, event, value):
+    def __init__(self, event, value):
         self._timestamp     = dt.now()
         self._message_id    = uuid.uuid4()
-        self._instance_name = instance_name
+        # generate instance name
+        _host_id = "".join(random.choices(ID_CHARACTERS, k=4))
+        _instance_name = 'id-{}'.format(_host_id)
+        self._instance_name = _instance_name
         self._hostname      = '{}.acme.com'.format(self._instance_name)
         self._event         = event
         self._value         = value
         self._processed     = 0
-        self._saved         = False
+        self._saved         = 0
+        self._restarted     = 0
         self._expired       = False
-        self._restarted     = False
         self._gc            = False
         self._subscribers   = {} # list of subscriber's names who've acknowledged message
 
@@ -78,7 +83,7 @@ class Message(object):
         return self._saved
 
     def save(self):
-        self._saved = True
+        self._saved += 1
 
     # expired       ............................................................
 
@@ -96,20 +101,37 @@ class Message(object):
         return self._restarted
 
     def restart(self):
-        self._restarted = True
+        self._restarted += 1
 
-    # restarted       ..........................................................
+    # garbage collection   .....................................................
 
     @property
     def gcd(self):
         return self._gc
 
     def gc(self):
+        '''
+        Garbage collect this message. This sets the 'gc' flag and nullifies
+        the event and value properties so no further processing is possible.
+        '''
+        print(Fore.BLUE + 'gc: {}'.format(self.name) + Style.RESET_ALL)
         if self._gc:
             raise Exception('already garbage collected.')
+        self._event = None
+        self._value = None
         self._gc = True
 
-    # acked         ............................................................
+    # acknowledged  ............................................................
+
+    def print_acks(self):
+        '''
+        Returns a pretty-printed list of subscribers that have acknowledged
+        this message.
+        '''
+        _list = []
+        for subscriber in self._subscribers:
+            _list.append('{} '.format(subscriber.name))
+        return ''.join(_list)
 
     @property
     def expectation_set(self):
@@ -161,9 +183,9 @@ class Message(object):
         '''
         To be called by each subscriber, acknowledging receipt of the message.
         '''
-        if not isinstance(subscriber, Subscriber):
-            raise Exception('expected subscriber, not {}.'.format(type(subscriber)))
-        elif not self.expectation_set:
+#       if not isinstance(subscriber, Subscriber):
+#           raise Exception('expected subscriber, not {}.'.format(type(subscriber)))
+        if not self.expectation_set:
             raise Exception('no subscriber expectations set ({}).'.format(self._instance_name))
         if self._subscribers[subscriber]:
             print(Style.DIM + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)

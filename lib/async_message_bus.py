@@ -41,22 +41,22 @@ class MessageBus(object):
     def __init__(self, level):
         self._log = Logger("bus", level)
         self._loop        = asyncio.get_event_loop()
-        self._queue        = asyncio.Queue()
-        self._publishers   = []
-        self._subscribers  = []
+        self._queue       = asyncio.Queue()
+        self._publishers  = []
+        self._subscribers = []
         # may want to catch other signals too
         signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
         for s in signals:
             self._loop.add_signal_handler(
-                s, lambda s=s: asyncio.create_task(self.shutdown(s)))
+                s, lambda s = s: asyncio.create_task(self.shutdown(s)))
         self._loop.set_exception_handler(self.handle_exception)
         self._garbage_collector = GarbageCollector('gc', Fore.RED, self, Level.INFO)
         self.register_subscriber(self._garbage_collector)
 
-        self._max_age      = 5.0 # ms
-        self._verbose      = True
-        self._enabled      = True # by default
-        self._closed       = False
+        self._max_age     = 5.0 # ms
+        self._verbose     = True
+        self._enabled     = True # by default
+        self._closed      = False
         self._log.info('creating subscriber task...')
         self._loop.create_task(self.start_consuming())
         self._log.info('ready.')
@@ -150,9 +150,16 @@ class MessageBus(object):
         '''
         Asynchronously waits until it pops a message from the queue.
 
-        NOTE: calls to this function should be await'd.
+        NOTE: calls to this function should be await'd, and every call should correspond with a call to task_done().
         '''
         return self._queue.get()
+
+    # ..........................................................................
+    def task_done(self):
+        '''
+        Every call to consume_message() should correspond with a call to task_done().
+        '''
+        self._queue.task_done()
 
     # ..........................................................................
     def publish_message(self, message):
