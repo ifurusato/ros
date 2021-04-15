@@ -1,38 +1,39 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
-# of the Robot Operating System project, released under the MIT License. Please
-# see the LICENSE file included as part of this package.
-#
-# author:   Murray Altheim
-# created:  2021-02-18
-# modified: 2021-02-18
-#
-# For some reason 'pimoroni-ioexpander' installs but continues to show up here
-# as uninstalled. A bug?
-#
-# You may also need to install various libraries via apt.
-#
-# sudo apt install i2c-tools
-# sudo apt install evtest tslib libts-bin					
-# sudo apt install pigpio
-#
 
-import importlib, sys
-import subprocess as sp
+from setuptools import setup
 
-from lib.confirm import confirm
+with open('README.rst') as f:
+    long_description = f.read()
 
-libraries = [ \
-    'numpy', \
-    'pytest', \
-    'pyyaml', \
-    'colorama', \
-    'gpiozero', \
-    'board', \
-    'readchar', \
-    'pyquaternion', \
+setup(
+    name='kros-core',
+    version='0.7.0',  # Use bumpversion!
+    description="Robot Operating System - Core, K-Series Robots",
+    long_description=long_description,
+    author='Ichiro Furusato',
+    author_email='ichiro.furusato@gmail.com',
+    packages=['kros-core'],
+    include_package_data=True,
+    install_requires=['numpy', 'pytest', 'pyyaml', 'colorama', 'gpiozero', 'board', 'readchar', 'pyquaternion'],
+    zip_safe=False,
+    url='https://github.com/ifurusato/ros',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Education',
+        'Intended Audience :: Other Audience',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: Other OS',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Robot Framework',
+        'Topic :: Robot Framework :: Library',
+        'Topic :: Robot Framework :: Tool',
+    ],
+)
+# future requries:
 #   'rpi.gpio', \
 #   'adafruit-extended-bus', \
 #   'pymessagebus==1.*', \
@@ -41,38 +42,3 @@ libraries = [ \
 #   'adafruit-circuitpython-bno08x', \
 #   'matrix11x7', \
 #   'rgbmatrix5x5', \
-    ]
-
-for name in libraries:
-    try:
-        print('-- processing {}...'.format(name))
-        _index = name.find('=')
-        if _index == -1:
-            print('   importing: {}'.format(name))
-            importlib.import_module(name, package=None)
-        else:
-            name = name[:_index].strip()
-            print('   importing: {}'.format(name))
-            importlib.import_module(name, package=None)
-    except RuntimeError as e:
-        print('error on import of {}: {}'.format(name, e))
-    except ImportError:
-        print('')
-        _command = 'pip3 install --user {}'.format(name, name)
-        print('This script requires the {} module.\nInstall with: {}'.format(name, _command))
-        confirmed = confirm(True)
-        if confirmed:
-            _comleted_process = sp.run(_command, shell=True)
-            print('-- return code {}'.format(_comleted_process.returncode))
-            if _comleted_process.returncode == 0:
-                print('-- installation successful.')
-            else:
-                print('-- returned error code \'{}\' on command \'{}\''.format(_comleted_process.returncode, _command))
-                sys.exit(_comleted_process.returncode)
-        else:
-            print('-- exiting loop.')
-            sys.exit(0)
-
-print('-- complete.')
-
-#EOF

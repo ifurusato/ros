@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
