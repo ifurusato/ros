@@ -3,10 +3,12 @@ A Python-based Robot Operating System (ROS)
 *******************************************
 
 This provides a *Robot Operating System* (ROS) for a Raspberry Pi based robot
-written in Python 3, whose prototype hardware implementation is the **KR01** robot.
+written in Python 3, whose prototype hardware implementations are the **KR01**
+and **KD01** robots.
+
 Main communication between sensors and motor controller is performed over I²C,
-using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as a
-variety of Pimoroni sensors from the Breakout Garden series.
+using lever switch bumpers, Sharp/Pololu analog infrared distance sensors, as
+well as a variety of Pimoroni sensors from the Breakout Garden series.
 
 .. image:: https://service.robots.org.nz/wiki/attach/KR01/KR01-0533-1280x584.jpg
    :width: 1280px
@@ -15,23 +17,24 @@ variety of Pimoroni sensors from the Breakout Garden series.
    :alt: The KR01 Robot
 
 The KR01 robot uses the PiBorg ThunderBorg motor controller and an UltraBorg
-ultrasonic sensor and servo controller board.
+ultrasonic sensor and servo controller board. The KD01 is a more recent differential
+drive robot built using many of the same components as the KR01.
 
 More information can be found on the New Zealand Personal Robotic Group (NZPRG) Blog at:
 
 * `The KR01 Robot Project <https://robots.org.nz/2019/12/08/kr01/>`
+* `Differential Drive <https://robots.org.nz/category/kd01/>` (the KD01 robot)
 * `Facilius Est Multa Facere Quam Diu <https://robots.org.nz/2020/04/24/facilius-est/>`
 
 and the NZPRG wiki at:
 
 * `KR01 Robot <https://service.robots.org.nz/wiki/Wiki.jsp?page=KR01>`
 
-
 This project is part of the *New Zealand Personal Robotics (NZPRG)* "Robot
-Operating System", not to be confused with other "ROS" projects. It is intended
+Operating System" — not to be confused with other "ROS" projects. It is intended
 that in the future this project will be migrated to a modular, Python distribution
-via PyPy so that the components can be installed from the command line. The code
-is currently still not stable enough to warrant that level of convenience.
+via PyPy so that its components can be easily installed from the command line. 
+The code is currently not stable enough to warrant that level of convenience.
 
 
 Features
