@@ -40,12 +40,12 @@ class Message(object):
         self._hostname      = '{}.acme.com'.format(self._instance_name)
         self._event         = event
         self._value         = value
-        self._processed     = 0
         self._saved         = 0
         self._restarted     = 0
         self._expired       = False
         self._gc            = False
-        self._subscribers   = {} # list of subscriber's names who've acknowledged message
+        self._processors    = {} # list of processor names who've processed message
+        self._subscribers   = {} # list of subscriber names who've acknowledged message
 
     # timestamp     ............................................................
 
@@ -71,10 +71,13 @@ class Message(object):
 
     @property
     def processed(self):
-        return self._processed
+        return len(self._processors)
 
-    def process(self):
-        self._processed += 1
+    def process(self, processor):
+        if processor in self._processors:
+            raise Exception('message {} already processed by {}.'.format(self.name, processor.name))
+        else:
+            self._processors[processor] = True
 
     # saved         ............................................................
 
@@ -117,7 +120,7 @@ class Message(object):
         print(Fore.BLUE + 'gc: {}'.format(self.name) + Style.RESET_ALL)
         if self._gc:
             raise Exception('already garbage collected.')
-        self._event = None
+#       self._event = None
         self._value = None
         self._gc = True
 
@@ -132,13 +135,6 @@ class Message(object):
         for subscriber in self._subscribers:
             _list.append('{} '.format(subscriber.name))
         return ''.join(_list)
-
-    @property
-    def expectation_set(self):
-        '''
-        Returns True if the expectation has been set.
-        '''
-        return len(self._subscribers) > 0
 
     @property
     def acknowledgements(self):
@@ -164,6 +160,8 @@ class Message(object):
         i.e., no subscriber flags remain set as False.
         '''
         for subscriber in self._subscribers:
+            if subscriber.is_gc: # we don't count the garbage collector
+                break
             if not self._subscribers[subscriber]:
                 return False
         return True
@@ -185,8 +183,8 @@ class Message(object):
         '''
 #       if not isinstance(subscriber, Subscriber):
 #           raise Exception('expected subscriber, not {}.'.format(type(subscriber)))
-        if not self.expectation_set:
-            raise Exception('no subscriber expectations set ({}).'.format(self._instance_name))
+        if len(self._subscribers) == 0:
+            raise Exception('no subscribers set ({}).'.format(self._instance_name))
         if self._subscribers[subscriber]:
             print(Style.DIM + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
 #           raise Exception('message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name))

@@ -36,8 +36,7 @@ class Motors(Subscriber):
     '''
     def __init__(self, config, ticker, tb, pi, message_bus, level=Level.INFO):
         super().__init__('motors', Fore.BLUE, message_bus, level)
-        self.events = [ Event.DECREASE_SPEED, Event.INCREASE_SPEED, Event.HALT, Event.STOP, Event.BRAKE ]
-#       self._log = Logger('motors', level)
+        self._events = [ Event.DECREASE_SPEED, Event.INCREASE_SPEED, Event.HALT, Event.STOP, Event.BRAKE ]
         self._log.info('initialising motors...')
         if config is None:
             raise Exception('no config argument provided.')
@@ -147,14 +146,6 @@ class Motors(Subscriber):
         '''
         return self._port_motor.is_in_motion() or self._stbd_motor.is_in_motion()
 
-#   # ................................................................
-#   def print_events(self):
-#       return super().print_events()
-#       _events = []
-#       for event in self.events:
-#           _events.append('{} '.format(event.name))
-#       return ''.join(_events)
-
     # ................................................................
     async def process_message(self, message, event):
         '''
@@ -170,7 +161,9 @@ class Motors(Subscriber):
                 self._log.warning('exiting process loop: message {} has been garbage collected.'.format(message.name))
 #               raise Exception('cannot process: message has been garbage collected.')
                 return
-            message.process()
+            print('motors.process_message() 1. ---------------------------------- ')
+            message.process(self)
+            print('motors.process_message() 2. ---------------------------------- ')
             if self._message_bus.verbose:
                 _elapsed_ms = (dt.now() - message.timestamp).total_seconds() * 1000.0
                 self.print_message_info('processing message:', message, _elapsed_ms)

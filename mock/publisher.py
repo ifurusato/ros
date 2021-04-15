@@ -9,10 +9,11 @@
 # created:  2020-05-19
 # modified: 2020-11-06
 #
-# A mock Integrated Front Sensor (IFS) that responds to key presses. This expands
-# the notion a bit, as rather than provide a second key-input mechanism, this one
-# is also used for keyboard control of the mocked robot, i.e., it includes events
-# unrelated to the original IFS.
+# A mock Integrated Front Sensor (IFS) that responds to key presses. Kinda a
+# robot front end when you don't actually # have a robot. This expands the
+# notion a bit, as rather than provide a second key-input mechanism, this one
+# is also used for keyboard control of the mocked robot, i.e., it includes
+# events unrelated to the original IFS.
 #
 
 import sys, time, itertools
@@ -58,7 +59,7 @@ class IfsPublisher(Publisher):
     # ..........................................................................
     @property
     def name(self):
-        return 'IfsPublisher'
+        return 'ifs'
 
     # ..........................................................................
     def suppress(self, mode):
@@ -93,6 +94,9 @@ class IfsPublisher(Publisher):
             if och == 13: # CR to print NLs
                 self._log.info('[:03d]'.format(_count))
                 print(Logger._repeat('\n',48))
+                continue
+            elif och == 112: # 'p' print bus info
+                self._message_bus.bus_info()
                 continue
             elif och == 113: # 'q'
                 self.disable()
@@ -266,7 +270,7 @@ class IfsPublisher(Publisher):
                                                                                                           -------------o
    o---------------------------------------------------------------------------------------------------o     |   DEL   |
    |    Q    |    W    |    E    |    R    |    T    |    Y    |    U    |    I    |    O    |    P    |     | SHUTDWN |
-   |  QUIT   |         |  SNIFF  |  ROAM   |  NOOP   |         |         |         |         |         |  -------------o
+   |  QUIT   |         |  SNIFF  |  ROAM   |  NOOP   |         |         |         |         |  INFO   |  -------------o
    o--------------------------------------------------------------------------o------------------------o  -------------o
         |    A    |    S    |    D    |    F    |    G    |    H    |    J    |    K    |    L    |          |   RET   |
         | IR_PSID | IR_PORT | IR_CNTR | IR_STBD | IR_SSID |  HALT   |         |         |         |          |  CLEAR  |

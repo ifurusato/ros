@@ -66,6 +66,7 @@ def main():
     _message_bus.register_subscriber(_subscriber1)
     _subscriber2 = Subscriber('infrared', Fore.MAGENTA, _message_bus, Level.INFO)
     _subscriber2.events = [ Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD ] # reacts to IR
+    _subscriber2.add_event(Event.ROAM)
 
     _message_bus.register_subscriber(_subscriber2)
     _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
@@ -75,6 +76,7 @@ def main():
     # add motor controller, reacts to STOP, HALT, BRAKE, INCREASE_SPEED and DECREASE_SPEED
     _motor_configurer = MotorConfigurer(_config, _ticker, _message_bus, enable_mock=True, level=Level.INFO)
     _motors = _motor_configurer.get_motors() 
+    _motors.add_event(Event.ROAM)
     _message_bus.register_subscriber(_motors)
 
     _message_bus.print_publishers()

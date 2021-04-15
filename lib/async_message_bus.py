@@ -86,13 +86,18 @@ class MessageBus(object):
         '''
         self._publishers.append(publisher)
         self._loop.create_task(publisher.publish())
-        self._log.info('registered publisher \'{}\'; {:d} publishers in list.'.format(publisher.name, len(self._publishers)))
+        self._log.info('registered publisher \'{}\'; {:d} publisher{} in list.'.format( \
+                publisher.name, 
+                len(self._publishers),
+                's' if len(self._publishers) > 1 else ''))
 
     def print_publishers(self):
         '''
         Print the message publishers that have been registered with the message bus.
         '''
-        self._log.info('{:d} publishers in list:'.format(len(self._publishers)))
+        self._log.info('{:d} publisher{} in list:'.format( \
+                len(self._publishers),
+                's' if len(self._publishers) > 1 else ''))
         for publisher in self._publishers:
             self._log.info('    publisher: {}'.format(publisher.name))
 
@@ -111,13 +116,18 @@ class MessageBus(object):
         '''
         self._subscribers.insert(0, subscriber)
         self._loop.create_task(subscriber.consume())
-        self._log.info('registered subscriber \'{}\'; {:d} subscribers in list.'.format(subscriber.name, len(self._subscribers)))
+        self._log.info('registered subscriber \'{}\'; {:d} subscriber{} in list.'.format( \
+                subscriber.name, 
+                len(self._subscribers),
+                's' if len(self._subscribers) > 1 else ''))
 
     def print_subscribers(self):
         '''
         Print the message subscribers that have been registered with the message bus.
         '''
-        self._log.info('{:d} subscribers in list:'.format(len(self._subscribers)))
+        self._log.info('{:d} subscriber{} in list:'.format( \
+                len(self._subscribers),
+                's' if len(self._subscribers) > 1 else ''))
         for subscriber in self._subscribers:
             self._log.info('  subscriber: \'{}\' listening for: {}'.format(subscriber.name, subscriber.print_events()))
 
@@ -144,6 +154,16 @@ class MessageBus(object):
             for subscriber in self._subscribers:
                 self._log.debug('publishing to subscriber {}...'.format(subscriber.name))
                 await subscriber.consume()
+
+    # ..........................................................................
+    def bus_info(self):
+        self._log.info('message bus info:' + Fore.YELLOW + ' {:d} messages in queue; {:d} publisher{}, {:d} subscriber{}.'.format( \
+                self._queue.qsize(),
+                len(self._publishers),
+                's' if len(self._publishers) > 1 else '',
+                len(self._subscribers),
+                's' if len(self._subscribers) > 1 else ''))
+        pass # TODO
 
     # ..........................................................................
     def consume_message(self):
@@ -183,7 +203,7 @@ class MessageBus(object):
         NOTE: calls to this function should be await'd.
         '''
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
-            self._log.info(Fore.BLACK + 'republishing message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
+            self._log.info(Fore.YELLOW + Style.BRIGHT + 'REPUBLISHING message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
             asyncio.create_task(self._queue.put(message))
         else:
             self._log.warning(Fore.BLACK + 'ignoring republication of message: {} (event: {});'.format(message.name, message.event))
