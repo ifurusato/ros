@@ -2,7 +2,7 @@
 A Python-based Robot Operating System (ROS)
 *******************************************
 
-This provides a _Robot Operating System_ (ROS) for a Raspberry Pi based robot
+This provides a *Robot Operating System* (ROS) for a Raspberry Pi based robot
 written in Python 3, whose prototype hardware implementation is the **KR01** robot.
 Main communication between sensors and motor controller is performed over I²C,
 using lever switch bumpers, Sharp/Pololu infrared distance sensors as well as a
@@ -25,6 +25,13 @@ More information can be found on the New Zealand Personal Robotic Group (NZPRG) 
 and the NZPRG wiki at:
 
 * `KR01 Robot <https://service.robots.org.nz/wiki/Wiki.jsp?page=KR01>`
+
+
+This project is part of the *New Zealand Personal Robotics (NZPRG)* "Robot
+Operating System", not to be confused with other "ROS" projects. It is intended
+that in the future this project will be migrated to a modular, Python distribution
+via PyPy so that the components can be installed from the command line. The code
+is currently still not stable enough to warrant that level of convenience.
 
 
 Features
@@ -83,9 +90,7 @@ This project comes with no promise of support or liability. Use at your own risk
 Further Information
 *******************
 
-This project is part of the _New Zealand Personal Robotics (NZPRG)_ "Robot
-Operating System", not to be confused with other "ROS" projects. For more
-information check out the `NZPRG Blog <https://robots.org.nz/>` and
+For more information check out the `NZPRG Blog <https://robots.org.nz/>` and
 `NZPRG Wiki <https://service.robots.org.nz/wiki/>`.
 
 Please note that the documentation in the code will likely be more current
