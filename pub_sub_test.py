@@ -60,6 +60,8 @@ def main():
 #   _publisher2  = Publisher('B', _message_bus, _message_factory, Level.INFO)
 #   _message_bus.register_publisher(_publisher2)
 
+    # ROAM is commonly accepted by all subscribers
+
     _subscriber1 = Subscriber('behaviour', Fore.YELLOW, _message_bus, Level.INFO)
     _subscriber1.events = [ Event.ROAM, Event.SNIFF ] # reacts to ROAM and SNIFF
 
@@ -71,6 +73,7 @@ def main():
     _message_bus.register_subscriber(_subscriber2)
     _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
     _subscriber3.events = [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ] # reacts to bumpers
+    _subscriber3.add_event(Event.ROAM)
     _message_bus.register_subscriber(_subscriber3)
 
     # add motor controller, reacts to STOP, HALT, BRAKE, INCREASE_SPEED and DECREASE_SPEED

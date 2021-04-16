@@ -119,8 +119,8 @@ class IfsPublisher(Publisher):
                 if self.exit_on_complete and self.all_triggered:
                     self._log.info('[{:03d}] COMPLETE.'.format(_count))
                     self.disable()
-                elif self._message_bus.verbose:
-                    self.waiting_for_message()
+#               elif self._message_bus.verbose:
+#                   self.waiting_for_message()
             else:
                 self._log.info('[{:03d}] unmapped key "{}" ({}) pressed.'.format(_count, ch, och))
 #           await asyncio.sleep(0.1)

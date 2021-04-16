@@ -161,7 +161,8 @@ class Message(object):
         '''
         for subscriber in self._subscribers:
             if subscriber.is_gc: # we don't count the garbage collector
-                break
+                print(Fore.GREEN + 'IGNORE gc-subscriber {} for message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+                continue
             if not self._subscribers[subscriber]:
                 return False
         return True
