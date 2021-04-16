@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
@@ -51,7 +51,7 @@ def main():
     _loop_freq_hz = 10
     _ticker = Ticker(_loop_freq_hz, Level.INFO)
 
-    _message_bus = MessageBus(Level.INFO)
+    _message_bus = MessageBus(Level.DEBUG)
     _message_factory = MessageFactory(_message_bus, Level.INFO)
 
     _publisher1  = IfsPublisher('A', _message_bus, _message_factory)

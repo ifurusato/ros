@@ -24,7 +24,7 @@
 #
 
 import asyncio, signal, traceback
-import sys
+import sys, logging
 from colorama import init, Fore, Style
 init()
 
@@ -40,6 +40,9 @@ class MessageBus(object):
     '''
     def __init__(self, level):
         self._log = Logger("bus", level)
+        if level is Level.DEBUG:
+            self._log.debug(Fore.YELLOW + 'logging message bus set to debug level.')
+            logging.basicConfig(level=logging.DEBUG)
         self._loop        = asyncio.get_event_loop()
         self._queue       = asyncio.Queue()
         self._publishers  = []
