@@ -16,7 +16,7 @@
 # events unrelated to the original IFS.
 #
 
-import sys, time, itertools
+import sys, time, itertools, psutil
 import random # TEMP
 import asyncio
 #from threading import Thread
@@ -73,6 +73,18 @@ class IfsPublisher(Publisher):
         self._suppress = mode
 
     # ................................................................
+    def print_sys_info(self):
+        _M = 1000000
+        _vm = psutil.virtual_memory()
+        self._log.info('virtual memory:\t' + Fore.YELLOW + 'total: {:4.1f}MB; available: {:4.1f}MB ({:5.2f}%); used: {:4.1f}MB; free: {:4.1f}MB'.format(\
+                _vm[0]/_M, _vm[1]/_M, _vm[2], _vm[3]/_M, _vm[4]/_M))
+        # svmem(total=10367352832, available=6472179712, percent=37.6, used=8186245120, free=2181107712, active=4748992512, inactive=2758115328, buffers=790724608, cached=3500347392, shared=787554304)
+        _sw = psutil.swap_memory()
+        # sswap(total=2097147904, used=296128512, free=1801019392, percent=14.1, sin=304193536, sout=677842944)
+        self._log.info('swap memory:   \t' + Fore.YELLOW + 'total: {:4.1f}MB; used: {:4.1f}MB; free: {:4.1f}MB ({:5.2f}%)'.format(\
+                _sw[0]/_M, _sw[1]/_M, _sw[2]/_M, _sw[3]))
+
+    # ................................................................
     async def publish(self):
         '''
         Begins publication of messages. The MessageBus itself calls this function
@@ -96,7 +108,8 @@ class IfsPublisher(Publisher):
                 print(Logger._repeat('\n',48))
                 continue
             elif och == 112: # 'p' print bus info
-                self._message_bus.bus_info()
+                self._message_bus.print_bus_info()
+                self.print_sys_info()
                 continue
             elif och == 113: # 'q'
                 self.disable()

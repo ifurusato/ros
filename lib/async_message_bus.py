@@ -159,7 +159,7 @@ class MessageBus(object):
                 await subscriber.consume()
 
     # ..........................................................................
-    def bus_info(self):
+    def print_bus_info(self):
         self._log.info('message bus info:' + Fore.YELLOW + ' {:d} messages in queue; {:d} publisher{}, {:d} subscriber{}.'.format( \
                 self._queue.qsize(),
                 len(self._publishers),

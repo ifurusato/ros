@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020-2021 by Murray Altheim. All rights reserved. This file is part
+# of the Robot Operating System project, released under the MIT License. Please
+# see the LICENSE file included as part of this package.
+#
+# author:   Murray Altheim
+# created:  2019-12-23
+# modified: 2020-03-12
+#
+# See: https://setuptools.readthedocs.io/en/latest/userguide/index.html
+#      https://setuptools.readthedocs.io/en/latest/userguide/quickstart.html
+#
+
+
+
 
 from setuptools import setup
 
@@ -6,15 +22,25 @@ with open('README.rst') as f:
     long_description = f.read()
 
 setup(
-    name='kros-core',
-    version='0.7.0',  # Use bumpversion!
+    name='ros',
+    version='0.0.7',  # Use bumpversion!
     description="Robot Operating System - Core, K-Series Robots",
     long_description=long_description,
     author='Ichiro Furusato',
     author_email='ichiro.furusato@gmail.com',
-    packages=['kros-core'],
+    packages=['ros'],
     include_package_data=True,
-    install_requires=['numpy', 'pytest', 'pyyaml', 'colorama', 'gpiozero', 'board', 'readchar', 'pyquaternion'],
+    install_requires=[
+        'numpy',
+        'colorama',
+        'pytest',
+        'pyyaml',
+        'psutil',
+        'gpiozero',
+        'board',
+        'readchar',
+        'pyquaternion'
+    ],
     zip_safe=False,
     url='https://github.com/ifurusato/ros',
     classifiers=[

@@ -54,7 +54,7 @@ def test_temperature():
         fan_available = ( _fan_i2c_address in _addresses )
         if fan_available:
             _fan = Fan(_config, Level.INFO)
-            _log.info('fan is not available at I²C address of 0x{:02X}.'.format( _fan_i2c_address))
+            _log.info('fan is available at I²C address of 0x{:02X}.'.format( _fan_i2c_address))
         else:
             _fan = None
             _log.info('fan is not available at I²C address of 0x{:02X}.'.format( _fan_i2c_address))

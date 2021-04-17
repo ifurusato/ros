@@ -32,7 +32,7 @@ libraries = [ \
     'gpiozero', \
     'board', \
     'readchar', \
-    'pyquaternion', \
+#   'pyquaternion', \
 #   'rpi.gpio', \
 #   'adafruit-extended-bus', \
 #   'pymessagebus==1.*', \
