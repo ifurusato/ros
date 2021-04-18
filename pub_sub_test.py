@@ -34,8 +34,8 @@ from lib.event import Event
 
 from mock.publisher import IfsPublisher
 
-from mock.motor_configurer import MotorConfigurer
-from mock.motors import Motors
+#from mock.motor_configurer import MotorConfigurer
+#from mock.motors import Motors
 
 # main .........................................................................
 def main():
@@ -62,25 +62,26 @@ def main():
 
     # ROAM is commonly accepted by all subscribers
 
-    _subscriber1 = Subscriber('behaviour', Fore.YELLOW, _message_bus, Level.INFO)
-    _subscriber1.events = [ Event.ROAM, Event.SNIFF ] # reacts to ROAM and SNIFF
+#   _subscriber1 = Subscriber('behaviour', Fore.YELLOW, _message_bus, Level.INFO)
+#   _subscriber1.events = [ Event.ROAM, Event.SNIFF ] # reacts to ROAM and SNIFF
+#   _message_bus.register_subscriber(_subscriber1)
 
-    _message_bus.register_subscriber(_subscriber1)
     _subscriber2 = Subscriber('infrared', Fore.MAGENTA, _message_bus, Level.INFO)
     _subscriber2.events = [ Event.INFRARED_PORT, Event.INFRARED_CNTR, Event.INFRARED_STBD ] # reacts to IR
     _subscriber2.add_event(Event.ROAM)
-
     _message_bus.register_subscriber(_subscriber2)
-    _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
-    _subscriber3.events = [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ] # reacts to bumpers
-    _subscriber3.add_event(Event.ROAM)
-    _message_bus.register_subscriber(_subscriber3)
 
+#   _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
+#   _subscriber3.events = [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ] # reacts to bumpers
+#   _subscriber3.add_event(Event.ROAM)
+#   _message_bus.register_subscriber(_subscriber3)
+
+    _motors = None
     # add motor controller, reacts to STOP, HALT, BRAKE, INCREASE_SPEED and DECREASE_SPEED
-    _motor_configurer = MotorConfigurer(_config, _ticker, _message_bus, enable_mock=True, level=Level.INFO)
-    _motors = _motor_configurer.get_motors() 
-    _motors.add_event(Event.ROAM)
-    _message_bus.register_subscriber(_motors)
+#   _motor_configurer = MotorConfigurer(_config, _ticker, _message_bus, enable_mock=True, level=Level.INFO)
+#   _motors = _motor_configurer.get_motors() 
+#   _motors.add_event(Event.ROAM)
+#   _message_bus.register_subscriber(_motors)
 
     _message_bus.print_publishers()
     _message_bus.print_subscribers()
@@ -88,7 +89,8 @@ def main():
 #   sys.exit(0)
 
     try:
-        _motors.enable()
+        if _motors:
+            _motors.enable()
         _message_bus.enable()
     except KeyboardInterrupt:
         _log.info('publish-subscribe interrupted')

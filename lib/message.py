@@ -117,7 +117,7 @@ class Message(object):
         Garbage collect this message. This sets the 'gc' flag and nullifies
         the event and value properties so no further processing is possible.
         '''
-        print(Fore.BLUE + 'gc: {}'.format(self.name) + Style.RESET_ALL)
+#       print(Fore.BLUE + 'gc: {}'.format(self.name) + Style.RESET_ALL)
         if self._gc:
             raise Exception('already garbage collected.')
 #       self._event = None

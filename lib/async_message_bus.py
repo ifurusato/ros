@@ -203,9 +203,11 @@ class MessageBus(object):
         This isn't any different than publishing but we might start treating it differently, e.g.,
         altering the message state.
 
-        NOTE: calls to this function should be await'd.
+        NOTE: calls to this function should be await'd. Fully-acknowledged messages are ignored.
         '''
-        if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
+        if not _message.fully_acknowledged:
+            self._log.warning(Fore.BLACK + 'ignoring republication of fully-acknowledged message: {} (event: {});'.format(message.name, message.event))
+        elif ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
             self._log.info(Fore.YELLOW + Style.BRIGHT + 'REPUBLISHING message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
             asyncio.create_task(self._queue.put(message))
         else:
