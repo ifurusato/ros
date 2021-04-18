@@ -71,10 +71,10 @@ def main():
     _subscriber2.add_event(Event.ROAM)
     _message_bus.register_subscriber(_subscriber2)
 
-#   _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
-#   _subscriber3.events = [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ] # reacts to bumpers
-#   _subscriber3.add_event(Event.ROAM)
-#   _message_bus.register_subscriber(_subscriber3)
+    _subscriber3 = Subscriber('bumper', Fore.GREEN, _message_bus, Level.INFO)
+    _subscriber3.events = [ Event.SNIFF, Event.BUMPER_PORT, Event.BUMPER_CNTR, Event.BUMPER_STBD ] # reacts to bumpers
+    _subscriber3.add_event(Event.ROAM)
+    _message_bus.register_subscriber(_subscriber3)
 
     _motors = None
     # add motor controller, reacts to STOP, HALT, BRAKE, INCREASE_SPEED and DECREASE_SPEED

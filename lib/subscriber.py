@@ -91,43 +91,6 @@ class Subscriber(object):
         else:
             return '(no filter)'
 
-    # ..........................................................................
-    def acceptable(self, message):
-        '''
-        A filter that returns True if the message has not yet been seen by
-        this subscriber and its event is acceptable.
-        '''
-        if message.event in self._events:
-            if message.acknowledged_by(self):
-                self._log.info(self._color + 'message NOT ACCEPTABLE (already ackd): {}; event: {};'.format(message.name, message.event.description) \
-                        + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
-                return True
-            else:
-                self._log.info(self._color + 'message ACCEPTABLE: {}; event: {};'.format(message.name, message.event.description) \
-                        + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
-                return True
-        else:
-            self._log.info(self._color + 'message NOT ACCEPTABLE: {}; IGNORED by event: {};'.format(message.name, message.event.description) \
-                    + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
-            return False
-
-    # ................................................................
-    def _republish_message(self, message):
-        # put back into queue in case anyone else is interested
-        if not message.fully_acknowledged:
-            if self._message_bus.verbose:
-                self._log.info(self._color + Style.DIM + 'returning unacknowledged message {} to queue;'.format(message.name) \
-                        + Fore.WHITE + ' event: {}'.format(message.event.description))
-            await self._message_bus.republish_message(message)
-        else: # nobody wanted it
-            if self._message_bus.verbose:
-                self._log.info(self._color + Style.DIM + 'message {} acknowledged, awaiting garbage collection;'.format(message.name) \
-                        + Fore.WHITE + ' event: {}'.format(message.event.description))
-            # so we explicitly gc the message
-            if not self._message_bus.garbage_collect(message):
-                self._log.info(self._color + Style.DIM + 'message {} was not gc\'d so we republish...'.format(message.name))
-                self._message_bus.republish_message(message)
-
     # ................................................................
     @final
     async def consume(self):
@@ -164,41 +127,68 @@ class Subscriber(object):
             self._log.info(self._color + Style.NORMAL + 'ack message:' + Fore.WHITE + ' {}; event: {}'.format(_message.name, _message.event.description))
             _message.acknowledge(self)
 
-            # republish if not fully acknowledged
-            if not _message.fully_acknowledged:
-                if self._message_bus.verbose:
-                    self._log.info(self._color + Style.DIM + 'returning processed and now-acknowledged message {} to queue;'.format(_message.name) \
-                            + Fore.WHITE + ' event: {}'.format(_message.event.description))
-                self._message_bus.republish_message(_message)
+#           if not _message.fully_acknowledged:
+#               if self._message_bus.verbose:
+#                   self._log.info(self._color + Style.DIM + 'returning processed and now-acknowledged message {} to queue;'.format(_message.name) \
+#                           + Fore.WHITE + ' event: {}'.format(_message.event.description))
+#               self._message_bus.republish_message(_message)
 
-        elif not _message.fully_acknowledged:
-            self._log.info(self._color + Style.NORMAL + 'message was not acceptable, so republishing:' + Fore.WHITE \
-                    + ' {}; event: {}'.format(_message.name, _message.event.description))
-            self._republish_message(_message)
+        # will be republished if not fully acknowledged
+        await self._message_bus.republish_message(_message)
 
+#       elif not _message.fully_acknowledged:
+#           self._log.info(self._color + Style.NORMAL + 'message was not acceptable, so republishing:' + Fore.WHITE \
+#                   + ' {}; event: {}'.format(_message.name, _message.event.description))
+#           await self._republish_message(_message)
+
+#       else:
+#           self._log.info(self._color + Style.NORMAL + 'message was fully acknowledged, so NOT republishing:' + Fore.WHITE \
+#                   + ' {}; event: {}'.format(_message.name, _message.event.description))
+
+    # ..........................................................................
+    def acceptable(self, message):
+        '''
+        A filter that returns True if the message has not yet been seen by
+        this subscriber and its event type is acceptable.
+        '''
+        if message.event in self._events:
+            if message.acknowledged_by(self):
+                self._log.info(self._color + 'message NOT ACCEPTABLE (already ackd): {}; event: {};'.format(message.name, message.event.description) \
+                        + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
+                return True
+            else:
+                self._log.info(self._color + 'message ACCEPTABLE: {}; event: {};'.format(message.name, message.event.description) \
+                        + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
+                return True
         else:
-            self._log.info(self._color + Style.NORMAL + 'message was fully acknowledged, so NOT republishing:' + Fore.WHITE \
-                    + ' {}; event: {}'.format(_message.name, _message.event.description))
+            self._log.info(self._color + 'message NOT ACCEPTABLE: {}; IGNORED by event: {};'.format(message.name, message.event.description) \
+                    + Fore.WHITE + Style.BRIGHT + '\t not acked? {}; acceptable event? {}'.format(not message.acknowledged_by(self), message.event in self._events))
+            return False
 
     # ................................................................
     async def _consume_message(self, message):
         '''
-        Kick off various tasks to process/consume the message. This creates
-        tasks for process_message() followed by cleanup_message(). If the
-        latter is overridden it should also called by the subclass method.
+        Kick off various tasks to process/consume the message by first creating
+        an asyncio event. Tasks are then created for process_message() followed
+        by cleanup_message(). If the latter is overridden it should also called
+        by the subclass method.  Once these tasks have been created the asyncio
+        event flag is set, indicating that the message has been consumed.
 
-        :param message: the message to consume.
+        :param message:  the message to consume.
         '''
         if message.gcd:
             raise Exception('cannot _consume: message has been garbage collected.')
         if self._message_bus.verbose:
             self._log.info(self._color + 'consuming message:' + Fore.WHITE + ' {}; event: {}'.format(message.name, message.event.description))
-        if message.gcd: # TEMP
-            raise Exception('cannot _consume: message has been garbage collected.')
+
         _event = asyncio.Event()
+        self._log.info(self._color + 'creating task for processing message:' + Fore.WHITE + ' {}; for event: {}'.format(message.name, message.event.description))
         asyncio.create_task(self.process_message(message, _event))
+        self._log.info(self._color + 'creating task for cleanup after message:' + Fore.WHITE + ' {}; for event: {}'.format(message.name, message.event.description))
         asyncio.create_task(self.cleanup_message(message, _event))
+        self._log.info(self._color + 'creating task for saving and restarting message:' + Fore.WHITE + ' {}; for event: {}'.format(message.name, message.event.description))
         results = await asyncio.gather(self._save(message), self._restart_host(message), return_exceptions=True)
+        self._log.info(self._color + 'handling result from message:' + Fore.WHITE + ' {}; for event: {}'.format(message.name, message.event.description))
         self._handle_results(results, message)
         _event.set()
 
@@ -284,6 +274,23 @@ class Subscriber(object):
                 self._log.error('failed to save: {}'.format(message.hostname))
             elif isinstance(result, Exception):
                 self._log.error('handling general error: {}'.format(result))
+
+#   # ................................................................
+#   async def _republish_message(self, message):
+#       # put back into queue in case anyone else is interested
+#       if not message.fully_acknowledged:
+#           if self._message_bus.verbose:
+#               self._log.info(self._color + Style.DIM + 'returning unacknowledged message {} to queue;'.format(message.name) \
+#                       + Fore.WHITE + ' event: {}'.format(message.event.description))
+#           await self._message_bus.republish_message(message)
+#       else: # nobody wanted it
+#           if self._message_bus.verbose:
+#               self._log.info(self._color + Style.DIM + 'message {} acknowledged, awaiting garbage collection;'.format(message.name) \
+#                       + Fore.WHITE + ' event: {}'.format(message.event.description))
+#           # so we explicitly gc the message
+#           if not self._message_bus.garbage_collect(message):
+#               self._log.info(self._color + Style.DIM + 'message {} was not gc\'d so we republish...'.format(message.name))
+#               self._message_bus.republish_message(message)
 
     # ................................................................
     def get_formatted_time(self, label, value):
@@ -399,7 +406,7 @@ class GarbageCollector(Subscriber):
         if self._message_bus.verbose:
             self._log.info(self._color + Style.DIM + 'gc-consuming message:' + Fore.WHITE + ' {}; event: {}; age: {:5.2f}ms'.format(\
                     _message.name, _message.event.description, _message.age))
-        if not self.collect(_message):
+        if not self.garbage_collect(_message):
             # was not cleaned up, expired nor acknowledged, so put back into queue
             if self._message_bus.verbose:
                 self._log.info(self._color + Style.NORMAL + 'republishing unacknowledged message:' + Fore.WHITE \
@@ -412,7 +419,7 @@ class GarbageCollector(Subscriber):
         self._log.info(self._color + Style.BRIGHT + 'CONSUME END: message {} ---------------------- '.format(_message.name))
 
     # ................................................................
-    def collect(self, message):
+    def garbage_collect(self, message):
         '''
         Explicitly garbage collects the message, returning True if it was
         collected, False if it was neither expired nor fully-acknowledged.

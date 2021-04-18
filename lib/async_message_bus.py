@@ -197,7 +197,7 @@ class MessageBus(object):
         self._log.info('result from published message: {}'.format(type(_result)))
 
     # ..........................................................................
-    def republish_message(self, message):
+    async def republish_message(self, message):
         '''
         Asynchronously re-publishes the Message to the MessageBus, and therefore to any Subscribers.
         This isn't any different than publishing but we might start treating it differently, e.g.,
@@ -205,7 +205,7 @@ class MessageBus(object):
 
         NOTE: calls to this function should be await'd. Fully-acknowledged messages are ignored.
         '''
-        if not _message.fully_acknowledged:
+        if message.fully_acknowledged:
             self._log.warning(Fore.BLACK + 'ignoring republication of fully-acknowledged message: {} (event: {});'.format(message.name, message.event))
         elif ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
             self._log.info(Fore.YELLOW + Style.BRIGHT + 'REPUBLISHING message: {} (event: {}; age: {:d}ms);'.format(message.name, message.event, message.age))
