@@ -47,6 +47,14 @@ class Message(object):
         self._processors    = {} # list of processor names who've processed message
         self._subscribers   = {} # list of subscriber names who've acknowledged message
 
+    def set_subscribers(self, subscribers):
+        '''
+        Set the list of expected subscribers to this message.
+        '''
+        for subscriber in subscribers:
+            print(Fore.GREEN + 'set subscribers: {} ADDED to message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+            self._subscribers[subscriber] = False
+
     # timestamp     ............................................................
 
     @property
@@ -117,7 +125,7 @@ class Message(object):
         Garbage collect this message. This sets the 'gc' flag and nullifies
         the event and value properties so no further processing is possible.
         '''
-#       print(Fore.BLUE + 'gc: {}'.format(self.name) + Style.RESET_ALL)
+        print(Fore.CYAN + 'gc: {}'.format(self.name) + Style.RESET_ALL)
         if self._gc:
             raise Exception('already garbage collected.')
 #       self._event = None
@@ -129,16 +137,17 @@ class Message(object):
     def print_acks(self):
         '''
         Returns a pretty-printed list of subscribers that have acknowledged
-        this message.
+        this message, or '[none]' if none.
         '''
         _list = []
         for subscriber in self._subscribers:
-            _list.append('{} '.format(subscriber.name))
-        return ''.join(_list)
+            if self._subscribers[subscriber]:
+                _list.append('{} '.format(subscriber.name))
+        return ''.join(_list) if len(_list) > 0 else '[none]'
 
-    @property
-    def acknowledgements(self):
-        return self._subscribers
+#   @property
+#   def acknowledgements(self):
+#       return self._subscribers
 
     @property
     def unacknowledged_count(self):
@@ -148,11 +157,6 @@ class Message(object):
                 _count += 1
         return _count
 
-    def set_subscribers(self, subscribers):
-        for subscriber in subscribers:
-#           print(Fore.GREEN + 'subscriber {} ADDED to message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
-            self._subscribers[subscriber] = False
-
     @property
     def fully_acknowledged(self):
         '''
@@ -160,9 +164,6 @@ class Message(object):
         i.e., no subscriber flags remain set as False.
         '''
         for subscriber in self._subscribers:
-            if subscriber.is_gc: # we don't count the garbage collector
-                print(Fore.GREEN + 'IGNORE gc-subscriber {} for message {}.'.format(subscriber.name, self.name) + Style.RESET_ALL)
-                continue
             if not self._subscribers[subscriber]:
                 return False
         return True
@@ -173,9 +174,9 @@ class Message(object):
         '''
         for subscr in self._subscribers:
             if subscr == subscriber and self._subscribers[subscriber] == True:
-#               print(Fore.GREEN + 'acknowledged_by subscriber {} ADDED to message {}; return True.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+                print(Fore.GREEN + 'message {} acknowledged_by subscriber {}; return True.'.format(self.name, subscriber.name) + Style.RESET_ALL)
                 return True
-#       print(Fore.RED + 'acknowledged_by subscriber {} ADDED to message {}; return False.'.format(subscriber.name, self.name) + Style.RESET_ALL)
+        print(Fore.RED + 'message {} has not been acknowledged by subscriber {}; return False.'.format(self.name, subscriber.name) + Style.RESET_ALL)
         return False
 
     def acknowledge(self, subscriber):
@@ -186,11 +187,12 @@ class Message(object):
 #           raise Exception('expected subscriber, not {}.'.format(type(subscriber)))
         if len(self._subscribers) == 0:
             raise Exception('no subscribers set ({}).'.format(self._instance_name))
-        if self._subscribers[subscriber]:
-            print(Style.DIM + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
+        if self._subscribers[subscriber] is True:
+            print(Style.BRIGHT + 'message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name) + Style.RESET_ALL)
 #           raise Exception('message {} already acknowledged by subscriber: {}'.format(self.name, subscriber.name))
         else:
-#           print(Style.DIM + 'message {} acknowledged by subscriber {}; {:d} unacknowledged.'.format(self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
+            print(Style.BRIGHT + 'message {} ACKnowledged by subscriber {}; {:d} still unacknowledged.'.format(\
+                    self.name, subscriber.name, self.unacknowledged_count) + Style.RESET_ALL)
             self._subscribers[subscriber] = True
 
     # instance_name ............................................................

@@ -98,11 +98,14 @@ class MessageBus(object):
         '''
         Print the message publishers that have been registered with the message bus.
         '''
+        if not self._publishers:
+            self._log.info('no registered publishers.')
+            return
         self._log.info('{:d} publisher{} in list:'.format( \
                 len(self._publishers),
                 's' if len(self._publishers) > 1 else ''))
         for publisher in self._publishers:
-            self._log.info('    publisher: {}'.format(publisher.name))
+            self._log.info('  publisher: {}'.format(publisher.name))
 
     @property
     def publishers(self):
@@ -128,6 +131,9 @@ class MessageBus(object):
         '''
         Print the message subscribers that have been registered with the message bus.
         '''
+        if not self._subscribers:
+            self._log.info('no registered subscribers.')
+            return
         self._log.info('{:d} subscriber{} in list:'.format( \
                 len(self._subscribers),
                 's' if len(self._subscribers) > 1 else ''))
@@ -194,7 +200,7 @@ class MessageBus(object):
         if ( message.event is not Event.CLOCK_TICK and message.event is not Event.CLOCK_TOCK ):
             self._log.info(Style.BRIGHT + 'publishing message: {}'.format(message.name) + Style.NORMAL + ' (event: {}; age: {:d}ms);'.format(message.event, message.age))
         _result = asyncio.create_task(self._queue.put(message))
-        self._log.info('result from published message: {}'.format(type(_result)))
+        self._log.debug('result from published message: {}'.format(type(_result)))
 
     # ..........................................................................
     async def republish_message(self, message):
