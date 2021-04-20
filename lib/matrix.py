@@ -36,6 +36,12 @@ class Matrices(object):
     We go to a little trouble to permit zero, one or two matrix displays
     to be installed.
     '''
+
+    LEFT  = 0
+    RIGHT = 1
+    UP    = 2
+    DOWN  = 3
+
     def __init__(self, level):
         self._log = Logger("matrices", level)
         _i2c_scanner = I2CScanner(Level.DEBUG)
@@ -93,6 +99,7 @@ class Matrices(object):
     def vertical_gradient(self, rows):
         '''
         Set the displays to a vertically-changing gradient.
+        This uses no Threading, so it is blocking.
 
         :param rows:     determines the number of rows to be lit
         '''
@@ -106,6 +113,7 @@ class Matrices(object):
     def horizontal_gradient(self, cols):
         '''
         Set the displays to a horizontally-changing gradient.
+        This uses no Threading, so it is blocking.
 
         :param cols:     determines the number of columns to be lit
         '''
@@ -116,16 +124,42 @@ class Matrices(object):
             self._stbd_matrix.gradient(-1, cols)
 
     # ..........................................................................
-    def horizontal_wipe(self, enable, delay_secs):
+    def wipe(self, direction, enable, delay_secs):
         '''
-        Sequentially enables or disables the rows as a vertically-changing
-        gradient, i.e., a horizontal movement.
+        When direction is LEFT or RIGHT, sequentially enables or disables the
+        rows as a vertically-changing gradient, i.e., a horizontal movement.
 
+        When direction is UP or DOWN, sequentially enables or disables the
+        rows as a horizontally-changing gradient, i.e., a vertical movement.
+
+        This creates a new thread.
+
+        :param direction:    a value of LEFT, RIGHT, UP, or DOWN
         :param enable:       if true, enables (lightens) the displays; if false, disables (darkens)
         :param delay_secs:   the inter-row delay time in seconds
         '''
-        self._log.debug('matrix horizontal wipe {}...'.format('on' if enable else 'off'))   
-        r = [ 1, 12, 1 ] if enable else [10, 0, -1]
+        if direction is Matrices.LEFT or direction is Matrices.RIGHT:
+            self._thread = Thread(name='horiz-wipe', target=self._horizontal_wipe(direction, enable, delay_secs))
+            self._thread.start()
+        elif direction is Matrices.UP or direction is Matrices.DOWN:
+            self._thread = Thread(name='vert-wipe', target=self._vertical_wipe(direction, enable, delay_secs))
+            self._thread.start()
+        else:
+            raise Exception('unrecognised parameter for direction: {}'.format(direction))
+
+    # ..........................................................................
+    def _horizontal_wipe(self, direction, enable, delay_secs):
+        '''
+        Method called by thread.
+
+        Wipe LEFT is not yet implemented.
+        '''
+        if direction is Matrices.RIGHT:
+            self._log.info('matrix horizontal wipe right {}...'.format('on' if enable else 'off'))   
+            r = [ 1, 12, 1 ] if enable else [10, 0, -1]
+        else:
+            self._log.info('matrix horizontal wipe left {}...'.format('on' if enable else 'off'))   
+            raise NotImplementedError()
         for i in range(r[0], r[1], r[2]):
             self._log.debug('matrix at {:d}'.format(i))   
             if self._port_matrix:
@@ -135,16 +169,18 @@ class Matrices(object):
             time.sleep(delay_secs)
 
     # ..........................................................................
-    def vertical_wipe(self, enable, delay_secs):
+    def _vertical_wipe(self, direction, enable, delay_secs):
         '''
-        Sequentially enables or disables the rows as a horizontally-changing
-        gradient, i.e., a vertical movement.
+        Method called by thread.
 
-        :param enable:       if true, enables (lightens) the displays; if false, disables (darkens)
-        :param delay_secs:   the inter-row delay time in seconds
+        Wipe UP is not yet implemented.
         '''
-        self._log.debug('matrix vertical wipe {}...'.format('on' if enable else 'off'))   
-        r = [1, 8, 1] if enable else [7, 0, -1]
+        if direction is Matrices.DOWN:
+            self._log.info('matrix vertical wipe down {}...'.format('on' if enable else 'off'))   
+            r = [1, 8, 1] if enable else [7, 0, -1]
+        else:
+            self._log.info('matrix vertical wipe up {}...'.format('on' if enable else 'off'))   
+            raise NotImplementedError()
         for i in range(r[0], r[1], r[2]):
             self._log.debug('matrix at {:d}'.format(i))   
             if self._port_matrix:
@@ -237,7 +273,6 @@ class Matrix(object):
                     self._screens += 1
                     self._log.info('{:d} screens ({:d}); buffer width: {}.'.format(self._screens, _scroll, _buf_width))
                 time.sleep(0.1)
-#               time.sleep(1.0)
         else:
             self._matrix11x7.show()
 
@@ -259,8 +294,6 @@ class Matrix(object):
             self._log.debug('no matrix 11x7 display available.')
             return
         self._matrix(self._matrix11x7.height, self._matrix11x7.width)
-#       self._matrix11x7.width
-#       self._matrix11x7.height
 
     # ..........................................................................
     def gradient(self, rows, cols):
@@ -275,8 +308,8 @@ class Matrix(object):
         if not self._matrix11x7:
             self._log.debug('no matrix 11x7 display available.')
             return
-        _rows = min(self._matrix11x7.height, rows) if rows > 0 else self._matrix11x7.height
-        _cols = min(self._matrix11x7.width, cols) if cols > 0 else self._matrix11x7.width
+        _rows = min(self._matrix11x7.height, rows) if rows >= 0 else self._matrix11x7.height
+        _cols = min(self._matrix11x7.width, cols) if cols >= 0 else self._matrix11x7.width
         self._matrix(_rows, _cols)
 
     # ..........................................................................
@@ -296,8 +329,6 @@ class Matrix(object):
         self._matrix11x7.set_brightness(1.0)
         self._blank()
         for x in range(0, cols):
-#       for x in range(0, self._matrix11x7.width):
-#           for y in range(0, self._matrix11x7.height):
             for y in range(0, rows):
                 v = 0.7
                 self._matrix11x7.pixel(x, y, v)

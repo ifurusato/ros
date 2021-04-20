@@ -27,7 +27,9 @@ except ImportError:
 try:
     from rgbmatrix5x5 import RGBMatrix5x5
 except ImportError:
+    print('This script requires the smbus module\nInstall with: sudo pip3 install smbus')
     sys.exit("This script requires the rgbmatrix5x5 module\nInstall with: pip3 install --user rgbmatrix5x5")
+#from rgbmatrix5x5 import RGBMatrix5x5
 
 from lib.i2c_scanner import I2CScanner
 from lib.logger import Level, Logger

@@ -31,36 +31,49 @@ def test_matrix():
         
         _matrices = Matrices(Level.INFO)
 
+        _log.info('matrix write text...')   
         _matrices.text('HE', 'LP')
         time.sleep(3)
-
         _matrices.clear()
         time.sleep(1)
-
+ 
         _log.info('matrix on...')   
         _matrices.on()
         time.sleep(2)
-
+ 
         _log.info('matrix off...')   
         _matrices.clear()
         time.sleep(1)
 
+        _log.info('manual gradient wipes...')   
+        for i in range(1,8):
+            _matrices.vertical_gradient(i)
+            time.sleep(0.02)
+        for i in range(7,-1,-1):
+            _matrices.vertical_gradient(i)
+            time.sleep(0.02)
+        time.sleep(1)
+        for i in range(1,11):
+            _matrices.horizontal_gradient(i)
+            time.sleep(0.02)
+        for i in range(11,-1,-1):
+            _matrices.horizontal_gradient(i)
+            time.sleep(0.02)
+        time.sleep(1)
+
         _log.info('starting matrix vertical wipe...')   
-        _matrices.vertical_wipe(True, 0.00)
+        _matrices.wipe(Matrices.DOWN, True, 0.00)
         time.sleep(0.0)
-        _matrices.vertical_wipe(False, 0.00)
+        _matrices.wipe(Matrices.DOWN, False, 0.00)
         _matrices.clear()
         time.sleep(1)
 
-        _log.info('starting matrix horizontal wipe...')   
-        _matrices.horizontal_wipe(True, 0.00)
+        _log.info('starting matrix horizontal wipe right...')   
+        _matrices.wipe(Matrices.RIGHT, True, 0.00)
         time.sleep(0.0)
-        _matrices.horizontal_wipe(False, 0.00)
+        _matrices.wipe(Matrices.RIGHT, False, 0.00)
         _matrices.clear()
-
-        time.sleep(1)
-
-
+        # UP and LEFT not implemented
 
     except KeyboardInterrupt:
         _log.info(Fore.MAGENTA + 'Ctrl-C caught: interrupted.')
