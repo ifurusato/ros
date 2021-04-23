@@ -86,6 +86,10 @@ class Color(Enum):
         self._blue = blue
 
     @property
+    def rgb(self):
+        return [ self._red, self._green, self._blue ]
+
+    @property
     def red(self):
         return self._red
 

@@ -21,15 +21,20 @@ try:
 except ImportError:
     sys.exit("This script requires the numpy module\nInstall with: pip3 install --user numpy")
 try:
+    import smbus
+except ImportError:
+    sys.exit("This script requires the smbus module\nInstall with: pip3 install --user smbus")
+#try:
+try:
     import psutil
 except ImportError:
     sys.exit("This script requires the psutil module\nInstall with: pip3 install --user psutil")
-try:
-    from rgbmatrix5x5 import RGBMatrix5x5
-except ImportError:
-    print('This script requires the smbus module\nInstall with: sudo pip3 install smbus')
-    sys.exit("This script requires the rgbmatrix5x5 module\nInstall with: pip3 install --user rgbmatrix5x5")
-#from rgbmatrix5x5 import RGBMatrix5x5
+#try:
+#    from rgbmatrix5x5 import RGBMatrix5x5
+#except ImportError:
+#    print('This script requires the smbus module\nInstall with: sudo pip3 install smbus')
+#    sys.exit("This script requires the rgbmatrix5x5 module\nInstall with: pip3 install --user rgbmatrix5x5")
+from rgbmatrix5x5 import RGBMatrix5x5
 
 from lib.i2c_scanner import I2CScanner
 from lib.logger import Level, Logger
@@ -38,14 +43,21 @@ from lib.enums import Color, Orientation
 
 # ..............................................................................
 class DisplayType(Enum):
-    BLINKY  = 1
-    CPU     = 2
-    DARK    = 3
-    RAINBOW = 4
-    RANDOM  = 5
-    SCAN    = 6
-    SWORL   = 7
-    SOLID   = 8
+    BLINKY    = 1
+    CPU       = 2
+    DARK      = 3
+    RAINBOW   = 4
+    RANDOM    = 5
+    SCAN      = 6
+    SWORL     = 7
+    SOLID     = 8
+    WIPE_LEFT = 9
+
+class WipeDirection(Enum):
+    LEFT  = 0
+    RIGHT = 1
+    UP    = 2
+    DOWN  = 3
 
 # ..............................................................................
 class RgbMatrix(Feature):
@@ -86,6 +98,8 @@ class RgbMatrix(Feature):
         self._closing = False
         self._closed = False
         self._display_type = DisplayType.DARK # default
+        # color used by wipe display
+        self._wipe_color = Color.WHITE # default
         # used by _cpu:
         self._max_value = 0.0 # TEMP
         self._buf = numpy.zeros((self._rgbmatrix5x5_STBD._width, self._rgbmatrix5x5_STBD._height))
@@ -99,21 +113,23 @@ class RgbMatrix(Feature):
     # ..........................................................................
     def _get_target(self):
         if self._display_type is DisplayType.BLINKY:
-            return RgbMatrix._blinky
+            return [ RgbMatrix._blinky, None ]
         elif self._display_type is DisplayType.CPU:
-            return RgbMatrix._cpu
+            return [ RgbMatrix._cpu, None ]
         elif self._display_type is DisplayType.DARK:
-            return RgbMatrix._dark
+            return [ RgbMatrix._dark, None ]
         elif self._display_type is DisplayType.RAINBOW:
-            return RgbMatrix._rainbow
+            return [ RgbMatrix._rainbow, None ]
         elif self._display_type is DisplayType.RANDOM:
-            return RgbMatrix._random
+            return [ RgbMatrix._random, None ]
         elif self._display_type is DisplayType.SCAN:
-            return RgbMatrix._scan
+            return [ RgbMatrix._scan, None ]
         elif self._display_type is DisplayType.SOLID:
-            return RgbMatrix._solid
+            return [ RgbMatrix._solid, None ]
         elif self._display_type is DisplayType.SWORL:
-            return RgbMatrix._sworl
+            return [ RgbMatrix._sworl, None ]
+        elif self._display_type is DisplayType.WIPE_LEFT:
+            return [ RgbMatrix._wipe, WipeDirection.LEFT ]
 
     # ..........................................................................
     def enable(self):
@@ -121,10 +137,11 @@ class RgbMatrix(Feature):
         if not self._closed and not self._closing:
             if self._thread_PORT is None and self._thread_STBD is None:
                 enabled = True
+                _target = self._get_target()
                 if self._rgbmatrix5x5_PORT:
-                    self._thread_PORT = Thread(name='rgb-port', target=self._get_target(), args=[self, self._rgbmatrix5x5_PORT])
+                    self._thread_PORT = Thread(name='rgb-port', target=_target[0], args=[self, self._rgbmatrix5x5_PORT, _target[1]])
                     self._thread_PORT.start()
-                self._thread_STBD = Thread(name='rgb-stbd', target=self._get_target(), args=[self, self._rgbmatrix5x5_STBD])
+                self._thread_STBD = Thread(name='rgb-stbd',     target=_target[0], args=[self, self._rgbmatrix5x5_STBD, _target[1]])
                 self._thread_STBD.start()
                 self._log.debug('enabled.')
             else:
@@ -162,7 +179,7 @@ class RgbMatrix(Feature):
         self._log.debug('disabled.')
 
     # ..........................................................................
-    def _cpu(self, rgbmatrix5x5):
+    def _cpu(self, rgbmatrix5x5, arg):
         '''
         A port of the CPU example from the Matrix 11x7.
 
@@ -215,10 +232,8 @@ class RgbMatrix(Feature):
                 _value *= _width * 10.0
                 _value = min(_value, _height * 12.0)
                 _value = max(_value, 0.0)
-
                 if _value > 5.0:
                     _value = 50.0
-
 #               self._log.info(Fore.MAGENTA + 'p_y={}; _value: {}'.format(p_y, _value) + Style.RESET_ALL)
                 for p_x in range(0, _width):
                     _r = self._colors[p_x].red
@@ -252,7 +267,7 @@ class RgbMatrix(Feature):
         return numpy.pad(self._buf, ((0, x_pad), (0, y_pad)), 'constant')
 
     # ..........................................................................
-    def _rainbow(self, rgbmatrix5x5):
+    def _rainbow(self, rgbmatrix5x5, arg):
         '''
         Display a rainbow pattern.
         '''
@@ -279,7 +294,7 @@ class RgbMatrix(Feature):
         self._log.info('rainbow ended.')
 
     # ..........................................................................
-    def _sworl(self, rgbmatrix5x5):
+    def _sworl(self, rgbmatrix5x5, arg):
         '''
         Display a sworl pattern, whatever that is.
         '''
@@ -313,6 +328,66 @@ class RgbMatrix(Feature):
             self.set_color(Color.BLACK)
 
     # ..........................................................................
+    def _wipe(self, rgbmatrix5x5, direction):
+        '''
+        Display a wipe in the specified direction.
+        '''
+        if direction is WipeDirection.LEFT or direction is WipeDirection.RIGHT:
+            self._wipe_horizontal(rgbmatrix5x5, direction)
+        if direction is WipeDirection.UP or direction is WipeDirection.DOWN:
+            self._wipe_vertical(rgbmatrix5x5, direction)
+
+    # ..........................................................................
+    def _wipe_horizontal(self, rgbmatrix5x5, direction):
+        '''
+        Note: not implemented yet.
+        '''
+        global enabled
+        raise NotImplementedError()
+
+    # ..........................................................................
+    def set_wipe_color(self, color):
+        self._wipe_color = color
+
+    # ..........................................................................
+    def _wipe_vertical(self, rgbmatrix, direction):
+        '''
+        Note: UP has not been implemented yet.
+        '''
+        global enabled
+        if not rgbmatrix:
+            self._log.debug('null RGB matrix argument.')
+            return
+        if direction is WipeDirection.DOWN:
+            self._log.info('starting wipe DOWN...')
+        elif direction is WipeDirection.UP:
+            raise NotImplementedError('wipe UP not implemented.')
+        else:
+            raise ValueError('unrecognised direction argument.')
+        _delay = 0.05
+        self.set_color(Color.BLACK)
+#       self._set_color(rgbmatrix, Color.BLACK)
+        time.sleep(0.1)
+        xra = [ [ 0, self._width, 1 ], [ self._width-1, -1, -1 ] ]
+        yra = [ [ 0, self._height, 1 ], [ self._height-1, -1, -1 ] ]
+        colors = [ self._wipe_color, Color.BLACK ]
+        try:
+            for i in range(0,2):
+                xr = xra[i]
+                yr = yra[i]
+                r, g, b = colors[i].rgb
+                for x in range(xr[0], xr[1], xr[2]):
+                    for y in range(yr[0], yr[1], yr[2]):
+                        rgbmatrix.set_pixel(x, y, r, g, b)
+                    rgbmatrix.show()
+                    time.sleep(_delay)
+            self._log.info('wipe ended.')
+        except KeyboardInterrupt:
+            self._log.info('wipe interrupted.')
+        finally:
+            self.set_color(Color.BLACK)
+
+    # ..........................................................................
     def set_solid_color(self, color):
         self._color = color
 
@@ -323,6 +398,18 @@ class RgbMatrix(Feature):
             self._set_color(self._rgbmatrix5x5_PORT, self._color)
         if orientation is Orientation.STBD or orientation is Orientation.BOTH:
             self._set_color(self._rgbmatrix5x5_STBD, self._color)
+
+    # ..........................................................................
+    def get_rgbmatrix(self, orientation):
+        '''
+        Return the port or starboard RGB matrix.
+        '''
+        if orientation is Orientation.PORT:
+            return self._rgbmatrix5x5_PORT
+        if orientation is Orientation.STBD:
+            return self._rgbmatrix5x5_STBD
+        else:
+            return None
 
     # ..........................................................................
     def show_hue(self, hue, orientation):
@@ -343,7 +430,7 @@ class RgbMatrix(Feature):
             self._rgbmatrix5x5_STBD.show()
 
     # ..........................................................................
-    def _solid(self, rgbmatrix5x5):
+    def _solid(self, rgbmatrix5x5, arg):
         '''
         Display a specified static, solid color on only the starboard display.
         '''
@@ -356,20 +443,7 @@ class RgbMatrix(Feature):
             time.sleep(0.2)
 
     # ..........................................................................
-    def _solid(self, rgbmatrix5x5):
-        '''
-        Display a specified static, solid color on only the starboard display.
-        '''
-        global enabled
-#       self.set_color(self._color)
-#       self._set_color(self._rgbmatrix5x5_PORT, self._color)
-        self._set_color(self._rgbmatrix5x5_STBD, self._color)
-        self._log.info('starting solid color to {}...'.format(str.lower(self._color.name)))
-        while enabled:
-            time.sleep(0.2)
-
-    # ..........................................................................
-    def _dark(self, rgbmatrix5x5):
+    def _dark(self, rgbmatrix5x5, arg):
         '''
         Display a dark static color.
         '''
@@ -390,7 +464,7 @@ class RgbMatrix(Feature):
         return gauss
 
     # ..........................................................................
-    def _blinky(self, rgbmatrix5x5):
+    def _blinky(self, rgbmatrix5x5, arg):
         '''
         Display a pair of blinky spots.
         '''
@@ -434,7 +508,7 @@ class RgbMatrix(Feature):
         self._log.info('blinky ended.')
 
     # ..........................................................................
-    def _scan(self, rgbmatrix5x5):
+    def _scan(self, rgbmatrix5x5, arg):
         '''
         KITT- or Cylon-like eyeball scanning.
         '''
@@ -467,7 +541,7 @@ class RgbMatrix(Feature):
         self._log.debug('scan ended.')
 
     # ..........................................................................
-    def _random(self, rgbmatrix5x5):
+    def _random(self, rgbmatrix5x5, arg):
         '''
         Display an ever-changing random pattern.
         '''
