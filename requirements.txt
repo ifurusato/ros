@@ -67,7 +67,7 @@ phatbeat==0.1.1
 pianohat==0.1.0
 piglow==1.2.5
 pigpio==1.44
-Pillow==5.4.1
+Pillow==8.2.0
 pimoroni-ioexpander==0.0.1
 pluggy==0.13.1
 psutil==5.5.1
