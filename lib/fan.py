@@ -10,13 +10,15 @@
 # modified: 2021-02-25
 #
 
+import sys
 from lib.logger import Logger, Level
 from colorama import init, Fore, Style
 init()
+
 try:
     from ht0740 import HT0740
 except ImportError:
-    print("This script requires the ht0740 module\nInstall with: pip3 install --user ht0740")
+    sys.exit(Fore.RED + "This script requires the ht0740 module.\nInstall with: pip3 install --user ht0740" + Style.RESET_ALL)
 
 class Fan(object):
     '''
@@ -31,10 +33,15 @@ class Fan(object):
         self._fan_threshold = _config.get('fan_threshold')
         self._hysteresis    = _config.get('hysteresis')
         self._log.info('setpoint temperature: {:5.2f}°C; hysteresis: {:2.1f}°C.'.format(self._fan_threshold, self._hysteresis))
-        self._switch = HT0740(i2c_addr=_i2c_address)
-        self._log.info('enabling fan.')
-        self._switch.enable()
         self._enabled = False 
+        try:
+            _i2c_address = 0x39 # or modified board
+            self._log.info('enabling fan at I²C address 0x{:02X}'.format(_i2c_address))
+            self._switch = HT0740(i2c_addr=_i2c_address)
+        except OSError as e:
+            self._log.error('error instantiating HT0740: {}. '.format(e) + Fore.YELLOW + 'Is the device available at the specified I²C address?')
+            sys.exit(1)
+        self._switch.enable()
         self._log.info('ready.')
 
     # ..........................................................................

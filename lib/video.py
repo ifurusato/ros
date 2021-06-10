@@ -57,9 +57,10 @@ class Video():
             raise ValueError("no configuration provided.")
         self._config = config
         _config = self._config['ros'].get('video')
-        self._enable_streaming = _config.get('enable_streaming')
-        self._port        = _config.get('port')
-        self._lux_threshold = _config.get('lux_threshold')
+        self._enable_streaming   = _config.get('enable_streaming')
+        self._enable_file_output = _config.get('enable_file_output')
+        self._port               = _config.get('port')
+        self._lux_threshold      = _config.get('lux_threshold')
         self._counter = itertools.count()
         self._server = None
 
@@ -69,8 +70,13 @@ class Video():
         self._height      = _config.get('height')
         self._resolution  = ( self._width, self._height )
         self._framerate   = _config.get('framerate')
-        self._convert_mp4 = _config.get('convert_mp4')
-        self._remove_h264 = _config.get('remove_h264')
+
+        if self._enable_file_output:
+            self._convert_mp4 = _config.get('convert_mp4')
+            self._remove_h264 = _config.get('remove_h264')
+        else:
+            self._convert_mp4 = False
+            self._remove_h264 = False
         self._quality     = _config.get('quality')
         self._annotate    = _config.get('annotate')
         self._title       = _config.get('title')
@@ -300,7 +306,10 @@ class Video():
         self._enabled = True
         if not os.path.isdir(self._dirname):
             os.makedirs(self._dirname)
-        self._filename = os.path.join(self._dirname, self._basename + '_' + self._get_timestamp() + '.h264')
+        if self._enable_file_output:
+            self._filename = os.path.join(self._dirname, self._basename + '_' + self._get_timestamp() + '.h264')
+        else:
+            self._filename = None
         _output = OutputSplitter(self._filename)
         self._thread = threading.Thread(target=Video._start, args=[self, _output, lambda: self.is_enabled(), ])
         self._thread.setDaemon(True)
@@ -370,6 +379,7 @@ class Video():
         if self._server is not None:
             self._log.info('shutting down server...')
             self._server.shutdown()
+            self._server.server_close()
             self._log.info('server shut down.')
         self._log.info(Fore.MAGENTA + Style.BRIGHT + 'video closed.')
 
@@ -378,14 +388,20 @@ class OutputSplitter(object):
     '''
         An output (as far as picamera is concerned), is just a filename or an object
         which implements a write() method (and optionally the flush() and close() methods)
+
+        If the filename parameter is None no file is written.
     '''
     def __init__(self, filename):
         self.frame = None
         self.buffer = io.BytesIO()
         self._log = Logger('output', Level.INFO)
-        self.output_file = io.open(filename, 'wb')
         self._filename = filename
-        self._log.info(Fore.MAGENTA + 'output file: {}'.format(filename))
+        if self._filename:
+            self._output_file = io.open(filename, 'wb')
+            self._log.info(Fore.MAGENTA + 'output file: {}'.format(filename))
+        else:
+            self._output_file = None
+            self._log.info(Fore.MAGENTA + 'no output file generated from video.')
         self._condition = Condition()
         self._log.info('ready.')
 
@@ -400,23 +416,25 @@ class OutputSplitter(object):
                 self.frame = self.buffer.getvalue()
                 self._condition.notify_all()
             self.buffer.seek(0)
-        if not self.output_file.closed:
-            self.output_file.write(buf)
+        if self._output_file and not self._output_file.closed:
+            self._output_file.write(buf)
         return self.buffer.write(buf)
 
     def flush(self):
-        self._log.debug('flush')
-        if not self.output_file.closed:
-            self.output_file.flush()
+        self._log.debug('flushing...')
+        if self._output_file and not self._output_file.closed:
+            self._output_file.flush()
         if not self.buffer.closed:
             self.buffer.flush()
+        self._log.debug('flushed.')
 
     def close(self):
-        self._log.info('close')
-        if not self.output_file.closed:
-            self.output_file.close()
+        self._log.info('closing...')
+        if self._output_file and not self._output_file.closed:
+            self._output_file.close()
         if not self.buffer.closed:
             self.buffer.close()
+        self._log.info('closed.')
 
 
 # ..............................................................................
@@ -497,11 +515,15 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
         '''
             Handle one request at a time until the enabled flag is False.
         '''
-        while self._enabled_flag():
-            self._log.info('serve_forever handling request...')
-            self._log.info(Fore.YELLOW + 'type Ctrl-C to exit.')
-            self.handle_request()
+        self._log.info('begin serve_forever loop.')
+        super().serve_forever(poll_interval=0.5)
+#       while self._enabled_flag():
+#           self._log.info('serve_forever handling request...')
+#           self._log.info(Fore.YELLOW + 'type Ctrl-C to exit.')
+#           self.handle_request()
         self._log.info('exited serve_forever loop.')
+
+
 
 
 #EOF

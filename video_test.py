@@ -31,11 +31,11 @@ def main(argv):
     try:
         # read YAML configuration
         _loader = ConfigLoader(Level.INFO)
-        filename = 'config.yaml'
-        _config = _loader.configure(filename)
+        _config = _loader.configure('config.yaml')
 
         _video = Video(_config, Level.INFO)
         _video.start()
+
         while True:
             time.sleep(1.0)
     except KeyboardInterrupt:

@@ -76,8 +76,9 @@ ros:
         suppress_info:     False                 # if True don't print 'complete' message
     video:
         enable_streaming: True                   # if True, stream video to a localhost HTTP server
+        enable_file_output: False                # if True, will generate an output file
         ctrl_lights: True                        # if True, permit video to control Matrix11x7 lights
-        convert_mp4: True                        # if True, convert h264 source to mp4
+        convert_mp4: False                       # if True, convert h264 source to mp4
         annotate: True                           # if True, include annotation on video
         title: 'NZPRG - KR01'                            # the title portion of the video annotation
         quality: -1                              # video quality: -1 for default; values between 1 (high) - 40 (low), typical between 20-25.
